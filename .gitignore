@@ -1,0 +1,33 @@
+# ===== NetBeans =====
+/build/
+/dist/
+/nbproject/private/
+
+# ===== Build output =====
+/build/
+/target/
+
+# ===== Logs =====
+*.log
+
+# ===== OS files =====
+.DS_Store
+Thumbs.db
+
+# ===== IDE =====
+.idea/
+*.iml
+
+# ===== Server =====
+/glassfish/
+/tomcat/
+
+# ===== Environment =====
+.env
+
+# ===== Compiled files =====
+*.class
+
+# ===== Temporary =====
+*.tmp
+*.swp
