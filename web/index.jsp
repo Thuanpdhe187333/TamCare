@@ -9,7 +9,7 @@ Click nbfs://nbhost/SystemFileSystem/Templates/JSP_Servlet/Html.html to edit thi
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
     </head>
-    <body>
-        <div>TODO write content</div>
-    </body>
+    <jsp:include page="/WEB-INF/views/layout/header.jsp"/>
+        <div>Hello word</div>
+    <jsp:include page="/WEB-INF/views/layout/footer.jsp"/>
 </html>
