@@ -1,57 +1,37 @@
-
 package controller;
 
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.io.PrintWriter;
+import dao.PurchaseOrderDAO;
+import dto.PurchaseOrderListDTO;
 
+import jakarta.servlet.*;
+import jakarta.servlet.http.*;
+import java.io.IOException;
+import java.sql.Connection;
+import java.util.List;
+import util.ViewPath;
 
 public class PurchaseOrderController extends HttpServlet {
 
-    /**
-     * Processes requests for both HTTP <code>GET</code> and <code>POST</code>
-     * methods.
-     *
-     * @param request servlet request
-     * @param response servlet response
-     * @throws ServletException if a servlet-specific error occurs
-     * @throws IOException if an I/O error occurs
-     */
-    protected void processRequest(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        response.setContentType("text/html;charset=UTF-8");
-        try (PrintWriter out = response.getWriter()) {
-            /* TODO output your page here. You may use following sample code. */
-            out.println("<!DOCTYPE html>");
-            out.println("<html>");
-            out.println("<head>");
-            out.println("<title>Servlet PurchaseOrderController</title>");            
-            out.println("</head>");
-            out.println("<body>");
-            out.println("<h1>Servlet PurchaseOrderController at " + request.getContextPath() + "</h1>");
-            out.println("</body>");
-            out.println("</html>");
-        }
-    }
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        processRequest(request, response);
-    }
 
-    @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        processRequest(request, response);
-    }
+        int page = 1;
+        int size = 20;
 
-  
-    @Override
-    public String getServletInfo() {
-        return "Short description";
-    }
+        String pageParam = request.getParameter("page");
+        if (pageParam != null) page = Integer.parseInt(pageParam);
 
+        int offset = (page - 1) * size;
+
+        try {
+            PurchaseOrderDAO dao = new PurchaseOrderDAO();
+            List<PurchaseOrderListDTO> pos = dao.getPurchaseList(size, offset);
+            request.setAttribute("pos", pos);
+            request.setAttribute("page", page);
+            request.getRequestDispatcher(ViewPath.PO_LIST).forward(request, response);
+        } catch (Exception e) {
+            throw new ServletException(e);
+        }
+    }
 }

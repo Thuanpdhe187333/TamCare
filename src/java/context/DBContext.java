@@ -13,11 +13,11 @@ import java.sql.SQLException;
  * @author Admin
  */
 public class DBContext {
-    private static final String URL = "jdbc:mysql://localhost:3306/...";
+    private static final String URL = "jdbc:mysql://localhost:3306/wms_db";
 
     private static final String USERNAME = "root";
     private static final String PASSWORD = "1234";
-    protected static Connection connection = null;
+    protected static Connection connection ;
     
     // Get database connection
     public static Connection getConnection() {
