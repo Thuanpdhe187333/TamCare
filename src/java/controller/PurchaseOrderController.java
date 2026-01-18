@@ -4,12 +4,13 @@ import dao.PurchaseOrderDAO;
 import dto.PurchaseOrderListDTO;
 
 import jakarta.servlet.*;
+import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 import java.io.IOException;
 import java.sql.Connection;
 import java.util.List;
 import util.ViewPath;
-
+@WebServlet(name = "PurchaseOrderController", urlPatterns = {"/purchase-orders"})
 public class PurchaseOrderController extends HttpServlet {
 
     @Override
