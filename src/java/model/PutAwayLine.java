@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 
 @Getter
 @Setter
-public class PutawayLine {
+public class PutAwayLine {
     private Long putawayLineId;
     private Long putawayId;
     private Long grnLineId;

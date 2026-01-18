@@ -1,16 +1,14 @@
 package dao;
 
 import context.DBContext;
+import dto.PurchaseOrderDetailDTO;
 import dto.PurchaseOrderListDTO;
-
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-
 public class PurchaseOrderDAO extends DBContext {
-        Connection conn = DBContext.getConnection();
-
-    public List<PurchaseOrderListDTO> getPurchaseList(int limit, int offset) throws SQLException {
+    Connection conn = DBContext.getConnection();
+    public List<PurchaseOrderListDTO> getPurchaseOrderList(int limit, int offset) throws SQLException {
         String sql = """
             SELECT
               po.po_id,              
@@ -28,9 +26,7 @@ public class PurchaseOrderDAO extends DBContext {
             ORDER BY po.po_id DESC
             LIMIT ? OFFSET ?
         """;
-
         List<PurchaseOrderListDTO> list = new ArrayList<>();
-
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, limit);
             ps.setInt(2, offset);
@@ -38,31 +34,70 @@ public class PurchaseOrderDAO extends DBContext {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     PurchaseOrderListDTO dto = new PurchaseOrderListDTO();
-
                     dto.setPoId(rs.getLong("po_id"));
                     dto.setPoNumber(rs.getString("po_number"));
-
                     // supplier
                     dto.setSupplierId(rs.getObject("supplier_id") != null ? rs.getLong("supplier_id") : null);
                     dto.setSupplierName(rs.getString("supplier_name"));
-
                     // dates
                     Date d = rs.getDate("expected_delivery_date");
                     dto.setExpectedDeliveryDate(d != null ? d.toLocalDate() : null);
-
                     dto.setStatus(rs.getString("status"));
-
                     // imported by
                     dto.setImportedBy(rs.getObject("imported_by") != null ? rs.getLong("imported_by") : null);
                     dto.setImportedByUsername(rs.getString("imported_by_username"));
-
                     Timestamp ts = rs.getTimestamp("imported_at");
                     dto.setImportedAt(ts != null ? ts.toLocalDateTime() : null);
-
                     list.add(dto);
                 }
             }
         }
         return list;
+    }
+
+    public List<PurchaseOrderDetailDTO> getPurchaseOrderDetailLines(long poId) throws Exception {
+        String sql = """
+                         SELECT
+                                  pl.po_line_id,
+                                  p.product_id,
+                                  p.name AS product_name,
+                                  pv.variant_id,
+                                  pv.variant_sku,
+                                  pv.color,
+                                  pv.size,
+                                  pv.barcode,
+                                  pv.status AS variant_status,
+                                  pl.qty_ordered AS ordered_qty,
+                                  pl.unit_price,
+                                  (pl.qty_ordered * pl.unit_price) AS line_amount
+                                FROM purchase_order_line pl
+                                JOIN product_variant pv ON pv.variant_id = pl.variant_id
+                                JOIN product p ON p.product_id = pv.product_id
+                                WHERE pl.po_id = ?
+                                ORDER BY pl.po_line_id
+                        """;
+        List<PurchaseOrderDetailDTO> lines = new ArrayList<>();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, poId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    PurchaseOrderDetailDTO dto = new PurchaseOrderDetailDTO();
+                    dto.setPoLineId(rs.getLong("po_line_id"));
+                    dto.setProductId(rs.getLong("product_id"));
+                    dto.setProductName(rs.getString("product_name"));
+                    dto.setVariantId(rs.getLong("variant_id"));
+                    dto.setVariantSku(rs.getString("variant_sku"));
+                    dto.setColor(rs.getString("color"));
+                    dto.setSize(rs.getString("size"));
+                    dto.setBarcode(rs.getString("barcode"));
+                    dto.setVariantStatus(rs.getString("variant_status"));
+                    dto.setOrderedQty(rs.getBigDecimal("ordered_qty"));
+                    dto.setUnitPrice(rs.getBigDecimal("unit_price"));
+                    dto.setLineAmount(rs.getBigDecimal("line_amount"));
+                    lines.add(dto);
+                }
+            }
+        }
+        return lines;
     }
 }
