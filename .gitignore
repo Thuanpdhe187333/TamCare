@@ -31,3 +31,7 @@ Thumbs.db
 # ===== Temporary =====
 *.tmp
 *.swp
+
+# ===== Ignore specific files =====
+src/java/util/CommonVariables.java
+
