@@ -1,12 +1,16 @@
-<!DOCTYPE html>
+<%@page contentType="text/html" pageEncoding="UTF-8" %>
 
+<!DOCTYPE html>
 <html>
   <head>
-    <title>Warehouse Management System</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <%@include file="/WEB-INF/views/layout/head.jspf" %>
   </head>
-  <jsp:include page="/WEB-INF/views/layout/header.jsp"/>
-  <div>Hello word</div>
-  <jsp:include page="/WEB-INF/views/layout/footer.jsp"/>
+
+  <body class="d-flex flex-column" style="min-height: 100vh;">
+    <%@include file="/WEB-INF/views/layout/header.jspf" %>
+
+    <main class="flex-grow-1 container-fluid">Hello word</main>
+
+    <%@include file="/WEB-INF/views/layout/footer.jspf" %>
+  </body>
 </html>

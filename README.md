@@ -1,13 +1,15 @@
-# Warehouse management system
+# WAREHOUSE MANAGEMENT SYSTEM
+
 ## Technology
-- JDK17
-- Tomcat 10.1.50
-- Netbean 17
-- Database MySQl
+- JDK 17
+- Tomcat 10
+- MySQl 8
+
 ## Coding Convention
 - Variable, Function = CamelCase
-- const = caplock
-- class, interface = PascalCase
+- Constant = CAPLOCK
+- Class, Interface = PascalCase
+
 ## folder structure
 - common: Lưu trữ các biến toàn cục
 - entity : Reflect các bảng trong DB không được tùy ý sửa đổi các trường trong entity
