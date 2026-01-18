@@ -12,24 +12,14 @@ public class UserDAO {
 
     public User login(String username, String password) {
         String sql = """
-            SELECT
-                user_id,
-                username,
-                full_name,
-                email,
-                phone,
-                password_hash,
-                status,
-                warehouse_id,
-                created_at,
-                last_login_at,
-                last_login_ip,
-                is_deleted
-            FROM 'User'
-            WHERE username = ?
-              AND status = 'ACTIVE'
-              AND is_deleted = 0
-        """;
+        SELECT user_id, username, full_name, email, phone,
+           password_hash, status, warehouse_id, created_at
+        FROM `User`
+        WHERE username = ?
+            AND status = 'ACTIVE'
+            AND is_deleted = 0
+        LIMIT 1
+    """;
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, username);
