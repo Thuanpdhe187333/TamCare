@@ -1,6 +1,5 @@
 package dao;
 
-import context.DBContext;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -8,13 +7,14 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+
+import context.DBContext;
 import model.Permission;
 
-public class PermissionDAO extends DBContext implements Dao<Permission> {
+public class PermissionDAO extends DBContext {
 
     private final Connection CONNECTION = DBContext.getConnection();
 
-    @Override
     public List<Permission> getAll() throws SQLException {
         String sql = """
             SELECT permission_id, code, name
@@ -37,7 +37,6 @@ public class PermissionDAO extends DBContext implements Dao<Permission> {
         return list;
     }
 
-    @Override
     public Permission getById(Long id) throws SQLException {
         String sql = """
             SELECT permission_id, code, name
@@ -61,7 +60,6 @@ public class PermissionDAO extends DBContext implements Dao<Permission> {
         return null;
     }
 
-    @Override
     public boolean create(Permission permission) throws SQLException {
         String sql = """
             INSERT INTO permission (code, name)
@@ -85,7 +83,6 @@ public class PermissionDAO extends DBContext implements Dao<Permission> {
         return false;
     }
 
-    @Override
     public boolean update(Permission permission) throws SQLException {
         String sql = """
             UPDATE permission
@@ -102,7 +99,6 @@ public class PermissionDAO extends DBContext implements Dao<Permission> {
         }
     }
 
-    @Override
     public boolean delete(Long id) throws SQLException {
         String sql = """
             DELETE FROM permission

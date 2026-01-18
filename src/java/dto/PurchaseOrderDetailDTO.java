@@ -5,15 +5,17 @@
 package dto;
 
 import java.math.BigDecimal;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
+
 @Getter
 @Setter
-/**
- *
- * @author HungTran
- */
+@NoArgsConstructor
+@AllArgsConstructor
 public class PurchaseOrderDetailDTO {
+
     private long poLineId;
     private long productId;
     private String productName;
