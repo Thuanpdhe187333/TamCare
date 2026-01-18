@@ -1,0 +1,9 @@
+<%@ page pageEncoding="UTF-8" %>
+
+<footer class="bg-dark text-white text-center py-3 mt-auto">
+  <div class="container-fluid">
+    <p class="mb-0">
+      &copy; <%= java.util.Calendar.getInstance().get(java.util.Calendar.YEAR) %> Warehouse Management System - Admin Panel. All rights reserved.
+    </p>
+  </div>
+</footer>
