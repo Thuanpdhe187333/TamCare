@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 
 @Getter
 @Setter
-public class PutawayOrder {
+public class PutAwayOrder {
     private Long putawayId;
     private Long grnId;
     private String status;

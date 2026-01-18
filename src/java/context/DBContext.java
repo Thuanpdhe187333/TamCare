@@ -13,7 +13,6 @@ import util.CommonVariables;
  * @author Admin
  */
 public class DBContext {
-
     protected static Connection connection ;
     
     // Get database connection
