@@ -11,4 +11,5 @@ package util;
 public class ViewPath {
     public static final String PO_LIST = "WEB-INF/views/inbound/purchase-order-list.jsp";
     public static final String PO_DETAIL = "WEB-INF/views/inbound/purchase-order-detail.jsp";
+    public static final String PO_FORM = "WEB-INF/views/inbound/purchase-form.jsp";
 }
