@@ -7,16 +7,13 @@ package context;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-
+import util.CommonVariables;
 /**
  *
  * @author Admin
  */
 public class DBContext {
-    private static final String URL = "jdbc:mysql://localhost:3306/wms_db";
 
-    private static final String USERNAME = "root";
-    private static final String PASSWORD = "1234";
     protected static Connection connection ;
     
     // Get database connection
@@ -27,7 +24,7 @@ public class DBContext {
                 Class.forName("com.mysql.cj.jdbc.Driver");
                 
                 // Create connection
-                connection = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+                connection = DriverManager.getConnection(CommonVariables.URL, CommonVariables.USERNAME, CommonVariables.PASSWORD);
                 System.out.println("Database connected successfully!");
             }
         } catch (ClassNotFoundException e) {
