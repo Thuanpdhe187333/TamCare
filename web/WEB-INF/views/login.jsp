@@ -73,12 +73,8 @@
                        oninput="this.setCustomValidity('')">
 
                 <button type="submit">Đăng nhập</button>
-
             </form>
-
             <div class="error-msg">${error}</div>
         </div>
-
-
     </body>
 </html>
