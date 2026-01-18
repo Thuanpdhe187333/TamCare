@@ -1,6 +1,7 @@
 package dao;
 
 import context.DBContext;
+import dto.POLineCreateDTO;
 import dto.PurchaseOrderDetailDTO;
 import dto.PurchaseOrderListDTO;
 import java.sql.*;
@@ -100,4 +101,78 @@ public class PurchaseOrderDAO extends DBContext {
         }
         return lines;
     }
+
+     public long createManualPO(
+            String poNumber,
+            long supplierId,
+            java.sql.Date expectedDate,
+            String note,
+            long userId,
+            List<POLineCreateDTO> lines
+    ) throws Exception {
+
+        String sqlPO = """
+            INSERT INTO purchase_order
+              (po_number, supplier_id, expected_delivery_date, status,
+               imported_by, imported_at, source_file_name, note)
+            VALUES (?, ?, ?, 'IMPORTED', ?, NOW(), 'manual_create', ?)
+        """;
+
+        String sqlLine = """
+            INSERT INTO purchase_order_line
+              (po_id, variant_id, qty_ordered, unit_price, tax_rate, currency)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """;
+        try (Connection con = DBContext.getConnection()) {
+            con.setAutoCommit(false);
+            try (PreparedStatement psPO = con.prepareStatement(sqlPO, Statement.RETURN_GENERATED_KEYS)) {
+                psPO.setString(1, poNumber);
+                psPO.setLong(2, supplierId);
+                if (expectedDate != null) psPO.setDate(3, expectedDate);
+                else psPO.setNull(3, Types.DATE);
+                psPO.setLong(4, userId);
+                psPO.setString(5, note);
+
+                psPO.executeUpdate();
+
+                long poId;
+                try (ResultSet rs = psPO.getGeneratedKeys()) {
+                    if (!rs.next()) throw new SQLException("Cannot get generated po_id");
+                    poId = rs.getLong(1);
+                }
+
+                try (PreparedStatement psLine = con.prepareStatement(sqlLine)) {
+                    for (POLineCreateDTO l : lines) {
+                        psLine.setLong(1, poId);
+                        psLine.setLong(2, l.getVariantId());
+                        psLine.setBigDecimal(3, l.getQty());
+
+                        if (l.getUnitPrice() != null) psLine.setBigDecimal(4, l.getUnitPrice());
+                        else psLine.setNull(4, Types.DECIMAL);
+
+                        if (l.getTaxRate() != null) psLine.setBigDecimal(5, l.getTaxRate());
+                        else psLine.setNull(5, Types.DECIMAL);
+
+                        String currency = (l.getCurrency() == null || l.getCurrency().isBlank())
+                                ? "VND"
+                                : l.getCurrency().trim();
+                        psLine.setString(6, currency);
+
+                        psLine.addBatch();
+                    }
+                    psLine.executeBatch();
+                }
+
+                con.commit();
+                return poId;
+
+            } catch (Exception ex) {
+                con.rollback();
+                throw ex;
+            } finally {
+                con.setAutoCommit(true);
+            }
+        }
+    }
+
 }

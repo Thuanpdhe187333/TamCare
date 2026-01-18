@@ -35,7 +35,7 @@ public class AuthenticationController extends HttpServlet {
             HttpSession session = request.getSession();
             session.setAttribute("USER", user);
 
-            response.sendRedirect("dashboard");
+            response.sendRedirect("purchase-orders");
         } else {
             request.setAttribute("error", "Sai username hoặc password");
             request.getRequestDispatcher("/WEB-INF/views/login.jsp").forward(request, response);
