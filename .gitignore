@@ -35,3 +35,4 @@ Thumbs.db
 # ===== Ignore specific files =====
 src/java/util/CommonVariables.java
 
+.vscode/
