@@ -132,10 +132,12 @@ public class UserController extends HttpServlet {
 
         List<Role> allRoles = roleDAO.getAll(1000, 0);
         List<Long> selectedRoleIds = userDAO.getRolesByUserId(userId);
+        List<Warehouse> warehouses = warehouseDAO.getAll();
 
         request.setAttribute("user", user);
         request.setAttribute("roles", allRoles);
         request.setAttribute("selectedRoleIds", selectedRoleIds);
+        request.setAttribute("warehouses", warehouses);
 
         request.getRequestDispatcher(ViewPath.USER_UPDATE).forward(request, response);
     }

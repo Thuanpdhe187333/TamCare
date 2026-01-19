@@ -5,11 +5,13 @@
 <%@page import="java.util.HashSet" %>
 <%@page import="model.Role" %>
 <%@page import="model.User" %>
+<%@page import="model.Warehouse" %>
 
 <%
   User user = (User) request.getAttribute("user");
   List<Role> roles = (List<Role>) request.getAttribute("roles");
   List<Long> selectedRoleIds = (List<Long>) request.getAttribute("selectedRoleIds");
+  List<Warehouse> warehouses = (List<Warehouse>) request.getAttribute("warehouses");
   String error = (String) request.getAttribute("error");
   
   if (user == null) {
@@ -18,8 +20,10 @@
   }
   if (roles == null) roles = new java.util.ArrayList<>();
   if (selectedRoleIds == null) selectedRoleIds = new java.util.ArrayList<>();
+  if (warehouses == null) warehouses = new java.util.ArrayList<>();
   
   Set<Long> selectedSet = new HashSet<>(selectedRoleIds);
+  Long userWarehouseId = user.getWarehouseId();
 %>
 
 <html>
@@ -102,9 +106,27 @@
 
                   <div class="col-md-6 mb-3">
                     <label for="warehouseId" class="form-label">Kho</label>
-                    <input type="number" class="form-control" id="warehouseId" name="warehouseId" 
-                           value="${user.warehouseId}" placeholder="ID kho (tùy chọn)">
-                    <small class="text-muted">Để trống nếu không cần gán kho</small>
+                    <select class="form-select" id="warehouseId" name="warehouseId">
+                      <option value="">Chọn kho</option>
+                      <c:forEach var="warehouse" items="${warehouses}">
+                        <%
+                          Warehouse w = (Warehouse) pageContext.getAttribute("warehouse");
+                          String selected = "";
+                          if (w != null) {
+                            Long whId = w.getWarehouseId();
+                            // Debug: So sánh userWarehouseId với warehouseId
+                            if (userWarehouseId != null && whId != null) {
+                              if (userWarehouseId.equals(whId)) {
+                                selected = "selected";
+                              }
+                            }
+                          }
+                        %>
+                        <option value="${warehouse.warehouseId}" <%= selected %>>
+                          ${warehouse.name}
+                        </option>
+                      </c:forEach>
+                    </select>
                   </div>
                 </div>
 
@@ -118,12 +140,16 @@
                       <c:otherwise>
                         <div class="row">
                           <c:forEach var="role" items="${roles}">
+                            <%
+                              model.Role r = (model.Role) pageContext.getAttribute("role");
+                              boolean isChecked = selectedSet.contains(r.getRoleId());
+                            %>
                             <div class="col-md-6 mb-2">
                               <div class="form-check">
                                 <input class="form-check-input" type="checkbox" 
                                        name="roleIds" value="${role.roleId}" 
                                        id="role_${role.roleId}"
-                                       <%= selectedSet.contains(role.getRoleId()) ? "checked" : "" %>>
+                                       <%= isChecked ? "checked" : "" %>>
                                 <label class="form-check-label" for="role_${role.roleId}">
                                   <strong>${role.name}</strong>
                                   <c:if test="${not empty role.description}">
