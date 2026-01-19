@@ -41,8 +41,7 @@
 
           <div class="card shadow-sm">
             <div class="card-body">
-              <form method="POST" action="${pageContext.request.contextPath}/admin/role">
-                <input type="hidden" name="action" value="create">
+              <form method="POST" action="${pageContext.request.contextPath}/admin/role/create">
 
                 <div class="mb-3">
                   <label for="name" class="form-label">

@@ -43,8 +43,7 @@
 
           <div class="card shadow-sm">
             <div class="card-body">
-              <form method="POST" action="${pageContext.request.contextPath}/admin/permission">
-                <input type="hidden" name="action" value="update-save">
+              <form method="POST" action="${pageContext.request.contextPath}/admin/permission/update">
                 <input type="hidden" name="id" value="${permission.permissionId}">
 
                 <div class="mb-3">

@@ -44,12 +44,9 @@
             <h1 class="h3 mb-0">
               <i class="bi bi-people me-2"></i>Quản lý User
             </h1>
-            <form method="POST" action="${pageContext.request.contextPath}/admin/user" class="mb-0">
-              <input type="hidden" name="action" value="new">
-              <button type="submit" class="btn btn-primary">
-                <i class="bi bi-plus-circle me-1"></i>Tạo mới
-              </button>
-            </form>
+            <a href="${pageContext.request.contextPath}/admin/user/create" class="btn btn-primary">
+              <i class="bi bi-plus-circle me-1"></i>Tạo mới
+            </a>
           </div>
 
           <c:if test="${not empty error}">
@@ -138,16 +135,12 @@
                               </c:choose>
                             </td>
                             <td class="text-end">
-                              <form method="POST" action="${pageContext.request.contextPath}/admin/user" class="d-inline">
-                                <input type="hidden" name="action" value="update">
-                                <input type="hidden" name="id" value="${user.userId}">
-                                <button type="submit" class="btn btn-sm btn-outline-primary me-1">
-                                  <i class="bi bi-pencil"></i> Sửa
-                                </button>
-                              </form>
-                              <form method="POST" action="${pageContext.request.contextPath}/admin/user" class="d-inline" 
+                              <a href="${pageContext.request.contextPath}/admin/user/update?id=${user.userId}" 
+                                 class="btn btn-sm btn-outline-primary me-1">
+                                <i class="bi bi-pencil"></i> Sửa
+                              </a>
+                              <form method="POST" action="${pageContext.request.contextPath}/admin/user/delete" class="d-inline" 
                                     onsubmit="return confirm('Bạn có chắc chắn muốn xóa user này?');">
-                                <input type="hidden" name="action" value="delete">
                                 <input type="hidden" name="id" value="${user.userId}">
                                 <button type="submit" class="btn btn-sm btn-outline-danger">
                                   <i class="bi bi-trash"></i> Xóa

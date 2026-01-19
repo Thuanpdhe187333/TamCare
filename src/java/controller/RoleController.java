@@ -16,7 +16,7 @@ import model.Permission;
 import model.Role;
 import util.ViewPath;
 
-@WebServlet(name = "RoleController", urlPatterns = {"/admin/role"})
+@WebServlet(name = "RoleController", urlPatterns = {"/admin/role", "/admin/role/*"})
 public class RoleController extends HttpServlet {
 
     private static final int DEFAULT_PAGE = 1;
@@ -26,7 +26,21 @@ public class RoleController extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
         throws ServletException, IOException {
         try {
-            forwardList(request, response);
+            String pathInfo = request.getPathInfo();
+            
+            if (pathInfo == null || pathInfo.equals("/")) {
+                // /admin/role - list
+                forwardList(request, response);
+            } else if (pathInfo.equals("/create")) {
+                // /admin/role/create - create form
+                forwardCreateForm(request, response);
+            } else if (pathInfo.equals("/update")) {
+                // /admin/role/update?id=xxx - update form
+                forwardUpdateForm(request, response);
+            } else {
+                // Unknown path, redirect to list
+                response.sendRedirect(request.getContextPath() + "/admin/role");
+            }
         } catch (Exception ex) {
             Logger.getLogger(RoleController.class.getName()).log(Level.SEVERE, null, ex);
             request.setAttribute("error", "Lỗi khi tải dữ liệu: " + ex.getMessage());
@@ -43,25 +57,24 @@ public class RoleController extends HttpServlet {
         throws ServletException, IOException {
         request.setCharacterEncoding("UTF-8");
 
-        String action = request.getParameter("action");
-        if (action == null || action.isBlank()) {
-            action = "list";
-        }
-
         try {
-            switch (action) {
-                case "create" ->
-                    handleCreate(request, response);
-                case "new" ->
-                    forwardCreateForm(request, response);
-                case "update" ->
-                    forwardUpdateForm(request, response);
-                case "update-save" ->
-                    handleUpdate(request, response);
-                case "delete" ->
-                    handleDelete(request, response);
-                default ->
-                    forwardList(request, response);
+            String pathInfo = request.getPathInfo();
+            
+            if (pathInfo == null || pathInfo.equals("/")) {
+                // Should not happen for POST, redirect to list
+                response.sendRedirect(request.getContextPath() + "/admin/role");
+            } else if (pathInfo.equals("/create")) {
+                // /admin/role/create - create action
+                handleCreate(request, response);
+            } else if (pathInfo.equals("/update")) {
+                // /admin/role/update - update action
+                handleUpdate(request, response);
+            } else if (pathInfo.equals("/delete")) {
+                // /admin/role/delete - delete action
+                handleDelete(request, response);
+            } else {
+                // Unknown path, redirect to list
+                response.sendRedirect(request.getContextPath() + "/admin/role");
             }
         } catch (Exception e) {
             Logger.getLogger(RoleController.class.getName()).log(Level.SEVERE, null, e);

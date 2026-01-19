@@ -31,12 +31,9 @@
             <h1 class="h3 mb-0">
               <i class="bi bi-shield-lock me-2"></i>Quản lý Permission
             </h1>
-            <form method="POST" action="${pageContext.request.contextPath}/admin/permission" class="mb-0">
-              <input type="hidden" name="action" value="new">
-              <button type="submit" class="btn btn-primary">
-                <i class="bi bi-plus-circle me-1"></i>Tạo mới
-              </button>
-            </form>
+            <a href="${pageContext.request.contextPath}/admin/permission/create" class="btn btn-primary">
+              <i class="bi bi-plus-circle me-1"></i>Tạo mới
+            </a>
           </div>
 
           <c:if test="${not empty error}">
@@ -90,16 +87,12 @@
                             <td><code class="text-primary">${permission.code}</code></td>
                             <td><strong>${permission.name}</strong></td>
                             <td class="text-end">
-                              <form method="POST" action="${pageContext.request.contextPath}/admin/permission" class="d-inline">
-                                <input type="hidden" name="action" value="update">
-                                <input type="hidden" name="id" value="${permission.permissionId}">
-                                <button type="submit" class="btn btn-sm btn-outline-primary me-1">
-                                  <i class="bi bi-pencil"></i> Sửa
-                                </button>
-                              </form>
-                              <form method="POST" action="${pageContext.request.contextPath}/admin/permission" class="d-inline" 
+                              <a href="${pageContext.request.contextPath}/admin/permission/update?id=${permission.permissionId}" 
+                                 class="btn btn-sm btn-outline-primary me-1">
+                                <i class="bi bi-pencil"></i> Sửa
+                              </a>
+                              <form method="POST" action="${pageContext.request.contextPath}/admin/permission/delete" class="d-inline" 
                                     onsubmit="return confirm('Bạn có chắc chắn muốn xóa permission này?');">
-                                <input type="hidden" name="action" value="delete">
                                 <input type="hidden" name="id" value="${permission.permissionId}">
                                 <button type="submit" class="btn btn-sm btn-outline-danger">
                                   <i class="bi bi-trash"></i> Xóa

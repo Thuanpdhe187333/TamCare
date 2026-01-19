@@ -36,13 +36,13 @@
 
           <div class="card shadow-sm">
             <div class="card-body">
-              <form method="POST" action="${pageContext.request.contextPath}/admin/permission">
-                <input type="hidden" name="action" value="create">
+              <form method="POST" action="${pageContext.request.contextPath}/admin/permission/create">
 
                 <div class="mb-3">
                   <label for="code" class="form-label">
                     Code <span class="text-danger">*</span>
                   </label>
+                  
                   <input type="text" class="form-control" id="code" name="code" required 
                          placeholder="Ví dụ: USER_VIEW, PRODUCT_CREATE">
                   <small class="text-muted">Code phải là duy nhất và viết hoa, cách nhau bằng dấu gạch dưới</small>

@@ -2,12 +2,15 @@
 <%@taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
 <%@page import="java.util.List" %>
 <%@page import="model.Role" %>
+<%@page import="model.Warehouse" %>
 
 <%
   List<Role> roles = (List<Role>) request.getAttribute("roles");
+  List<Warehouse> warehouses = (List<Warehouse>) request.getAttribute("warehouses");
   String error = (String) request.getAttribute("error");
   
   if (roles == null) roles = new java.util.ArrayList<>();
+  if (warehouses == null) warehouses = new java.util.ArrayList<>();
 %>
 
 <html>
@@ -41,8 +44,7 @@
 
           <div class="card shadow-sm">
             <div class="card-body">
-              <form method="POST" action="${pageContext.request.contextPath}/admin/user">
-                <input type="hidden" name="action" value="create">
+              <form method="POST" action="${pageContext.request.contextPath}/admin/user/create">
 
                 <div class="row">
                   <div class="col-md-6 mb-3">
@@ -98,8 +100,12 @@
 
                   <div class="col-md-6 mb-3">
                     <label for="warehouseId" class="form-label">Kho</label>
-                    <input type="number" class="form-control" id="warehouseId" name="warehouseId" 
-                           placeholder="ID kho (tùy chọn)">
+                    <select class="form-select" id="warehouseId" name="warehouseId">
+                      <option value="" selected>Chọn kho</option>
+                      <c:forEach var="warehouse" items="${warehouses}">
+                        <option value="${warehouse.warehouseId}">${warehouse.name}</option>
+                      </c:forEach>
+                    </select>
                     <small class="text-muted">Để trống nếu không cần gán kho</small>
                   </div>
                 </div>

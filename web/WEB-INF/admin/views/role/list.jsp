@@ -38,12 +38,9 @@
             <h1 class="h3 mb-0">
               <i class="bi bi-person-badge me-2"></i>Quản lý Role
             </h1>
-            <form method="POST" action="${pageContext.request.contextPath}/admin/role" class="mb-0">
-              <input type="hidden" name="action" value="new">
-              <button type="submit" class="btn btn-primary">
-                <i class="bi bi-plus-circle me-1"></i>Tạo mới
-              </button>
-            </form>
+            <a href="${pageContext.request.contextPath}/admin/role/create" class="btn btn-primary">
+              <i class="bi bi-plus-circle me-1"></i>Tạo mới
+            </a>
           </div>
 
           <c:if test="${not empty error}">
@@ -97,16 +94,12 @@
                             <td><strong>${role.name}</strong></td>
                             <td>${role.description}</td>
                             <td class="text-end">
-                              <form method="POST" action="${pageContext.request.contextPath}/admin/role" class="d-inline">
-                                <input type="hidden" name="action" value="update">
-                                <input type="hidden" name="id" value="${role.roleId}">
-                                <button type="submit" class="btn btn-sm btn-outline-primary me-1">
-                                  <i class="bi bi-pencil"></i> Sửa
-                                </button>
-                              </form>
-                              <form method="POST" action="${pageContext.request.contextPath}/admin/role" class="d-inline" 
+                              <a href="${pageContext.request.contextPath}/admin/role/update?id=${role.roleId}" 
+                                 class="btn btn-sm btn-outline-primary me-1">
+                                <i class="bi bi-pencil"></i> Sửa
+                              </a>
+                              <form method="POST" action="${pageContext.request.contextPath}/admin/role/delete" class="d-inline" 
                                     onsubmit="return confirm('Bạn có chắc chắn muốn xóa role này?');">
-                                <input type="hidden" name="action" value="delete">
                                 <input type="hidden" name="id" value="${role.roleId}">
                                 <button type="submit" class="btn btn-sm btn-outline-danger">
                                   <i class="bi bi-trash"></i> Xóa

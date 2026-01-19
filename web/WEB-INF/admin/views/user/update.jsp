@@ -53,8 +53,7 @@
 
           <div class="card shadow-sm">
             <div class="card-body">
-              <form method="POST" action="${pageContext.request.contextPath}/admin/user">
-                <input type="hidden" name="action" value="update-save">
+              <form method="POST" action="${pageContext.request.contextPath}/admin/user/update">
                 <input type="hidden" name="id" value="${user.userId}">
 
                 <div class="row">
