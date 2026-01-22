@@ -6,31 +6,41 @@ import java.util.ArrayList;
 import java.util.List;
 import model.User;
 import org.mindrot.jbcrypt.BCrypt;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
+import java.time.Duration;
+import java.util.Base64;
 
 public class UserDAO {
 
+    
     private final Connection conn = DBContext.getConnection();
+    private static final Duration RESET_TOKEN_TTL = Duration.ofMinutes(15);
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
-    public User login(String username, String password) {
+    
+    public User login(String identity, String password) {
         String sql = """
-        SELECT user_id, username, full_name, email, phone,
-           password_hash, status, warehouse_id, created_at
-        FROM `user`
-        WHERE username = ?
-            AND status = 'ACTIVE'
-            AND is_deleted = 0
-        LIMIT 1
-    """;
+            SELECT user_id, username, full_name, email, phone,
+                   password_hash, status, warehouse_id, created_at
+            FROM `user`
+            WHERE (username = ? OR email = ?)
+              AND status = 'ACTIVE'
+              AND is_deleted = 0
+            LIMIT 1
+        """;
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, username);
+            ps.setString(1, identity);
+            ps.setString(2, identity);
 
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
 
                     String hash = rs.getString("password_hash");
 
-                    // So sánh password
+                    // So sánh password (BCrypt)
                     if (!BCrypt.checkpw(password, hash)) {
                         return null;
                     }
@@ -53,6 +63,7 @@ public class UserDAO {
         }
         return null;
     }
+
 
     public List<User> getAll(int limit, int offset) throws SQLException {
         String sql = """
@@ -295,5 +306,157 @@ public class UserDAO {
         user.setIsDeleted(rs.getBoolean("is_deleted"));
 
         return user;
+    }
+    
+    public User findByEmail(String email) throws SQLException {
+        String sql = """
+            SELECT user_id, username, full_name, email, phone,
+                   password_hash, status, warehouse_id, created_by,
+                   created_at, last_login_at, last_login_ip, is_deleted
+            FROM user
+            WHERE email = ?
+              AND status = 'ACTIVE'
+              AND is_deleted = 0
+            LIMIT 1
+        """;
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, email);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return mapResultSetToUser(rs);
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Tạo token reset password, lưu hash vào DB.
+     * Return rawToken để tạo link gửi email / show dev.
+     */
+    public String createPasswordResetToken(Long userId) throws SQLException {
+        // Step 1: token raw (URL-safe)
+        String rawToken = generateTokenUrlSafe(32);
+
+        // Step 2: hash token để lưu DB
+        String tokenHash = sha256Hex(rawToken);
+
+        // Step 3: hạn token
+        Timestamp expiresAt = new Timestamp(System.currentTimeMillis() + RESET_TOKEN_TTL.toMillis());
+
+        // Step 4: insert token
+        String sql = """
+            INSERT INTO password_reset_token (user_id, token_hash, expires_at)
+            VALUES (?, ?, ?)
+        """;
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, userId);
+            ps.setString(2, tokenHash);
+            ps.setTimestamp(3, expiresAt);
+            ps.executeUpdate();
+        }
+
+        return rawToken;
+    }
+
+    /**
+     * Verify token raw:
+     * - token_hash match
+     * - used_at is null
+     * - expires_at > now
+     * => return user_id nếu hợp lệ
+     */
+    public Long verifyResetTokenAndGetUserId(String rawToken) throws SQLException {
+        String tokenHash = sha256Hex(rawToken);
+
+        String sql = """
+            SELECT user_id
+            FROM password_reset_token
+            WHERE token_hash = ?
+              AND used_at IS NULL
+              AND expires_at > NOW()
+            LIMIT 1
+        """;
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, tokenHash);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getLong("user_id");
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Đổi password_hash cho user.
+     * newHash phải là BCrypt hash (PasswordUtil.hashPassword(...) hoặc BCrypt.hashpw).
+     */
+    public boolean updatePasswordHash(Long userId, String newHash) throws SQLException {
+        String sql = "UPDATE user SET password_hash = ? WHERE user_id = ? AND is_deleted = 0";
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, newHash);
+            ps.setLong(2, userId);
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    /**
+     * Mark token used.
+     */
+    public boolean markResetTokenUsed(String rawToken) throws SQLException {
+        String tokenHash = sha256Hex(rawToken);
+
+        String sql = """
+            UPDATE password_reset_token
+            SET used_at = NOW()
+            WHERE token_hash = ?
+              AND used_at IS NULL
+        """;
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, tokenHash);
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    /**
+     * Optional: update last login time/ip (để controller gọi sau login).
+     */
+    public boolean updateLastLogin(Long userId, String ip) throws SQLException {
+        String sql = "UPDATE user SET last_login_at = NOW(), last_login_ip = ? WHERE user_id = ?";
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, ip);
+            ps.setLong(2, userId);
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    // ===== Helpers for forgot password =====
+
+    private String generateTokenUrlSafe(int numBytes) {
+        byte[] bytes = new byte[numBytes];
+        SECURE_RANDOM.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private String sha256Hex(String input) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(input.getBytes(StandardCharsets.UTF_8));
+
+            StringBuilder sb = new StringBuilder(hash.length * 2);
+            for (byte b : hash) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (Exception e) {
+            throw new RuntimeException("SHA-256 not available", e);
+        }
     }
 }
