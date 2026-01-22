@@ -28,7 +28,7 @@ public class ViewPath {
     public static final String USER_CREATE = "/WEB-INF/views/admin/user/create.jsp";
     public static final String USER_UPDATE = "/WEB-INF/views/admin/user/update.jsp";
 
-    public static final String VIEW_LOGIN = "/WEB-INF/index.jsp";
+    public static final String VIEW_LOGIN = "/index.jsp";
     public static final String VIEW_FORGOT = "/WEB-INF/views/forgot_password.jsp";
     public static final String VIEW_RESET = "/WEB-INF/views/reset_password.jsp";
 }
