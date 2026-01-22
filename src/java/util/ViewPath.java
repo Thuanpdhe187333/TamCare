@@ -31,4 +31,9 @@ public class ViewPath {
     public static final String VIEW_LOGIN = "/index.jsp";
     public static final String VIEW_FORGOT = "/WEB-INF/views/forgot_password.jsp";
     public static final String VIEW_RESET = "/WEB-INF/views/reset_password.jsp";
+
+    // Goods Receipt
+    public static final String GRN_LIST = "/WEB-INF/views/inbound/goods-receipt/GoodsReceiptList.jsp";
+    public static final String GRN_DETAIL = "/WEB-INF/views/inbound/goods-receipt/GoodsReceiptDetail.jsp";
+    public static final String GRN_CREATE = "/WEB-INF/views/inbound/goods-receipt/GoodsReceiptCreate.jsp";
 }
