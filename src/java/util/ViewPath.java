@@ -18,7 +18,9 @@ public class ViewPath {
     public static final String ROLE_CREATE = "/WEB-INF/admin/views/role/create.jsp";
     public static final String ROLE_UPDATE = "/WEB-INF/admin/views/role/update.jsp";
 
-    public static final String PERMISSION_LIST = "/WEB-INF/admin/views/permission/list.jsp";
+    public static final String ADMIN_DASHBOARD = "/WEB-INF/views/admin/dashboard/page.jsp";
+
+    public static final String PERMISSION_LIST = "/WEB-INF/views/admin/permission/list.jsp";
     public static final String PERMISSION_CREATE = "/WEB-INF/admin/views/permission/create.jsp";
     public static final String PERMISSION_UPDATE = "/WEB-INF/admin/views/permission/update.jsp";
 
