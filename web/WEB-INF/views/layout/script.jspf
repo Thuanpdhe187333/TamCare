@@ -1,0 +1,12 @@
+<%@ page pageEncoding="UTF-8" %>
+<%@taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+
+<c:set var="root" value="${pageContext.request.contextPath}" />
+
+<script src="${root}/assets/vendor/jquery/jquery.min.js"></script>
+<script src="${root}/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="${root}/assets/vendor/jquery-easing/jquery.easing.min.js"></script>
+<script src="${root}/assets/js/sb-admin-2.min.js"></script>
+<script src="${root}/assets/vendor/chart.js/Chart.min.js"></script>
+<script src="${root}/assets/js/demo/chart-area-demo.js"></script>
+<script src="${root}/assets/js/demo/chart-pie-demo.js"></script>

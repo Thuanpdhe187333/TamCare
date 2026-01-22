@@ -1,6 +1,9 @@
-<%-- any content can be specified here e.g.: --%>
 <%@ page pageEncoding="UTF-8" %>
 
-<footer class="bg-dark text-white text-center p-3 mt-auto">
-  © 2026 Warehouse Management System
+<footer class="sticky-footer bg-white">
+  <div class="container my-auto">
+    <div class="copyright text-center my-auto">
+      <span>Copyright &copy; Your Website 2021</span>
+    </div>
+  </div>
 </footer>

@@ -8,6 +8,7 @@ import java.util.logging.Logger;
 
 import dao.RoleDAO;
 import dao.UserDAO;
+import dao.WarehouseDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -15,20 +16,35 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import model.Role;
 import model.User;
+import model.Warehouse;
 import util.PasswordUtil;
 import util.ViewPath;
 
-@WebServlet(name = "UserController", urlPatterns = {"/admin/user"})
+@WebServlet(name = "UserController", urlPatterns = {"/admin/user", "/admin/user/*"})
 public class UserController extends HttpServlet {
 
     private static final int DEFAULT_PAGE = 1;
     private static final int DEFAULT_SIZE = 20;
 
+    private static final RoleDAO roleDAO = new RoleDAO();
+    private static final WarehouseDAO warehouseDAO = new WarehouseDAO();
+    private static final UserDAO userDAO = new UserDAO();
+    
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
+        throws ServletException, IOException {
         try {
-            forwardList(request, response);
+            String contextPath = request.getContextPath();
+
+            String pathInfo = request.getPathInfo();
+            if (pathInfo == null) pathInfo = "/";
+
+            switch (pathInfo) {
+                case "/" -> forwardList(request, response);
+                case "/create" -> forwardCreateForm(request, response);
+                case "/update" -> forwardUpdateForm(request, response);
+                default -> response.sendRedirect(contextPath + "/admin/user");
+            }
         } catch (Exception ex) {
             Logger.getLogger(UserController.class.getName()).log(Level.SEVERE, null, ex);
             request.setAttribute("error", "Lỗi khi tải dữ liệu: " + ex.getMessage());
@@ -42,28 +58,20 @@ public class UserController extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
+        throws ServletException, IOException {
         request.setCharacterEncoding("UTF-8");
 
-        String action = request.getParameter("action");
-        if (action == null || action.isBlank()) {
-            action = "list";
-        }
-
         try {
-            switch (action) {
-                case "create" ->
-                    handleCreate(request, response);
-                case "new" ->
-                    forwardCreateForm(request, response);
-                case "update" ->
-                    forwardUpdateForm(request, response);
-                case "update-save" ->
-                    handleUpdate(request, response);
-                case "delete" ->
-                    handleDelete(request, response);
-                default ->
-                    forwardList(request, response);
+            String pathInfo = request.getPathInfo();
+            if (pathInfo == null) pathInfo = "/";
+
+            String contextPath = request.getContextPath();
+
+            switch (pathInfo) {
+                case "/create" -> handleCreate(request, response);
+                case "/update" -> handleUpdate(request, response);
+                case "/delete" -> handleDelete(request, response);
+                default -> response.sendRedirect(contextPath + "/admin/user");
             }
         } catch (Exception e) {
             Logger.getLogger(UserController.class.getName()).log(Level.SEVERE, null, e);
@@ -77,12 +85,11 @@ public class UserController extends HttpServlet {
     }
 
     private void forwardList(HttpServletRequest request, HttpServletResponse response)
-            throws Exception {
+        throws Exception {
         int page = parseInt(request.getParameter("page"), DEFAULT_PAGE);
         int size = DEFAULT_SIZE;
         int offset = (page - 1) * size;
 
-        UserDAO userDAO = new UserDAO();
         List<User> users = userDAO.getAll(size, offset);
         long totalCount = userDAO.count();
         int totalPages = (int) Math.ceil((double) totalCount / size);
@@ -98,24 +105,23 @@ public class UserController extends HttpServlet {
     }
 
     private void forwardCreateForm(HttpServletRequest request, HttpServletResponse response)
-            throws Exception {
-        RoleDAO roleDAO = new RoleDAO();
+        throws Exception {
         List<Role> roles = roleDAO.getAll(1000, 0);  // Get all roles
-
         request.setAttribute("roles", roles);
+
+        List<Warehouse> warehouses = warehouseDAO.getAll();
+        request.setAttribute("warehouses", warehouses);
+
         request.getRequestDispatcher(ViewPath.USER_CREATE).forward(request, response);
     }
 
     private void forwardUpdateForm(HttpServletRequest request, HttpServletResponse response)
-            throws Exception {
+        throws Exception {
         long userId = parseLong(request.getParameter("id"), -1);
         if (userId <= 0) {
             forwardList(request, response);
             return;
         }
-
-        UserDAO userDAO = new UserDAO();
-        RoleDAO roleDAO = new RoleDAO();
 
         User user = userDAO.getById(userId);
         if (user == null) {
@@ -126,16 +132,18 @@ public class UserController extends HttpServlet {
 
         List<Role> allRoles = roleDAO.getAll(1000, 0);
         List<Long> selectedRoleIds = userDAO.getRolesByUserId(userId);
+        List<Warehouse> warehouses = warehouseDAO.getAll();
 
         request.setAttribute("user", user);
         request.setAttribute("roles", allRoles);
         request.setAttribute("selectedRoleIds", selectedRoleIds);
+        request.setAttribute("warehouses", warehouses);
 
         request.getRequestDispatcher(ViewPath.USER_UPDATE).forward(request, response);
     }
 
     private void handleCreate(HttpServletRequest request, HttpServletResponse response)
-            throws Exception {
+        throws Exception {
         String username = request.getParameter("username");
         String fullName = request.getParameter("fullName");
         String email = request.getParameter("email");
@@ -145,14 +153,13 @@ public class UserController extends HttpServlet {
         String warehouseIdStr = request.getParameter("warehouseId");
         String[] roleIds = request.getParameterValues("roleIds");
 
-        if (username == null || username.isBlank() || fullName == null || fullName.isBlank() 
+        if (username == null || username.isBlank() || fullName == null || fullName.isBlank()
             || email == null || email.isBlank() || password == null || password.isBlank()) {
             request.setAttribute("error", "Username, Full Name, Email và Password là bắt buộc");
             forwardCreateForm(request, response);
             return;
         }
 
-        UserDAO userDAO = new UserDAO();
 
         // Check duplicate username
         if (userDAO.usernameExists(username, null)) {
@@ -178,7 +185,7 @@ public class UserController extends HttpServlet {
         user.setPhone(phone);
         user.setPasswordHash(passwordHash);
         user.setStatus(status != null ? status : "ACTIVE");
-        
+
         if (warehouseIdStr != null && !warehouseIdStr.isBlank()) {
             try {
                 user.setWarehouseId(Long.parseLong(warehouseIdStr));
@@ -213,7 +220,7 @@ public class UserController extends HttpServlet {
     }
 
     private void handleUpdate(HttpServletRequest request, HttpServletResponse response)
-            throws Exception {
+        throws Exception {
         long userId = parseLong(request.getParameter("id"), -1);
         if (userId <= 0) {
             forwardList(request, response);
@@ -233,7 +240,6 @@ public class UserController extends HttpServlet {
             return;
         }
 
-        UserDAO userDAO = new UserDAO();
 
         User existingUser = userDAO.getById(userId);
         if (existingUser == null) {
@@ -291,14 +297,13 @@ public class UserController extends HttpServlet {
     }
 
     private void handleDelete(HttpServletRequest request, HttpServletResponse response)
-            throws Exception {
+        throws Exception {
         long userId = parseLong(request.getParameter("id"), -1);
         if (userId <= 0) {
             forwardList(request, response);
             return;
         }
 
-        UserDAO userDAO = new UserDAO();
         if (userDAO.delete(userId)) {
             response.sendRedirect(request.getContextPath() + "/admin/user?success=delete");
         } else {

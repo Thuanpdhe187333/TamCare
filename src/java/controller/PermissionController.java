@@ -13,7 +13,7 @@ import java.util.logging.Logger;
 import model.Permission;
 import util.ViewPath;
 
-@WebServlet(name = "PermissionController", urlPatterns = {"/admin/permission"})
+@WebServlet(name = "PermissionController", urlPatterns = {"/admin/permission", "/admin/permission/*"})
 public class PermissionController extends HttpServlet {
 
     // private static final int DEFAULT_PAGE = 1;
@@ -22,7 +22,21 @@ public class PermissionController extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
         throws ServletException, IOException {
         try {
-            forwardList(request, response);
+            String pathInfo = request.getPathInfo();
+            
+            if (pathInfo == null || pathInfo.equals("/")) {
+                // /admin/permission - list
+                forwardList(request, response);
+            } else if (pathInfo.equals("/create")) {
+                // /admin/permission/create - create form
+                forwardCreateForm(request, response);
+            } else if (pathInfo.equals("/update")) {
+                // /admin/permission/update?id=xxx - update form
+                forwardUpdateForm(request, response);
+            } else {
+                // Unknown path, redirect to list
+                response.sendRedirect(request.getContextPath() + "/admin/permission");
+            }
         } catch (Exception ex) {
             Logger.getLogger(PermissionController.class.getName()).log(Level.SEVERE, null, ex);
             request.setAttribute("error", "Lỗi khi tải dữ liệu: " + ex.getMessage());
@@ -39,25 +53,24 @@ public class PermissionController extends HttpServlet {
         throws ServletException, IOException {
         request.setCharacterEncoding("UTF-8");
 
-        String action = request.getParameter("action");
-        if (action == null || action.isBlank()) {
-            action = "list";
-        }
-
         try {
-            switch (action) {
-                case "create" ->
-                    handleCreate(request, response);
-                case "new" ->
-                    forwardCreateForm(request, response);
-                case "update" ->
-                    forwardUpdateForm(request, response);
-                case "update-save" ->
-                    handleUpdate(request, response);
-                case "delete" ->
-                    handleDelete(request, response);
-                default ->
-                    forwardList(request, response);
+            String pathInfo = request.getPathInfo();
+            
+            if (pathInfo == null || pathInfo.equals("/")) {
+                // Should not happen for POST, redirect to list
+                response.sendRedirect(request.getContextPath() + "/admin/permission");
+            } else if (pathInfo.equals("/create")) {
+                // /admin/permission/create - create action
+                handleCreate(request, response);
+            } else if (pathInfo.equals("/update")) {
+                // /admin/permission/update - update action
+                handleUpdate(request, response);
+            } else if (pathInfo.equals("/delete")) {
+                // /admin/permission/delete - delete action
+                handleDelete(request, response);
+            } else {
+                // Unknown path, redirect to list
+                response.sendRedirect(request.getContextPath() + "/admin/permission");
             }
         } catch (Exception e) {
             Logger.getLogger(PermissionController.class.getName()).log(Level.SEVERE, null, e);
