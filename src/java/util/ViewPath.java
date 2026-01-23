@@ -33,7 +33,7 @@ public class ViewPath {
     public static final String VIEW_RESET = "/WEB-INF/views/reset_password.jsp";
 
     // Goods Receipt
-    public static final String GRN_LIST = "/WEB-INF/views/inbound/goods-receipt/GoodsReceiptList.jsp";
-    public static final String GRN_DETAIL = "/WEB-INF/views/inbound/goods-receipt/GoodsReceiptDetail.jsp";
-    public static final String GRN_CREATE = "/WEB-INF/views/inbound/goods-receipt/GoodsReceiptCreate.jsp";
+    public static final String GRN_LIST = "/WEB-INF/views/inbound/GoodsReceiptList.jsp";
+    public static final String GRN_DETAIL = "/WEB-INF/views/inbound/GoodsReceiptDetail.jsp";
+    public static final String GRN_CREATE = "/WEB-INF/views/inbound/GoodsReceiptCreate.jsp";
 }
