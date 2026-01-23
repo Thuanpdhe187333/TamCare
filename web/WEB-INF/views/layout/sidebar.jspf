@@ -55,6 +55,25 @@
   <hr class="sidebar-divider" />
 
   <!-- Heading -->
+  <div class="sidebar-heading">Inbound</div>
+
+  <li class="nav-item">
+    <a class="nav-link" href="${pageContext.request.contextPath}/purchase-orders">
+      <i class="fas fa-fw fa-shopping-cart"></i>
+      <span>Purchase Order</span>
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="${pageContext.request.contextPath}/goods-receipt?action=list">
+      <i class="fas fa-fw fa-file-import"></i>
+      <span>Goods Receipt</span>
+    </a>
+  </li>
+
+  <!-- Divider -->
+  <hr class="sidebar-divider" />
+
+  <!-- Heading -->
   <div class="sidebar-heading">Interface</div>
 
   <!-- Nav Item - Pages Collapse Menu -->
