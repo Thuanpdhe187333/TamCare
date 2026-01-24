@@ -16,7 +16,7 @@ import java.util.logging.Logger;
 public class PurchaseOrderController extends HttpServlet {
 
     private static final int DEFAULT_PAGE = 1;
-    private static final int DEFAULT_SIZE = 20;
+    private static final int DEFAULT_SIZE = 5;
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -48,7 +48,8 @@ public class PurchaseOrderController extends HttpServlet {
                     forwardCreateForm(request, response);
                 case "list" ->
                     forwardList(request, response);
-
+                case "delete" ->
+                     handleDelete(request, response);
                 case "create" ->
                     handleCreate(request, response);
                 default ->
@@ -68,10 +69,16 @@ public class PurchaseOrderController extends HttpServlet {
 
         PurchaseOrderDAO dao = new PurchaseOrderDAO();
         List<PurchaseOrderListDTO> pos = dao.getPurchaseOrderList(size, offset);
+        
+        int totalRecords = dao.countPurchaseOrders();   // NEW
+        int totalPages = (int) Math.ceil(totalRecords * 1.0 / size); // NEW
+        if (totalPages == 0) totalPages = 1;
+        if (page > totalPages) page = totalPages;
 
+        
         request.setAttribute("pos", pos);
         request.setAttribute("page", page);
-
+        request.setAttribute("totalPages", totalPages); 
         request.getRequestDispatcher(ViewPath.PO_LIST).forward(request, response);
     }
 
@@ -150,7 +157,31 @@ public class PurchaseOrderController extends HttpServlet {
         dao.createManualPO(poNumber, supplierId, expectedDate, note, userId, lines);
         response.sendRedirect(request.getContextPath() + "/purchase-orders");
     }
+    
+    private void handleDelete(HttpServletRequest request, HttpServletResponse response)
+        throws Exception {
 
+    long poId = Long.parseLong(request.getParameter("id"));
+
+    PurchaseOrderDAO dao = new PurchaseOrderDAO();
+    boolean ok = dao.deletePurchaseOrder(poId);
+
+
+    String msg = ok ? "deleted" : "notfound";
+
+
+    String page = request.getParameter("page");
+    String redirectUrl = request.getContextPath() + "/purchase-orders";
+    if (page != null && !page.isBlank()) {
+        redirectUrl += "?page=" + page + "&msg=" + msg;
+    } else {
+        redirectUrl += "?msg=" + msg;
+    }
+
+    response.sendRedirect(redirectUrl);
+}
+
+    
     private int parseInt(String raw, int def) {
         try {
             return (raw == null || raw.isBlank()) ? def : Integer.parseInt(raw);

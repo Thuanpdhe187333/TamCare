@@ -11,6 +11,7 @@ package util;
 
 
 import java.util.Scanner;
+
 import org.mindrot.jbcrypt.BCrypt;
 
 public class PasswordUtil {
@@ -23,15 +24,15 @@ public class PasswordUtil {
     }
     
     public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
+        try (Scanner sc = new Scanner(System.in)) {
+            System.out.print("Nhập mật khẩu cần hash: ");
+            String password = sc.nextLine();
 
-        System.out.print("Nhập mật khẩu cần hash: ");
-        String password = sc.nextLine();
+            String hash = PasswordUtil.hashPassword(password);
 
-        String hash = PasswordUtil.hashPassword(password);
-
-        System.out.println("Password hash (BCrypt):");
-        System.out.println(hash);
+            System.out.println("Password hash (BCrypt):");
+            System.out.println(hash);
+        }
     }
     
     

@@ -101,8 +101,18 @@ public class PurchaseOrderDAO extends DBContext {
         }
         return lines;
     }
-
-     public long createManualPO(
+    
+    public int countPurchaseOrders() throws Exception {
+    String sql = "SELECT COUNT(*) FROM purchase_order";
+    try (
+         PreparedStatement ps = conn.prepareStatement(sql);
+         ResultSet rs = ps.executeQuery()) {
+        if (rs.next()) return rs.getInt(1);
+    }
+    return 0;
+}
+    
+    public long createManualPO(
             String poNumber,
             long supplierId,
             java.sql.Date expectedDate,
@@ -113,9 +123,9 @@ public class PurchaseOrderDAO extends DBContext {
 
         String sqlPO = """
             INSERT INTO purchase_order
-              (po_number, supplier_id, expected_delivery_date, status,
-               imported_by, imported_at, source_file_name, note)
-            VALUES (?, ?, ?, 'IMPORTED', ?, NOW(), 'manual_create', ?)
+                (po_number, supplier_id, expected_delivery_date, status,
+                 imported_by, imported_at, source_file_name, note)
+              VALUES (?, ?, ?, 'CREATED', ?, NOW(), 'manual_create', ?)
         """;
 
         String sqlLine = """
@@ -174,5 +184,36 @@ public class PurchaseOrderDAO extends DBContext {
             }
         }
     }
+    
+    public boolean deletePurchaseOrder(long poId) throws SQLException {
+    String deleteLinesSql = "DELETE FROM purchase_order_line WHERE po_id = ?";
+    String deletePoSql    = "DELETE FROM purchase_order WHERE po_id = ?";
+
+    boolean oldAutoCommit = conn.getAutoCommit();
+    try {
+        conn.setAutoCommit(false);
+
+        // 1) Xóa lines trước để tránh FK constraint
+        try (PreparedStatement ps = conn.prepareStatement(deleteLinesSql)) {
+            ps.setLong(1, poId);
+            ps.executeUpdate();
+        }
+
+        // 2) Xóa PO header
+        int affected;
+        try (PreparedStatement ps = conn.prepareStatement(deletePoSql)) {
+            ps.setLong(1, poId);
+            affected = ps.executeUpdate();
+        }
+
+        conn.commit();
+        return affected > 0;
+    } catch (SQLException e) {
+        conn.rollback();
+        throw e;
+    } finally {
+        conn.setAutoCommit(oldAutoCommit);
+    }
+}
 
 }
