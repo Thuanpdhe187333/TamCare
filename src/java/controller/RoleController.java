@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import model.Permission;
 import model.Role;
 import util.ViewPath;
 
@@ -24,10 +23,10 @@ public class RoleController extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
-        throws ServletException, IOException {
+    throws ServletException, IOException {
         try {
             String pathInfo = request.getPathInfo();
-            
+
             if (pathInfo == null || pathInfo.equals("/")) {
                 // /admin/role - list
                 forwardList(request, response);
@@ -54,12 +53,12 @@ public class RoleController extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
-        throws ServletException, IOException {
+    throws ServletException, IOException {
         request.setCharacterEncoding("UTF-8");
 
         try {
             String pathInfo = request.getPathInfo();
-            
+
             if (pathInfo == null || pathInfo.equals("/")) {
                 // Should not happen for POST, redirect to list
                 response.sendRedirect(request.getContextPath() + "/admin/role");
@@ -88,7 +87,7 @@ public class RoleController extends HttpServlet {
     }
 
     private void forwardList(HttpServletRequest request, HttpServletResponse response)
-        throws Exception {
+    throws Exception {
         int page = parseInt(request.getParameter("page"), DEFAULT_PAGE);
         int size = DEFAULT_SIZE;
         int offset = (page - 1) * size;
@@ -109,16 +108,16 @@ public class RoleController extends HttpServlet {
     }
 
     private void forwardCreateForm(HttpServletRequest request, HttpServletResponse response)
-        throws Exception {
+    throws Exception {
         PermissionDAO permissionDAO = new PermissionDAO();
-        List<Permission> permissions = permissionDAO.getAll();
+//        List<Permission> permissions = permissionDAO.getList(parameters);
 
-        request.setAttribute("permissions", permissions);
-        request.getRequestDispatcher(ViewPath.ROLE_CREATE).forward(request, response);
+//        request.setAttribute("permissions", permissions);
+//        request.getRequestDispatcher(ViewPath.ROLE_CREATE).forward(request, response);
     }
 
     private void forwardUpdateForm(HttpServletRequest request, HttpServletResponse response)
-        throws Exception {
+    throws Exception {
         long roleId = parseLong(request.getParameter("id"), -1);
         if (roleId <= 0) {
             forwardList(request, response);
@@ -135,18 +134,18 @@ public class RoleController extends HttpServlet {
             return;
         }
 
-        List<Permission> allPermissions = permissionDAO.getAll();
+//        List<Permission> allPermissions = permissionDAO.list();
         List<Long> selectedPermissionIds = roleDAO.getPermissionsByRoleId(roleId);
 
         request.setAttribute("role", role);
-        request.setAttribute("permissions", allPermissions);
+//        request.setAttribute("permissions", allPermissions);
         request.setAttribute("selectedPermissionIds", selectedPermissionIds);
 
         request.getRequestDispatcher(ViewPath.ROLE_UPDATE).forward(request, response);
     }
 
     private void handleCreate(HttpServletRequest request, HttpServletResponse response)
-        throws Exception {
+    throws Exception {
         String name = request.getParameter("name");
         String description = request.getParameter("description");
         String[] permissionIds = request.getParameterValues("permissionIds");
@@ -192,7 +191,7 @@ public class RoleController extends HttpServlet {
     }
 
     private void handleUpdate(HttpServletRequest request, HttpServletResponse response)
-        throws Exception {
+    throws Exception {
         long roleId = parseLong(request.getParameter("id"), -1);
         if (roleId <= 0) {
             forwardList(request, response);
@@ -245,7 +244,7 @@ public class RoleController extends HttpServlet {
     }
 
     private void handleDelete(HttpServletRequest request, HttpServletResponse response)
-        throws Exception {
+    throws Exception {
         long roleId = parseLong(request.getParameter("id"), -1);
         if (roleId <= 0) {
             forwardList(request, response);
