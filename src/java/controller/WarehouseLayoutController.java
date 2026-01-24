@@ -90,7 +90,7 @@ public class WarehouseLayoutController extends HttpServlet {
             throws Exception {
         
         WarehouseDAO warehouseDAO = new WarehouseDAO();
-        request.setAttribute("warehouses", warehouseDAO.getAllActiveWarehouses());
+        request.setAttribute("warehouses", warehouseDAO.getAll());
         
         String warehouseIdParam = request.getParameter("warehouseId");
         if (warehouseIdParam != null && !warehouseIdParam.isBlank()) {
