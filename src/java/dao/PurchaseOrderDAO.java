@@ -7,8 +7,11 @@ import dto.PurchaseOrderListDTO;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+
 public class PurchaseOrderDAO extends DBContext {
+
     Connection conn = DBContext.getConnection();
+
     public List<PurchaseOrderListDTO> getPurchaseOrderList(int limit, int offset) throws SQLException {
         String sql = """
             SELECT
@@ -101,21 +104,11 @@ public class PurchaseOrderDAO extends DBContext {
         }
         return lines;
     }
-    
-    public int countPurchaseOrders() throws Exception {
-    String sql = "SELECT COUNT(*) FROM purchase_order";
-    try (
-         PreparedStatement ps = conn.prepareStatement(sql);
-         ResultSet rs = ps.executeQuery()) {
-        if (rs.next()) return rs.getInt(1);
-    }
-    return 0;
-}
-    
+
     public long createManualPO(
             String poNumber,
             long supplierId,
-            java.sql.Date expectedDate,
+            Date expectedDate,
             String note,
             long userId,
             List<POLineCreateDTO> lines
@@ -138,8 +131,11 @@ public class PurchaseOrderDAO extends DBContext {
             try (PreparedStatement psPO = con.prepareStatement(sqlPO, Statement.RETURN_GENERATED_KEYS)) {
                 psPO.setString(1, poNumber);
                 psPO.setLong(2, supplierId);
-                if (expectedDate != null) psPO.setDate(3, expectedDate);
-                else psPO.setNull(3, Types.DATE);
+                if (expectedDate != null) {
+                    psPO.setDate(3, expectedDate);
+                } else {
+                    psPO.setNull(3, Types.DATE);
+                }
                 psPO.setLong(4, userId);
                 psPO.setString(5, note);
 
@@ -147,7 +143,9 @@ public class PurchaseOrderDAO extends DBContext {
 
                 long poId;
                 try (ResultSet rs = psPO.getGeneratedKeys()) {
-                    if (!rs.next()) throw new SQLException("Cannot get generated po_id");
+                    if (!rs.next()) {
+                        throw new SQLException("Cannot get generated po_id");
+                    }
                     poId = rs.getLong(1);
                 }
 
@@ -157,11 +155,17 @@ public class PurchaseOrderDAO extends DBContext {
                         psLine.setLong(2, l.getVariantId());
                         psLine.setBigDecimal(3, l.getQty());
 
-                        if (l.getUnitPrice() != null) psLine.setBigDecimal(4, l.getUnitPrice());
-                        else psLine.setNull(4, Types.DECIMAL);
+                        if (l.getUnitPrice() != null) {
+                            psLine.setBigDecimal(4, l.getUnitPrice());
+                        } else {
+                            psLine.setNull(4, Types.DECIMAL);
+                        }
 
-                        if (l.getTaxRate() != null) psLine.setBigDecimal(5, l.getTaxRate());
-                        else psLine.setNull(5, Types.DECIMAL);
+                        if (l.getTaxRate() != null) {
+                            psLine.setBigDecimal(5, l.getTaxRate());
+                        } else {
+                            psLine.setNull(5, Types.DECIMAL);
+                        }
 
                         String currency = (l.getCurrency() == null || l.getCurrency().isBlank())
                                 ? "VND"
@@ -184,36 +188,147 @@ public class PurchaseOrderDAO extends DBContext {
             }
         }
     }
-    
+
     public boolean deletePurchaseOrder(long poId) throws SQLException {
-    String deleteLinesSql = "DELETE FROM purchase_order_line WHERE po_id = ?";
-    String deletePoSql    = "DELETE FROM purchase_order WHERE po_id = ?";
+        String deleteLinesSql = "DELETE FROM purchase_order_line WHERE po_id = ?";
+        String deletePoSql = "DELETE FROM purchase_order WHERE po_id = ?";
 
-    boolean oldAutoCommit = conn.getAutoCommit();
-    try {
-        conn.setAutoCommit(false);
+        boolean oldAutoCommit = conn.getAutoCommit();
+        try {
+            conn.setAutoCommit(false);
 
-        // 1) Xóa lines trước để tránh FK constraint
-        try (PreparedStatement ps = conn.prepareStatement(deleteLinesSql)) {
-            ps.setLong(1, poId);
-            ps.executeUpdate();
+            // 1) Xóa lines trước để tránh FK constraint
+            try (PreparedStatement ps = conn.prepareStatement(deleteLinesSql)) {
+                ps.setLong(1, poId);
+                ps.executeUpdate();
+            }
+
+            // 2) Xóa PO header
+            int affected;
+            try (PreparedStatement ps = conn.prepareStatement(deletePoSql)) {
+                ps.setLong(1, poId);
+                affected = ps.executeUpdate();
+            }
+
+            conn.commit();
+            return affected > 0;
+        } catch (SQLException e) {
+            conn.rollback();
+            throw e;
+        } finally {
+            conn.setAutoCommit(oldAutoCommit);
+        }
+    }
+
+    public List<PurchaseOrderListDTO> searchPurchaseOrders(
+            String keyword,
+            String status,
+            int limit,
+            int offset) throws Exception {
+
+        StringBuilder sql = new StringBuilder("""
+        SELECT
+            po.po_id,
+            po.po_number,
+            s.name AS supplier_name,
+            po.expected_delivery_date,
+            po.status,
+            u.username AS imported_by,
+            po.imported_at
+        FROM purchase_order po
+        JOIN supplier s ON po.supplier_id = s.supplier_id
+        LEFT JOIN user u ON po.imported_by = u.user_id
+        WHERE 1 = 1
+    """);
+
+        List<Object> params = new ArrayList<>();
+
+        if (keyword != null) {
+            keyword = keyword.trim();
+        }
+        if (keyword != null && !keyword.isEmpty()) {
+            sql.append(" AND (po.po_number LIKE ? OR s.name LIKE ?) ");
+            params.add("%" + keyword + "%");
+            params.add("%" + keyword + "%");
         }
 
-        // 2) Xóa PO header
-        int affected;
-        try (PreparedStatement ps = conn.prepareStatement(deletePoSql)) {
-            ps.setLong(1, poId);
-            affected = ps.executeUpdate();
+        if (status != null) {
+            status = status.trim();
+        }
+        if (status != null && !status.isEmpty()) {
+            sql.append(" AND po.status = ? ");
+            params.add(status);
         }
 
-        conn.commit();
-        return affected > 0;
-    } catch (SQLException e) {
-        conn.rollback();
-        throw e;
-    } finally {
-        conn.setAutoCommit(oldAutoCommit);
+        sql.append(" ORDER BY po.po_id DESC LIMIT ? OFFSET ?");
+        params.add(limit);
+        params.add(offset);
+
+        List<PurchaseOrderListDTO> list = new ArrayList<>();
+
+        try (Connection con = DBContext.getConnection(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
+
+            for (int i = 0; i < params.size(); i++) {
+                ps.setObject(i + 1, params.get(i));
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    PurchaseOrderListDTO dto = new PurchaseOrderListDTO();
+                    dto.setPoId(rs.getLong("po_id"));
+                    dto.setPoNumber(rs.getString("po_number"));
+                    dto.setSupplierName(rs.getString("supplier_name"));
+
+                    Date sqlDate = rs.getDate("expected_delivery_date");
+                    dto.setExpectedDeliveryDate(sqlDate != null ? sqlDate.toLocalDate() : null);
+
+                    dto.setStatus(rs.getString("status"));
+                    dto.setImportedByUsername(rs.getString("imported_by"));
+                    Timestamp ts = rs.getTimestamp("imported_at");
+                    dto.setImportedAt(ts != null ? ts.toLocalDateTime() : null);
+
+                    list.add(dto);
+                }
+            }
+        }
+
+        return list;
+    }
+
+    public int countPurchaseOrders(String keyword, String status) throws Exception {
+
+    StringBuilder sql = new StringBuilder("""
+        SELECT COUNT(*)
+        FROM purchase_order po
+        JOIN supplier s ON po.supplier_id = s.supplier_id
+        WHERE 1 = 1
+    """);
+
+    List<Object> params = new ArrayList<>();
+
+    if (keyword != null && !keyword.isBlank()) {
+        sql.append(" AND (po.po_number LIKE ? OR s.name LIKE ?) ");
+        params.add("%" + keyword + "%");
+        params.add("%" + keyword + "%");
+    }
+
+    if (status != null && !status.isBlank()) {
+        sql.append(" AND po.status = ? ");
+        params.add(status);
+    }
+
+    try (Connection con = DBContext.getConnection();
+         PreparedStatement ps = con.prepareStatement(sql.toString())) {
+
+        for (int i = 0; i < params.size(); i++) {
+            ps.setObject(i + 1, params.get(i));
+        }
+
+        try (ResultSet rs = ps.executeQuery()) {
+            return rs.next() ? rs.getInt(1) : 0;
+        }
     }
 }
+
 
 }
