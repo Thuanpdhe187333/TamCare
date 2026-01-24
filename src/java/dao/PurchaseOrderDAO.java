@@ -2,7 +2,8 @@ package dao;
 
 import context.DBContext;
 import dto.POLineCreateDTO;
-import dto.PurchaseOrderDetailDTO;
+import dto.PurchaseOrderHeaderDTO;
+import dto.PurchaseOrderLineDTO;
 import dto.PurchaseOrderListDTO;
 import java.sql.*;
 import java.util.ArrayList;
@@ -59,7 +60,49 @@ public class PurchaseOrderDAO extends DBContext {
         return list;
     }
 
-    public List<PurchaseOrderDetailDTO> getPurchaseOrderDetailLines(long poId) throws Exception {
+    public PurchaseOrderHeaderDTO getPurchaseOrderHeader(long poId) throws Exception {
+        String sql = """
+        SELECT
+            po.po_id AS poId,
+            po.po_number AS poNumber,
+            po.supplier_id AS supplierId,
+            s.code AS supplierCode,
+            s.name AS supplierName,
+            s.email AS supplierEmail,
+            s.phone AS supplierPhone,
+            s.address AS supplierAddress,
+            po.expected_delivery_date AS expectedDeliveryDate,
+            po.status,
+            po.note
+        FROM purchase_order po
+        JOIN supplier s ON s.supplier_id = po.supplier_id
+        WHERE po.po_id = ?
+    """;
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, poId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    PurchaseOrderHeaderDTO dto = new PurchaseOrderHeaderDTO();
+                    dto.setPoId(rs.getLong("poId"));
+                    dto.setPoNumber(rs.getString("poNumber"));
+                    dto.setSupplierId(rs.getLong("supplierId"));
+                    dto.setSupplierCode(rs.getString("supplierCode"));
+                    dto.setSupplierName(rs.getString("supplierName"));
+                    dto.setSupplierEmail(rs.getString("supplierEmail"));
+                    dto.setSupplierPhone(rs.getString("supplierPhone"));
+                    dto.setSupplierAddress(rs.getString("supplierAddress"));
+                    dto.setExpectedDeliveryDate(rs.getDate("expectedDeliveryDate"));
+                    dto.setStatus(rs.getString("status"));
+                    dto.setNote(rs.getString("note"));
+                    return dto;
+                }
+            }
+        }
+        return null; // hoặc throw nếu muốn: "PO not found"
+    }
+
+    public List<PurchaseOrderLineDTO> getPurchaseOrderDetailLines(long poId) throws Exception {
         String sql = """
                          SELECT
                                   pl.po_line_id,
@@ -80,12 +123,12 @@ public class PurchaseOrderDAO extends DBContext {
                                 WHERE pl.po_id = ?
                                 ORDER BY pl.po_line_id
                         """;
-        List<PurchaseOrderDetailDTO> lines = new ArrayList<>();
+        List<PurchaseOrderLineDTO> lines = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, poId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    PurchaseOrderDetailDTO dto = new PurchaseOrderDetailDTO();
+                    PurchaseOrderLineDTO dto = new PurchaseOrderLineDTO();
                     dto.setPoLineId(rs.getLong("po_line_id"));
                     dto.setProductId(rs.getLong("product_id"));
                     dto.setProductName(rs.getString("product_name"));
@@ -223,6 +266,8 @@ public class PurchaseOrderDAO extends DBContext {
     public List<PurchaseOrderListDTO> searchPurchaseOrders(
             String keyword,
             String status,
+            Date expectedFrom,
+            Date expectedTo,
             int limit,
             int offset) throws Exception {
 
@@ -260,6 +305,15 @@ public class PurchaseOrderDAO extends DBContext {
             params.add(status);
         }
 
+        if (expectedFrom != null) {
+            sql.append(" AND po.expected_delivery_date >= ? ");
+            params.add(expectedFrom);
+        }
+        if (expectedTo != null) {
+            sql.append(" AND po.expected_delivery_date <= ? ");
+            params.add(expectedTo);
+        }
+
         sql.append(" ORDER BY po.po_id DESC LIMIT ? OFFSET ?");
         params.add(limit);
         params.add(offset);
@@ -295,40 +349,46 @@ public class PurchaseOrderDAO extends DBContext {
         return list;
     }
 
-    public int countPurchaseOrders(String keyword, String status) throws Exception {
+    public int countPurchaseOrders(String keyword, String status, Date expectedFrom, Date expectedTo) throws Exception {
 
-    StringBuilder sql = new StringBuilder("""
+        StringBuilder sql = new StringBuilder("""
         SELECT COUNT(*)
         FROM purchase_order po
         JOIN supplier s ON po.supplier_id = s.supplier_id
         WHERE 1 = 1
     """);
 
-    List<Object> params = new ArrayList<>();
+        List<Object> params = new ArrayList<>();
 
-    if (keyword != null && !keyword.isBlank()) {
-        sql.append(" AND (po.po_number LIKE ? OR s.name LIKE ?) ");
-        params.add("%" + keyword + "%");
-        params.add("%" + keyword + "%");
-    }
-
-    if (status != null && !status.isBlank()) {
-        sql.append(" AND po.status = ? ");
-        params.add(status);
-    }
-
-    try (Connection con = DBContext.getConnection();
-         PreparedStatement ps = con.prepareStatement(sql.toString())) {
-
-        for (int i = 0; i < params.size(); i++) {
-            ps.setObject(i + 1, params.get(i));
+        if (keyword != null && !keyword.isBlank()) {
+            sql.append(" AND (po.po_number LIKE ? OR s.name LIKE ?) ");
+            params.add("%" + keyword + "%");
+            params.add("%" + keyword + "%");
         }
 
-        try (ResultSet rs = ps.executeQuery()) {
-            return rs.next() ? rs.getInt(1) : 0;
+        if (status != null && !status.isBlank()) {
+            sql.append(" AND po.status = ? ");
+            params.add(status);
+        }
+
+        if (expectedFrom != null) {
+            sql.append(" AND po.expected_delivery_date >= ? ");
+            params.add(expectedFrom);
+        }
+        if (expectedTo != null) {
+            sql.append(" AND po.expected_delivery_date <= ? ");
+            params.add(expectedTo);
+        }
+        try (Connection con = DBContext.getConnection(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
+
+            for (int i = 0; i < params.size(); i++) {
+                ps.setObject(i + 1, params.get(i));
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
         }
     }
-}
-
 
 }

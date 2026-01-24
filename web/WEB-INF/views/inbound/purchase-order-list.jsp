@@ -57,20 +57,22 @@
     </div>
     <form action="${pageContext.request.contextPath}/purchase-orders"
           method="get"
-          class="mb-3">
-        <div class="form-row align-items-end">
-            <!-- Search -->
-            <div class="col-md-4">
+          class="mb-3 p-3 border rounded bg-light">
+
+        <!-- ROW 1: keyword + status -->
+        <div class="form-row mb-2">
+            <div class="col-md-6">
+                <label class="mb-1 font-weight-bold">Search</label>
                 <input type="text"
                        name="keyword"
                        class="form-control"
-                       placeholder="Search for PO code, supplier,....."
+                       placeholder="PO number, supplier..."
                        value="${param.keyword}">
             </div>
-            <!-- Status filter -->
             <div class="col-md-3">
+                <label class="mb-1 font-weight-bold">Status</label>
                 <select name="status" class="form-control">
-                    <option value="">-- Select Status --</option>
+                    <option value="">-- All --</option>
                     <option value="CREATED"   ${param.status == 'CREATED' ? 'selected' : ''}>CREATED</option>
                     <option value="IMPORTED"  ${param.status == 'IMPORTED' ? 'selected' : ''}>IMPORTED</option>
                     <option value="CANCELLED" ${param.status == 'CANCELLED' ? 'selected' : ''}>CANCELLED</option>
@@ -78,17 +80,28 @@
                 </select>
             </div>
 
-            <!-- Buttons -->
-            <div class="col-md-5 text-right">
-                <button type="submit" class="btn btn-primary">
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary mr-2">
                     Search
                 </button>
                 <a href="${pageContext.request.contextPath}/purchase-orders"
-                   class="btn btn-secondary ml-2">
+                   class="btn btn-outline-secondary">
                     Reset
                 </a>
             </div>
-
+        </div>
+        <!-- ROW 2: Date filters -->
+        <div class="form-row">
+            <div class="col-md-3">
+                <label class="mb-1 font-weight-bold">Expected from</label>
+                <input type="date" name="expectedFrom" class="form-control"
+                       value="${param.expectedFrom}">
+            </div>
+            <div class="col-md-3 font-weight-bold">
+                <label class="mb-1">Expected to</label>
+                <input type="date" name="expectedTo" class="form-control"
+                       value="${param.expectedTo}">
+            </div>
         </div>
     </form>
     <div class="table-responsive">
@@ -153,31 +166,15 @@
     </div>
 
     <!-- Pagination -->
-<c:set var="keyword" value="${param.keyword}" />
-<c:set var="status" value="${param.status}" />
+    <c:set var="keyword" value="${param.keyword}" />
+    <c:set var="status" value="${param.status}" />
 
-<nav aria-label="Purchase Order pagination" class="mt-3">
-    <ul class="pagination justify-content-center">
+    <nav aria-label="Purchase Order pagination" class="mt-3">
+        <ul class="pagination justify-content-center">
 
-        <!-- Previous URL -->
-        <c:url var="prevUrl" value="/purchase-orders">
-            <c:param name="page" value="${page - 1}" />
-            <c:if test="${not empty keyword}">
-                <c:param name="keyword" value="${keyword}" />
-            </c:if>
-            <c:if test="${not empty status}">
-                <c:param name="status" value="${status}" />
-            </c:if>
-        </c:url>
-
-        <li class="page-item ${page <= 1 ? 'disabled' : ''}">
-            <a class="page-link" href="${page <= 1 ? '#' : prevUrl}">Previous</a>
-        </li>
-
-        <!-- First + ... -->
-        <c:if test="${page > 3}">
-            <c:url var="firstUrl" value="/purchase-orders">
-                <c:param name="page" value="1" />
+            <!-- Previous URL -->
+            <c:url var="prevUrl" value="/purchase-orders">
+                <c:param name="page" value="${page - 1}" />
                 <c:if test="${not empty keyword}">
                     <c:param name="keyword" value="${keyword}" />
                 </c:if>
@@ -186,23 +183,75 @@
                 </c:if>
             </c:url>
 
-            <li class="page-item">
-                <a class="page-link" href="${firstUrl}">1</a>
+            <li class="page-item ${page <= 1 ? 'disabled' : ''}">
+                <a class="page-link" href="${page <= 1 ? '#' : prevUrl}">Previous</a>
             </li>
-            <li class="page-item disabled">
-                <span class="page-link">...</span>
-            </li>
-        </c:if>
 
-        <!-- window pages -->
-        <c:set var="start" value="${page - 2}" />
-        <c:set var="end" value="${page + 2}" />
-        <c:if test="${start < 1}"><c:set var="start" value="1"/></c:if>
-        <c:if test="${end > totalPages}"><c:set var="end" value="${totalPages}"/></c:if>
+            <!-- First + ... -->
+            <c:if test="${page > 3}">
+                <c:url var="firstUrl" value="/purchase-orders">
+                    <c:param name="page" value="1" />
+                    <c:if test="${not empty keyword}">
+                        <c:param name="keyword" value="${keyword}" />
+                    </c:if>
+                    <c:if test="${not empty status}">
+                        <c:param name="status" value="${status}" />
+                    </c:if>
+                </c:url>
 
-        <c:forEach var="i" begin="${start}" end="${end}">
-            <c:url var="pageUrl" value="/purchase-orders">
-                <c:param name="page" value="${i}" />
+                <li class="page-item">
+                    <a class="page-link" href="${firstUrl}">1</a>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link">...</span>
+                </li>
+            </c:if>
+
+            <!-- window pages -->
+            <c:set var="start" value="${page - 2}" />
+            <c:set var="end" value="${page + 2}" />
+            <c:if test="${start < 1}"><c:set var="start" value="1"/></c:if>
+            <c:if test="${end > totalPages}"><c:set var="end" value="${totalPages}"/></c:if>
+
+            <c:forEach var="i" begin="${start}" end="${end}">
+                <c:url var="pageUrl" value="/purchase-orders">
+                    <c:param name="page" value="${i}" />
+                    <c:if test="${not empty keyword}">
+                        <c:param name="keyword" value="${keyword}" />
+                    </c:if>
+                    <c:if test="${not empty status}">
+                        <c:param name="status" value="${status}" />
+                    </c:if>
+                </c:url>
+
+                <li class="page-item ${i == page ? 'active' : ''}">
+                    <a class="page-link" href="${pageUrl}">${i}</a>
+                </li>
+            </c:forEach>
+
+            <!-- ... + Last -->
+            <c:if test="${page < totalPages - 2}">
+                <c:url var="lastUrl" value="/purchase-orders">
+                    <c:param name="page" value="${totalPages}" />
+                    <c:if test="${not empty keyword}">
+                        <c:param name="keyword" value="${keyword}" />
+                    </c:if>
+                    <c:if test="${not empty status}">
+                        <c:param name="status" value="${status}" />
+                    </c:if>
+                </c:url>
+
+                <li class="page-item disabled">
+                    <span class="page-link">...</span>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="${lastUrl}">${totalPages}</a>
+                </li>
+            </c:if>
+
+            <!-- Next URL -->
+            <c:url var="nextUrl" value="/purchase-orders">
+                <c:param name="page" value="${page + 1}" />
                 <c:if test="${not empty keyword}">
                     <c:param name="keyword" value="${keyword}" />
                 </c:if>
@@ -211,48 +260,12 @@
                 </c:if>
             </c:url>
 
-            <li class="page-item ${i == page ? 'active' : ''}">
-                <a class="page-link" href="${pageUrl}">${i}</a>
+            <li class="page-item ${page >= totalPages ? 'disabled' : ''}">
+                <a class="page-link" href="${page >= totalPages ? '#' : nextUrl}">Next</a>
             </li>
-        </c:forEach>
 
-        <!-- ... + Last -->
-        <c:if test="${page < totalPages - 2}">
-            <c:url var="lastUrl" value="/purchase-orders">
-                <c:param name="page" value="${totalPages}" />
-                <c:if test="${not empty keyword}">
-                    <c:param name="keyword" value="${keyword}" />
-                </c:if>
-                <c:if test="${not empty status}">
-                    <c:param name="status" value="${status}" />
-                </c:if>
-            </c:url>
-
-            <li class="page-item disabled">
-                <span class="page-link">...</span>
-            </li>
-            <li class="page-item">
-                <a class="page-link" href="${lastUrl}">${totalPages}</a>
-            </li>
-        </c:if>
-
-        <!-- Next URL -->
-        <c:url var="nextUrl" value="/purchase-orders">
-            <c:param name="page" value="${page + 1}" />
-            <c:if test="${not empty keyword}">
-                <c:param name="keyword" value="${keyword}" />
-            </c:if>
-            <c:if test="${not empty status}">
-                <c:param name="status" value="${status}" />
-            </c:if>
-        </c:url>
-
-        <li class="page-item ${page >= totalPages ? 'disabled' : ''}">
-            <a class="page-link" href="${page >= totalPages ? '#' : nextUrl}">Next</a>
-        </li>
-
-    </ul>
-</nav>
+        </ul>
+    </nav>
 
 </t:layout>
 

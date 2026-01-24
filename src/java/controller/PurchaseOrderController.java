@@ -1,7 +1,8 @@
 package controller;
 
 import dao.PurchaseOrderDAO;
-import dto.PurchaseOrderDetailDTO;
+import dto.PurchaseOrderHeaderDTO;
+import dto.PurchaseOrderLineDTO;
 import dto.PurchaseOrderListDTO;
 import jakarta.servlet.*;
 import jakarta.servlet.annotation.WebServlet;
@@ -71,21 +72,23 @@ public class PurchaseOrderController extends HttpServlet {
         // search & filter
         String keyword = request.getParameter("keyword");
         String status = request.getParameter("status");
-
+        String expectedFromStr = request.getParameter("expectedFrom");
+        String expectedToStr = request.getParameter("expectedTo");
         if (keyword != null) {
             keyword = keyword.trim();
         }
         if (status != null && status.isBlank()) {
             status = null;
         }
-
+        Date expectedFrom = parseSqlDate(expectedFromStr);
+        Date expectedTo = parseSqlDate(expectedToStr);
         PurchaseOrderDAO dao = new PurchaseOrderDAO();
 
         List<PurchaseOrderListDTO> pos
-                = dao.searchPurchaseOrders(keyword, status, size, offset);
+                = dao.searchPurchaseOrders(keyword, status, expectedFrom, expectedTo, size, offset);
 
         int totalRecords
-                = dao.countPurchaseOrders(keyword, status);
+                = dao.countPurchaseOrders(keyword, status,expectedFrom,expectedTo);
 
         int totalPages = (int) Math.ceil((double) totalRecords / size);
         if (totalPages == 0) {
@@ -118,11 +121,13 @@ public class PurchaseOrderController extends HttpServlet {
         }
 
         PurchaseOrderDAO dao = new PurchaseOrderDAO();
-        List<PurchaseOrderDetailDTO> lines = dao.getPurchaseOrderDetailLines(poId);
+        PurchaseOrderHeaderDTO POheader = dao.getPurchaseOrderHeader(poId);
+        List<PurchaseOrderLineDTO> lines = dao.getPurchaseOrderDetailLines(poId);
 
         request.setAttribute("poId", poId);
+        request.setAttribute("POheader", POheader);
         request.setAttribute("lines", lines);
-
+        
         request.getRequestDispatcher(ViewPath.PO_DETAIL).forward(request, response);
     }
 
@@ -232,6 +237,17 @@ public class PurchaseOrderController extends HttpServlet {
             return (raw == null || raw.isBlank()) ? def : Long.parseLong(raw);
         } catch (Exception e) {
             return def;
+        }
+    }
+
+    private Date parseSqlDate(String s) {
+        try {
+            if (s == null || s.isBlank()) {
+                return null;
+            }
+            return Date.valueOf(s); // yyyy-MM-dd
+        } catch (Exception e) {
+            return null;
         }
     }
 
