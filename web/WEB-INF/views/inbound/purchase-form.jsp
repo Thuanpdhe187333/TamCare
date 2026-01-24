@@ -55,7 +55,7 @@
                             <thead class="table-dark text-center">
                                 <tr>
                                     <th style="min-width:220px;">Variant SKU</th>
-                                    <th style="width:140px;">Qty</th>
+                                    <th style="width:140px;">Quantity</th>
                                     <th style="width:160px;">Unit Price</th>
                                     <th style="width:140px;">Currency</th>
                                     <th style="width:80px;">#</th>

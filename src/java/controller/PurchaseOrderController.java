@@ -1,16 +1,20 @@
 package controller;
 
 import dao.PurchaseOrderDAO;
-import dto.PurchaseOrderDetailDTO;
+import dto.PurchaseOrderHeaderDTO;
+import dto.PurchaseOrderLineDTO;
 import dto.PurchaseOrderListDTO;
 import jakarta.servlet.*;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 import util.ViewPath;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.sql.Date;
 
 @WebServlet(name = "PurchaseOrderController", urlPatterns = {"/purchase-orders"})
 public class PurchaseOrderController extends HttpServlet {
@@ -22,10 +26,9 @@ public class PurchaseOrderController extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         try {
-            // GET vẫn cho phép gõ URL /purchase-orders => list
             forwardList(request, response);
         } catch (Exception ex) {
-            Logger.getLogger(PurchaseOrderController.class.getName()).log(Level.SEVERE, null, ex);
+            throw new ServletException(ex);
         }
     }
 
@@ -46,12 +49,10 @@ public class PurchaseOrderController extends HttpServlet {
                     forwardDetail(request, response);
                 case "new" ->
                     forwardCreateForm(request, response);
-                case "list" ->
-                    forwardList(request, response);
-                case "delete" ->
-                     handleDelete(request, response);
                 case "create" ->
                     handleCreate(request, response);
+                case "delete" ->
+                    handleDelete(request, response);
                 default ->
                     forwardList(request, response);
             }
@@ -63,22 +64,49 @@ public class PurchaseOrderController extends HttpServlet {
     private void forwardList(HttpServletRequest request, HttpServletResponse response)
             throws Exception {
 
+        // pagination
         int page = parseInt(request.getParameter("page"), DEFAULT_PAGE);
         int size = DEFAULT_SIZE;
         int offset = (page - 1) * size;
 
+        // search & filter
+        String keyword = request.getParameter("keyword");
+        String status = request.getParameter("status");
+        String expectedFromStr = request.getParameter("expectedFrom");
+        String expectedToStr = request.getParameter("expectedTo");
+        if (keyword != null) {
+            keyword = keyword.trim();
+        }
+        if (status != null && status.isBlank()) {
+            status = null;
+        }
+        Date expectedFrom = parseSqlDate(expectedFromStr);
+        Date expectedTo = parseSqlDate(expectedToStr);
         PurchaseOrderDAO dao = new PurchaseOrderDAO();
-        List<PurchaseOrderListDTO> pos = dao.getPurchaseOrderList(size, offset);
-        
-        int totalRecords = dao.countPurchaseOrders();   // NEW
-        int totalPages = (int) Math.ceil(totalRecords * 1.0 / size); // NEW
-        if (totalPages == 0) totalPages = 1;
-        if (page > totalPages) page = totalPages;
 
-        
+        List<PurchaseOrderListDTO> pos
+                = dao.searchPurchaseOrders(keyword, status, expectedFrom, expectedTo, size, offset);
+
+        int totalRecords
+                = dao.countPurchaseOrders(keyword, status,expectedFrom,expectedTo);
+
+        int totalPages = (int) Math.ceil((double) totalRecords / size);
+        if (totalPages == 0) {
+            totalPages = 1;
+        }
+        if (page > totalPages) {
+            page = totalPages;
+        }
+
+        // set attributes
         request.setAttribute("pos", pos);
         request.setAttribute("page", page);
-        request.setAttribute("totalPages", totalPages); 
+        request.setAttribute("totalPages", totalPages);
+
+        // giữ lại filter trên JSP
+        request.setAttribute("keyword", keyword);
+        request.setAttribute("status", status);
+
         request.getRequestDispatcher(ViewPath.PO_LIST).forward(request, response);
     }
 
@@ -93,11 +121,13 @@ public class PurchaseOrderController extends HttpServlet {
         }
 
         PurchaseOrderDAO dao = new PurchaseOrderDAO();
-        List<PurchaseOrderDetailDTO> lines = dao.getPurchaseOrderDetailLines(poId);
+        PurchaseOrderHeaderDTO POheader = dao.getPurchaseOrderHeader(poId);
+        List<PurchaseOrderLineDTO> lines = dao.getPurchaseOrderDetailLines(poId);
 
         request.setAttribute("poId", poId);
+        request.setAttribute("POheader", POheader);
         request.setAttribute("lines", lines);
-
+        
         request.getRequestDispatcher(ViewPath.PO_DETAIL).forward(request, response);
     }
 
@@ -116,11 +146,16 @@ public class PurchaseOrderController extends HttpServlet {
     private void handleCreate(HttpServletRequest request, HttpServletResponse response)
             throws Exception {
 
+        request.setCharacterEncoding("UTF-8");
+
         String poNumber = request.getParameter("poNumber");
         long supplierId = Long.parseLong(request.getParameter("supplierId"));
 
+        // IMPORTANT: dùng java.sql.Date để match DAO
         String expected = request.getParameter("expectedDeliveryDate");
-        java.sql.Date expectedDate = (expected == null || expected.isBlank()) ? null : java.sql.Date.valueOf(expected);
+        Date expectedDate = (expected == null || expected.isBlank())
+                ? null
+                : Date.valueOf(expected); // yyyy-MM-dd
 
         String note = request.getParameter("note");
 
@@ -140,12 +175,21 @@ public class PurchaseOrderController extends HttpServlet {
             if (qtyStr == null || qtyStr.isBlank()) {
                 continue;
             }
+
             java.math.BigDecimal qty = new java.math.BigDecimal(qtyStr);
+
             String unitStr = request.getParameter("lines[" + i + "].unitPrice");
-            java.math.BigDecimal unitPrice = (unitStr == null || unitStr.isBlank()) ? null : new java.math.BigDecimal(unitStr);
+            java.math.BigDecimal unitPrice = (unitStr == null || unitStr.isBlank())
+                    ? null
+                    : new java.math.BigDecimal(unitStr);
+
             String taxStr = request.getParameter("lines[" + i + "].taxRate");
-            java.math.BigDecimal taxRate = (taxStr == null || taxStr.isBlank()) ? null : new java.math.BigDecimal(taxStr);
+            java.math.BigDecimal taxRate = (taxStr == null || taxStr.isBlank())
+                    ? null
+                    : new java.math.BigDecimal(taxStr);
+
             String currency = request.getParameter("lines[" + i + "].currency");
+
             lines.add(new dto.POLineCreateDTO(Long.parseLong(vid), qty, unitPrice, taxRate, currency));
         }
 
@@ -155,33 +199,31 @@ public class PurchaseOrderController extends HttpServlet {
 
         PurchaseOrderDAO dao = new PurchaseOrderDAO();
         dao.createManualPO(poNumber, supplierId, expectedDate, note, userId, lines);
+
         response.sendRedirect(request.getContextPath() + "/purchase-orders");
     }
-    
+
     private void handleDelete(HttpServletRequest request, HttpServletResponse response)
-        throws Exception {
+            throws Exception {
 
-    long poId = Long.parseLong(request.getParameter("id"));
+        long poId = Long.parseLong(request.getParameter("id"));
 
-    PurchaseOrderDAO dao = new PurchaseOrderDAO();
-    boolean ok = dao.deletePurchaseOrder(poId);
+        PurchaseOrderDAO dao = new PurchaseOrderDAO();
+        boolean ok = dao.deletePurchaseOrder(poId);
 
+        String msg = ok ? "deleted" : "notfound";
 
-    String msg = ok ? "deleted" : "notfound";
+        String page = request.getParameter("page");
+        String redirectUrl = request.getContextPath() + "/purchase-orders";
+        if (page != null && !page.isBlank()) {
+            redirectUrl += "?page=" + page + "&msg=" + msg;
+        } else {
+            redirectUrl += "?msg=" + msg;
+        }
 
-
-    String page = request.getParameter("page");
-    String redirectUrl = request.getContextPath() + "/purchase-orders";
-    if (page != null && !page.isBlank()) {
-        redirectUrl += "?page=" + page + "&msg=" + msg;
-    } else {
-        redirectUrl += "?msg=" + msg;
+        response.sendRedirect(redirectUrl);
     }
 
-    response.sendRedirect(redirectUrl);
-}
-
-    
     private int parseInt(String raw, int def) {
         try {
             return (raw == null || raw.isBlank()) ? def : Integer.parseInt(raw);
@@ -195,6 +237,17 @@ public class PurchaseOrderController extends HttpServlet {
             return (raw == null || raw.isBlank()) ? def : Long.parseLong(raw);
         } catch (Exception e) {
             return def;
+        }
+    }
+
+    private Date parseSqlDate(String s) {
+        try {
+            if (s == null || s.isBlank()) {
+                return null;
+            }
+            return Date.valueOf(s); // yyyy-MM-dd
+        } catch (Exception e) {
+            return null;
         }
     }
 
