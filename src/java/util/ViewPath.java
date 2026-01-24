@@ -6,9 +6,9 @@ public class ViewPath {
     public static final String PO_DETAIL = "/WEB-INF/views/inbound/purchase-order-detail.jsp";
     public static final String PO_FORM = "/WEB-INF/views/inbound/purchase-form.jsp";
 
-    public static final String ROLE_LIST = "/WEB-INF/admin/views/role/list.jsp";
-    public static final String ROLE_CREATE = "/WEB-INF/admin/views/role/create.jsp";
-    public static final String ROLE_UPDATE = "/WEB-INF/admin/views/role/update.jsp";
+    public static final String ROLE_LIST = "/WEB-INF/views/admin/role/list.jsp";
+    public static final String ROLE_CREATE = "/WEB-INF/views/admin/role/create.jsp";
+    public static final String ROLE_UPDATE = "/WEB-INF/views/admin/role/update.jsp";
 
     public static final String ADMIN_DASHBOARD = "/WEB-INF/views/admin/dashboard/page.jsp";
 
@@ -23,4 +23,9 @@ public class ViewPath {
     public static final String VIEW_LOGIN = "/WEB-INF/index.jsp";
     public static final String VIEW_FORGOT = "/WEB-INF/views/forgot_password.jsp";
     public static final String VIEW_RESET = "/WEB-INF/views/reset_password.jsp";
+
+    // Goods Receipt
+    public static final String GRN_LIST = "/WEB-INF/views/inbound/GoodsReceiptList.jsp";
+    public static final String GRN_DETAIL = "/WEB-INF/views/inbound/GoodsReceiptDetail.jsp";
+    public static final String GRN_CREATE = "/WEB-INF/views/inbound/GoodsReceiptCreate.jsp";
 }
