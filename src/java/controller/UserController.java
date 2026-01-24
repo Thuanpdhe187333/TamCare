@@ -1,11 +1,5 @@
 package controller;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import dao.RoleDAO;
 import dao.UserDAO;
 import dao.WarehouseDAO;
@@ -14,9 +8,12 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import model.Role;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import model.User;
-import model.Warehouse;
 import util.PasswordUtil;
 import util.ViewPath;
 
@@ -29,10 +26,10 @@ public class UserController extends HttpServlet {
     private static final RoleDAO roleDAO = new RoleDAO();
     private static final WarehouseDAO warehouseDAO = new WarehouseDAO();
     private static final UserDAO userDAO = new UserDAO();
-    
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
-        throws ServletException, IOException {
+    throws ServletException, IOException {
         try {
             String contextPath = request.getContextPath();
 
@@ -58,7 +55,7 @@ public class UserController extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
-        throws ServletException, IOException {
+    throws ServletException, IOException {
         request.setCharacterEncoding("UTF-8");
 
         try {
@@ -85,7 +82,7 @@ public class UserController extends HttpServlet {
     }
 
     private void forwardList(HttpServletRequest request, HttpServletResponse response)
-        throws Exception {
+    throws Exception {
         int page = parseInt(request.getParameter("page"), DEFAULT_PAGE);
         int size = DEFAULT_SIZE;
         int offset = (page - 1) * size;
@@ -105,45 +102,45 @@ public class UserController extends HttpServlet {
     }
 
     private void forwardCreateForm(HttpServletRequest request, HttpServletResponse response)
-        throws Exception {
-        List<Role> roles = roleDAO.getAll(1000, 0);  // Get all roles
-        request.setAttribute("roles", roles);
-
-        List<Warehouse> warehouses = warehouseDAO.getAll();
-        request.setAttribute("warehouses", warehouses);
-
-        request.getRequestDispatcher(ViewPath.USER_CREATE).forward(request, response);
+    throws Exception {
+//        List<Role> roles = roleDAO.getList(1000, 0);  // Get all roles
+//        request.setAttribute("roles", roles);
+//
+//        List<Warehouse> warehouses = warehouseDAO.getAll();
+//        request.setAttribute("warehouses", warehouses);
+//
+//        request.getRequestDispatcher(ViewPath.USER_CREATE).forward(request, response);
     }
 
     private void forwardUpdateForm(HttpServletRequest request, HttpServletResponse response)
-        throws Exception {
-        long userId = parseLong(request.getParameter("id"), -1);
-        if (userId <= 0) {
-            forwardList(request, response);
-            return;
-        }
-
-        User user = userDAO.getById(userId);
-        if (user == null) {
-            request.setAttribute("error", "Không tìm thấy user với ID: " + userId);
-            forwardList(request, response);
-            return;
-        }
-
-        List<Role> allRoles = roleDAO.getAll(1000, 0);
-        List<Long> selectedRoleIds = userDAO.getRolesByUserId(userId);
-        List<Warehouse> warehouses = warehouseDAO.getAll();
-
-        request.setAttribute("user", user);
-        request.setAttribute("roles", allRoles);
-        request.setAttribute("selectedRoleIds", selectedRoleIds);
-        request.setAttribute("warehouses", warehouses);
-
-        request.getRequestDispatcher(ViewPath.USER_UPDATE).forward(request, response);
+    throws Exception {
+//        long userId = parseLong(request.getParameter("id"), -1);
+//        if (userId <= 0) {
+//            forwardList(request, response);
+//            return;
+//        }
+//
+//        User user = userDAO.getById(userId);
+//        if (user == null) {
+//            request.setAttribute("error", "Không tìm thấy user với ID: " + userId);
+//            forwardList(request, response);
+//            return;
+//        }
+//
+//        List<Role> allRoles = roleDAO.getList(1000, 0);
+//        List<Long> selectedRoleIds = userDAO.getRolesByUserId(userId);
+//        List<Warehouse> warehouses = warehouseDAO.getAll();
+//
+//        request.setAttribute("user", user);
+//        request.setAttribute("roles", allRoles);
+//        request.setAttribute("selectedRoleIds", selectedRoleIds);
+//        request.setAttribute("warehouses", warehouses);
+//
+//        request.getRequestDispatcher(ViewPath.USER_UPDATE).forward(request, response);
     }
 
     private void handleCreate(HttpServletRequest request, HttpServletResponse response)
-        throws Exception {
+    throws Exception {
         String username = request.getParameter("username");
         String fullName = request.getParameter("fullName");
         String email = request.getParameter("email");
@@ -154,12 +151,11 @@ public class UserController extends HttpServlet {
         String[] roleIds = request.getParameterValues("roleIds");
 
         if (username == null || username.isBlank() || fullName == null || fullName.isBlank()
-            || email == null || email.isBlank() || password == null || password.isBlank()) {
+        || email == null || email.isBlank() || password == null || password.isBlank()) {
             request.setAttribute("error", "Username, Full Name, Email và Password là bắt buộc");
             forwardCreateForm(request, response);
             return;
         }
-
 
         // Check duplicate username
         if (userDAO.usernameExists(username, null)) {
@@ -220,7 +216,7 @@ public class UserController extends HttpServlet {
     }
 
     private void handleUpdate(HttpServletRequest request, HttpServletResponse response)
-        throws Exception {
+    throws Exception {
         long userId = parseLong(request.getParameter("id"), -1);
         if (userId <= 0) {
             forwardList(request, response);
@@ -239,7 +235,6 @@ public class UserController extends HttpServlet {
             forwardUpdateForm(request, response);
             return;
         }
-
 
         User existingUser = userDAO.getById(userId);
         if (existingUser == null) {
@@ -297,7 +292,7 @@ public class UserController extends HttpServlet {
     }
 
     private void handleDelete(HttpServletRequest request, HttpServletResponse response)
-        throws Exception {
+    throws Exception {
         long userId = parseLong(request.getParameter("id"), -1);
         if (userId <= 0) {
             forwardList(request, response);
