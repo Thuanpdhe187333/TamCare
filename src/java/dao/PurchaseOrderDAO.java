@@ -392,4 +392,113 @@ public class PurchaseOrderDAO extends DBContext {
         }
     }
 
+    public void updatePurchaseOrder(PurchaseOrderHeaderDTO header,
+            List<PurchaseOrderLineDTO> lines) throws Exception {
+
+        if (lines == null || lines.isEmpty()) {
+            throw new IllegalArgumentException("PO must have at least 1 line");
+        }
+
+        boolean oldAutoCommit = conn.getAutoCommit();
+        try {
+            conn.setAutoCommit(false);
+
+            // 1. Check status
+            String status = getPoStatusForUpdate(header.getPoId());
+            if (!"CREATED".equalsIgnoreCase(status)) {
+                throw new IllegalArgumentException(
+                        "PO cannot be updated when status = " + status
+                );
+            }
+
+            // 2. Update header
+            updateHeader(header);
+
+            // 3. Delete old lines
+            deleteLinesByPoId(header.getPoId());
+
+            // 4. Insert new lines
+            insertLines(header.getPoId(), lines);
+
+            conn.commit();
+        } catch (Exception e) {
+            conn.rollback();
+            throw e;
+        } finally {
+            conn.setAutoCommit(oldAutoCommit);
+        }
+    }
+
+    private String getPoStatusForUpdate(long poId) throws Exception {
+        String sql
+                = "SELECT status FROM purchase_order WHERE po_id=? FOR UPDATE";
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, poId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    throw new IllegalArgumentException("PO not found: " + poId);
+                }
+                return rs.getString("status");
+            }
+        }
+    }
+
+    private void updateHeader(PurchaseOrderHeaderDTO h) throws Exception {
+
+        String sql = """
+        UPDATE purchase_order
+        SET po_number = ?,
+            supplier_id = ?,
+            expected_delivery_date = ?,
+            note = ?
+        WHERE po_id = ?
+    """;
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, h.getPoNumber());
+            ps.setLong(2, h.getSupplierId());
+            ps.setDate(3, h.getExpectedDeliveryDate());
+            ps.setString(4, h.getNote());
+            ps.setLong(5, h.getPoId());
+            ps.executeUpdate();
+        }
+    }
+
+    private void deleteLinesByPoId(long poId) throws Exception {
+
+        String sql
+                = "DELETE FROM purchase_order_line WHERE po_id=?";
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, poId);
+            ps.executeUpdate();
+        }
+    }
+
+    private void insertLines(long poId,
+            List<PurchaseOrderLineDTO> lines) throws Exception {
+
+        String sql = """
+        INSERT INTO purchase_order_line
+        (po_id, variant_id, qty_ordered, unit_price)
+        VALUES (?,?,?,?)
+    """;
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            for (PurchaseOrderLineDTO l : lines) {
+
+                ps.setLong(1, poId);
+                ps.setLong(2, l.getVariantId());
+                ps.setBigDecimal(3, l.getOrderedQty());
+                ps.setBigDecimal(4, l.getUnitPrice());
+
+                ps.addBatch();
+            }
+
+            ps.executeBatch();
+        }
+    }
+
 }

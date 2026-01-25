@@ -117,13 +117,17 @@
                                     <input type="hidden" name="page" value="${page}">
                                     <button class="btn btn-sm btn-outline-danger">Delete</button>
                                 </form>
-                                      <form action="${pageContext.request.contextPath}/purchase-orders"
-                                      method="get" style="display:inline;"
+                    
+
+                                <form action="${pageContext.request.contextPath}/purchase-orders"
+                                      method="get"
+                                      style="display:inline;">
                                     <input type="hidden" name="action" value="edit">
                                     <input type="hidden" name="id" value="${po.poId}">
                                     <input type="hidden" name="page" value="${page}">
                                     <button class="btn btn-sm btn-outline-primary">Edit</button>
-                                      </form>
+                                </form>
+
                             </td>
                         </tr>
                     </c:forEach>
