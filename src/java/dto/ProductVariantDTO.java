@@ -12,4 +12,6 @@ public class ProductVariantDTO {
     private String variantSku;
     private String productSku;
     private String productName;
+    private String size;
+    private String color;
 }
