@@ -1,19 +1,18 @@
 <%@taglib prefix="t" tagdir="/WEB-INF/tags/" %>
 
-<button class="d-flex justify-content-center align-items-center scroll-to-top rounded" href="#page-top">
+  <button class="d-flex justify-content-center align-items-center scroll-to-top rounded" href="#page-top">
     <i class="fas fa-angle-up"></i>
-</button>
+  </button>
 
-<!-- Logout Modal-->
-<t:alert id="logoutModal" >
+  <!-- Logout Modal-->
+  <t:alert id="logoutModal">
     <jsp:attribute name="title">
-        Ready to Leave?
+      Ready to Leave?
     </jsp:attribute>
     <jsp:attribute name="desciption">
-        Select "Logout" below if you are ready to end your current session.
+      Select "Logout" below if you are ready to end your current session.
     </jsp:attribute>
     <jsp:attribute name="action">
-        <a class="btn btn-primary" href="login.html">Logout</a>
+      <a class="btn btn-primary" href="${pageContext.request.contextPath}/authen?action=logout">Logout</a>
     </jsp:attribute>
-</t:alert>
-
+  </t:alert>
