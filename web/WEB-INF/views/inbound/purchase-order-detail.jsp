@@ -2,6 +2,7 @@
 <%@taglib uri="jakarta.tags.core" prefix="c"%>
 <%@taglib uri="jakarta.tags.functions" prefix="fn"%>
 <%@taglib tagdir="/WEB-INF/tags/" prefix="t" %>
+<%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <t:layout title="Purchase Order Detail">
 
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
@@ -10,10 +11,8 @@
             <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to List
         </a>
     </div>
-
     <!-- Content Row -->
     <div class="row">
-
         <!-- Supplier & PO Info Card -->
         <div class="col-xl-8 col-lg-7">
             <div class="card shadow mb-4">
@@ -24,7 +23,7 @@
                     </h6>
                     <div class="dropdown no-arrow">
                         <span class="badge badge-light text-dark" style="font-size: 0.9rem;">
-                           PO ID: ${poId}
+                            PO ID: ${poId}
                         </span>
                     </div>
                 </div>
@@ -93,7 +92,7 @@
                             <th style="width: 30%">Product</th>
                             <th style="width: 15%">Variant</th>
                             <th style="width: 15%">Barcode</th>
-                            <th style="width: 10%" class="text-center">Qty</th>
+                            <th style="width: 10%" class="text-center">Quantity</th>
                             <th style="width: 10%" class="text-end">Unit Price</th>
                             <th style="width: 15%" class="text-end">Amount</th>
                         </tr>
@@ -118,9 +117,11 @@
                                             <div><span class="text-xs font-weight-bold text-uppercase text-secondary">Size:</span> ${l.size}</div>
                                         </td>
                                         <td class="text-monospace small">${l.barcode}</td>
-                                        <td class="text-center font-weight-bold">${l.orderedQty}</td>
-                                        <td class="text-end">${l.unitPrice}</td>
-                                        <td class="text-end font-weight-bold text-gray-800">${l.lineAmount}</td>
+                                        <td class="text-center font-weight-bold">  <fmt:formatNumber value="${l.orderedQty}" maxFractionDigits="0"/></td>
+                                        <td class="text-end">  <fmt:formatNumber value="${l.unitPrice}" type="number"
+                                                          minFractionDigits="0" maxFractionDigits="0"/></td>
+                                        <td class="text-end font-weight-bold text-gray-800">  <fmt:formatNumber value="${l.lineAmount}" type="number"
+                                                          minFractionDigits="0" maxFractionDigits="0"/></td>
                                     </tr>
                                 </c:forEach>
                             </c:otherwise>

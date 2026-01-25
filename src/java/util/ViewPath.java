@@ -12,8 +12,9 @@ public class ViewPath {
 
     public static final String PO_LIST = "/WEB-INF/views/inbound/purchase-order-list.jsp";
     public static final String PO_DETAIL = "/WEB-INF/views/inbound/purchase-order-detail.jsp";
-    public static final String PO_FORM = "/WEB-INF/views/inbound/purchase-form.jsp";
-
+    public static final String PO_FORM_CREATE = "/WEB-INF/views/inbound/purchase-form-create.jsp";
+    public static final String PO_FORM_EDIT = "/WEB-INF/views/inbound/purchase-form-edit.jsp";
+    
     public static final String ROLE_LIST = "/WEB-INF/views/admin/role/list.jsp";
     public static final String ROLE_CREATE = "/WEB-INF/views/admin/role/create.jsp";
     public static final String ROLE_UPDATE = "/WEB-INF/views/admin/role/update.jsp";

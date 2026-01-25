@@ -166,8 +166,8 @@ public class PurchaseOrderDAO extends DBContext {
 
         String sqlLine = """
             INSERT INTO purchase_order_line
-              (po_id, variant_id, qty_ordered, unit_price, tax_rate, currency)
-            VALUES (?, ?, ?, ?, ?, ?)
+              (po_id, variant_id, qty_ordered, unit_price, currency)
+            VALUES (?, ?, ?, ?, ?)
         """;
         try (Connection con = DBContext.getConnection()) {
             con.setAutoCommit(false);
@@ -203,26 +203,17 @@ public class PurchaseOrderDAO extends DBContext {
                         } else {
                             psLine.setNull(4, Types.DECIMAL);
                         }
-
-                        if (l.getTaxRate() != null) {
-                            psLine.setBigDecimal(5, l.getTaxRate());
-                        } else {
-                            psLine.setNull(5, Types.DECIMAL);
-                        }
-
                         String currency = (l.getCurrency() == null || l.getCurrency().isBlank())
                                 ? "VND"
                                 : l.getCurrency().trim();
-                        psLine.setString(6, currency);
+                        psLine.setString(5, currency);
 
                         psLine.addBatch();
                     }
                     psLine.executeBatch();
                 }
-
                 con.commit();
                 return poId;
-
             } catch (Exception ex) {
                 con.rollback();
                 throw ex;
@@ -387,6 +378,16 @@ public class PurchaseOrderDAO extends DBContext {
 
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getInt(1) : 0;
+            }
+        }
+    }
+
+    public boolean existsByPoNumber(String poNumber) throws Exception {
+        String sql = "SELECT 1 FROM purchase_order WHERE po_number = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, poNumber);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next(); // có dòng => đã tồn tại
             }
         }
     }
