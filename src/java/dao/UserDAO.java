@@ -333,44 +333,41 @@ public class UserDAO {
     }
 
     /**
-     * Tạo token reset password, lưu hash vào DB.
-     * Return rawToken để tạo link gửi email / show dev.
+     * Tạo OTP 6 số để reset password.
+     * Lưu SHA-256(otp) vào DB, trả otp raw để gửi email.
      */
-    public String createPasswordResetToken(Long userId) throws SQLException {
-        // Step 1: token raw (URL-safe)
-        String rawToken = generateTokenUrlSafe(32);
+    public String createPasswordResetOtpByEmail(String email) throws SQLException {
+        User u = findByEmail(email);
+        if (u == null) return null;
 
-        // Step 2: hash token để lưu DB
-        String tokenHash = sha256Hex(rawToken);
-
-        // Step 3: hạn token
+        String otp = generateOtp6Digits();
+        String tokenHash = sha256Hex(otp);
         Timestamp expiresAt = new Timestamp(System.currentTimeMillis() + RESET_TOKEN_TTL.toMillis());
 
-        // Step 4: insert token
         String sql = """
             INSERT INTO password_reset_token (user_id, token_hash, expires_at)
             VALUES (?, ?, ?)
         """;
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, userId);
+            ps.setLong(1, u.getUserId());
             ps.setString(2, tokenHash);
             ps.setTimestamp(3, expiresAt);
             ps.executeUpdate();
         }
 
-        return rawToken;
+        return otp;
     }
 
     /**
-     * Verify token raw:
+     * Verify OTP:
      * - token_hash match
      * - used_at is null
      * - expires_at > now
      * => return user_id nếu hợp lệ
      */
-    public Long verifyResetTokenAndGetUserId(String rawToken) throws SQLException {
-        String tokenHash = sha256Hex(rawToken);
+    public Long verifyResetOtpAndGetUserId(String otp) throws SQLException {
+        String tokenHash = sha256Hex(otp);
 
         String sql = """
             SELECT user_id
@@ -385,21 +382,17 @@ public class UserDAO {
             ps.setString(1, tokenHash);
 
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getLong("user_id");
-                }
+                if (rs.next()) return rs.getLong("user_id");
             }
         }
         return null;
     }
 
     /**
-     * Đổi password_hash cho user.
-     * newHash phải là BCrypt hash (PasswordUtil.hashPassword(...) hoặc BCrypt.hashpw).
+     * Đổi password_hash cho user (hash BCrypt).
      */
     public boolean updatePasswordHash(Long userId, String newHash) throws SQLException {
         String sql = "UPDATE user SET password_hash = ? WHERE user_id = ? AND is_deleted = 0";
-
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, newHash);
             ps.setLong(2, userId);
@@ -408,10 +401,10 @@ public class UserDAO {
     }
 
     /**
-     * Mark token used.
+     * Mark OTP used.
      */
-    public boolean markResetTokenUsed(String rawToken) throws SQLException {
-        String tokenHash = sha256Hex(rawToken);
+    public boolean markResetOtpUsed(String otp) throws SQLException {
+        String tokenHash = sha256Hex(otp);
 
         String sql = """
             UPDATE password_reset_token
@@ -427,11 +420,10 @@ public class UserDAO {
     }
 
     /**
-     * Optional: update last login time/ip (để controller gọi sau login).
+     * Optional: update last login time/ip
      */
     public boolean updateLastLogin(Long userId, String ip) throws SQLException {
         String sql = "UPDATE user SET last_login_at = NOW(), last_login_ip = ? WHERE user_id = ?";
-
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, ip);
             ps.setLong(2, userId);
@@ -439,8 +431,16 @@ public class UserDAO {
         }
     }
 
-    // ===== Helpers for forgot password =====
+    // ==========================
+    // HELPERS
+    // ==========================
+    private String generateOtp6Digits() {
+        int otp = SECURE_RANDOM.nextInt(900000) + 100000; // 100000-999999
+        return String.valueOf(otp);
+    }
 
+    // (để sau này muốn token dài URL-safe vẫn dùng được)
+    @SuppressWarnings("unused")
     private String generateTokenUrlSafe(int numBytes) {
         byte[] bytes = new byte[numBytes];
         SECURE_RANDOM.nextBytes(bytes);

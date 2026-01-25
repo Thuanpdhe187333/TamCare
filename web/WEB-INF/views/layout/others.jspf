@@ -1,4 +1,4 @@
-<a class=" d-flex justify-content-center align-items-center scroll-to-top rounded" href="#page-top">
+ï»¿<a class=" d-flex justify-content-center align-items-center scroll-to-top rounded" href="#page-top">
   <i class="fas fa-angle-up"></i>
 </a>
 
@@ -21,7 +21,7 @@
           data-dismiss="modal"
           aria-label="Close"
           >
-          <span aria-hidden="true">×</span>
+          <span aria-hidden="true">x</span>
         </button>
       </div>
       <div class="modal-body">
@@ -35,7 +35,7 @@
           >
           Cancel
         </button>
-        <a class="btn btn-primary" href="login.html">Logout</a>
+        <a class="btn btn-primary" href="${pageContext.request.contextPath}/authen?action=logout">Logout</a>
       </div>
     </div>
   </div>

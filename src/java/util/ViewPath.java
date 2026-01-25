@@ -29,11 +29,17 @@ public class ViewPath {
     public static final String USER_UPDATE = "/WEB-INF/views/admin/user/update.jsp";
 
     public static final String VIEW_LOGIN = "/index.jsp";
-    public static final String VIEW_FORGOT = "/WEB-INF/views/forgot_password.jsp";
-    public static final String VIEW_RESET = "/WEB-INF/views/reset_password.jsp";
+    public static final String VIEW_FORGOT = "/WEB-INF/views/admin/user/forgot_password.jsp";
+    public static final String VIEW_RESET = "/WEB-INF/views/admin/user/reset_password.jsp";
+    public static final String VIEW_VERIFY_OTP = "/WEB-INF/views/admin/user/verify_otp.jsp";
 
     // Goods Receipt
     public static final String GRN_LIST = "/WEB-INF/views/inbound/GoodsReceiptList.jsp";
     public static final String GRN_DETAIL = "/WEB-INF/views/inbound/GoodsReceiptDetail.jsp";
     public static final String GRN_CREATE = "/WEB-INF/views/inbound/GoodsReceiptCreate.jsp";
+
+    // supplier
+    public static final String SUPPLIER_LIST = "/WEB-INF/views/admin/supplier/list.jsp";
+    public static final String SUPPLIER_CREATE = "/WEB-INF/views/admin/supplier/create.jsp";
+    public static final String SUPPLIER_UPDATE = "/WEB-INF/views/admin/supplier/update.jsp";
 }
