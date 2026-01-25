@@ -8,7 +8,7 @@
         <div class="sidebar-brand-icon">
             <i class="fas fa-warehouse"></i>
         </div>
-        <div class="sidebar-brand-text mx-3">WMS Admin</div>
+        <div class="sidebar-brand-text mx-3">WMS System</div>
     </a>
 
     <!-- Divider -->
