@@ -1,3 +1,4 @@
+
 package dao;
 
 import context.DBContext;
@@ -11,6 +12,48 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ProductDAO extends DBContext {
+
+    /**
+     * Get all products without pagination (for dropdowns)
+     * @return List of all products
+     * @throws Exception 
+     */
+    public List<ProductListDTO> getProducts() throws Exception {
+        List<ProductListDTO> list = new ArrayList<>();
+        
+        String sql = """
+            SELECT 
+                p.product_id, 
+                p.sku, 
+                p.name, 
+                p.barcode, 
+                p.created_at 
+            FROM product p 
+            ORDER BY p.product_id DESC
+        """;
+
+        try (Connection con = DBContext.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            
+            while (rs.next()) {
+                ProductListDTO dto = new ProductListDTO();
+                dto.setProductId(rs.getLong("product_id"));
+                dto.setSku(rs.getString("sku"));
+                dto.setName(rs.getString("name"));
+                dto.setBarcode(rs.getString("barcode"));
+                
+                java.sql.Timestamp ts = rs.getTimestamp("created_at");
+                if (ts != null) {
+                    dto.setCreatedAt(ts.toLocalDateTime());
+                }
+                
+                list.add(dto);
+            }
+        }
+        
+        return list;
+    }
 
     public List<ProductListDTO> getAllProducts(int limit, int offset) throws Exception {
         return getAllProducts(limit, offset, null, null, null, "product_id", "DESC");
@@ -210,7 +253,6 @@ public class ProductDAO extends DBContext {
                 }
             }
         }
-        
         return list;
     }
 }

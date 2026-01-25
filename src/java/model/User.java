@@ -21,4 +21,5 @@ public class User {
     private LocalDateTime lastLoginAt;
     private String lastLoginIp;
     private Boolean isDeleted;
+    private String roleNames;
 }

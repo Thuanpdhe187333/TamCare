@@ -5,12 +5,13 @@ import model.Warehouse;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class WarehouseDAO extends DBContext {
 
-    public List<Warehouse> getAll() throws Exception {
+    public List<Warehouse> getAll() throws SQLException {
         List<Warehouse> list = new ArrayList<>();
         
         String sql = """
@@ -50,7 +51,7 @@ public class WarehouseDAO extends DBContext {
         return list;
     }
 
-    public Warehouse getWarehouseById(Long warehouseId) throws Exception {
+    public Warehouse getWarehouseById(Long warehouseId) throws SQLException {
         String sql = """
             SELECT 
                 warehouse_id,

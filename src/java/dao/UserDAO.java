@@ -12,7 +12,7 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.Base64;
 
-public class UserDAO {
+public class UserDAO extends DBContext implements Dao<User> {
 
     
     private final Connection conn = DBContext.getConnection();
@@ -65,39 +65,70 @@ public class UserDAO {
     }
 
 
-    public List<User> getAll(int limit, int offset) throws SQLException {
-        String sql = """
-            SELECT user_id, username, full_name, email, phone,
-                   password_hash, status, warehouse_id, created_by,
-                   created_at, last_login_at, last_login_ip, is_deleted
-            FROM user
-            WHERE is_deleted = 0
-            ORDER BY user_id DESC
-            LIMIT ? OFFSET ?
+    public List<User> getList(String search, String sort, Long page, Long size, Long roleId, String status) throws SQLException {
+        List<User> list = new ArrayList<>();
+
+        String query = """
+            SELECT u.*, GROUP_CONCAT(r.name SEPARATOR ', ') as role_names
+            FROM user u
+            LEFT JOIN user_role ur ON u.user_id = ur.user_id
+            LEFT JOIN role r ON ur.role_id = r.role_id
+            WHERE u.is_deleted = 0
+              AND (u.username LIKE ? OR u.full_name LIKE ? OR u.email LIKE ?)
+              AND (? IS NULL OR u.user_id IN (SELECT ur2.user_id FROM user_role ur2 WHERE ur2.role_id = ?))
+              AND (? IS NULL OR u.status = ?)
+            GROUP BY u.user_id
+            ORDER BY
+                CASE WHEN ? = 'username' THEN u.username END ASC,
+                CASE WHEN ? = 'full_name' THEN u.full_name END ASC,
+                CASE WHEN ? = 'email' THEN u.email END ASC,
+                CASE WHEN ? = 'user_id' OR ? IS NULL OR ? = '' THEN u.user_id END DESC
+            LIMIT ? OFFSET ?;
         """;
 
-        List<User> list = new ArrayList<>();
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, limit);
-            ps.setInt(2, offset);
+        PreparedStatement statement = conn.prepareStatement(query);
+        var offset = (page - 1) * size;
+        this.prepare(statement, search, search, search, roleId, roleId, status, status, sort, sort, sort, sort, sort, sort, size, offset);
 
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    User user = mapResultSetToUser(rs);
-                    list.add(user);
-                }
-            }
+        ResultSet result = statement.executeQuery();
+
+        while (result.next()) {
+            User user = mapResultSetToUser(result);
+            list.add(user);
         }
+
         return list;
+    }
+
+    public Long getPageCount(String search, Long roleId, String status) throws SQLException {
+        String query = """
+            SELECT COUNT(DISTINCT u.user_id) FROM user u
+            LEFT JOIN user_role ur ON u.user_id = ur.user_id
+            WHERE u.is_deleted = 0
+              AND (u.username LIKE ? OR u.full_name LIKE ? OR u.email LIKE ?)
+              AND (? IS NULL OR ur.role_id = ?)
+              AND (? IS NULL OR u.status = ?)
+        """;
+
+        PreparedStatement statement = conn.prepareStatement(query);
+        this.prepare(statement, search, search, search, roleId, roleId, status, status);
+
+        ResultSet result = statement.executeQuery();
+        if (result.next()) {
+            return result.getLong(1);
+        }
+
+        return 0L;
     }
 
     public User getById(Long id) throws SQLException {
         String sql = """
-            SELECT user_id, username, full_name, email, phone,
-                   password_hash, status, warehouse_id, created_by,
-                   created_at, last_login_at, last_login_ip, is_deleted
-            FROM user
-            WHERE user_id = ? AND is_deleted = 0
+            SELECT u.*, GROUP_CONCAT(r.name SEPARATOR ', ') as role_names
+            FROM user u
+            LEFT JOIN user_role ur ON u.user_id = ur.user_id
+            LEFT JOIN role r ON ur.role_id = r.role_id
+            WHERE u.user_id = ? AND u.is_deleted = 0
+            GROUP BY u.user_id
         """;
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -248,11 +279,70 @@ public class UserDAO {
         return roleIds;
     }
 
+    public List<model.Role> getRolesDetailByUserId(Long userId) throws SQLException {
+        String sql = """
+            SELECT r.*
+            FROM role r
+            JOIN user_role ur ON r.role_id = ur.role_id
+            WHERE ur.user_id = ?
+        """;
+
+        List<model.Role> roles = new ArrayList<>();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    model.Role role = new model.Role();
+                    role.setRoleId(rs.getLong("role_id"));
+                    role.setName(rs.getString("name"));
+                    role.setDescription(rs.getString("description"));
+                    roles.add(role);
+                }
+            }
+        }
+        return roles;
+    }
+
+    public List<model.Permission> getPermissionsDetailByUserId(Long userId) throws SQLException {
+        String sql = """
+            SELECT DISTINCT p.*
+            FROM permission p
+            JOIN role_permission rp ON p.permission_id = rp.permission_id
+            JOIN user_role ur ON rp.role_id = ur.role_id
+            WHERE ur.user_id = ?
+        """;
+
+        List<model.Permission> permissions = new ArrayList<>();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    model.Permission p = new model.Permission();
+                    p.setPermissionId(rs.getLong("permission_id"));
+                    p.setCode(rs.getString("code"));
+                    p.setName(rs.getString("name"));
+                    permissions.add(p);
+                }
+            }
+        }
+        return permissions;
+    }
+
     public boolean deleteUserRoles(Long userId) throws SQLException {
         String sql = "DELETE FROM user_role WHERE user_id = ?";
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, userId);
+            ps.executeUpdate();
+            return true;
+        }
+    }
+
+    public boolean deleteUserRolesByRoleId(Long roleId) throws SQLException {
+        String sql = "DELETE FROM user_role WHERE role_id = ?";
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, roleId);
             ps.executeUpdate();
             return true;
         }
@@ -305,18 +395,25 @@ public class UserDAO {
         user.setLastLoginIp(rs.getString("last_login_ip"));
         user.setIsDeleted(rs.getBoolean("is_deleted"));
 
+        try {
+            user.setRoleNames(rs.getString("role_names"));
+        } catch (SQLException e) {
+            // Column might not exist in some queries
+        }
+
         return user;
     }
     
     public User findByEmail(String email) throws SQLException {
         String sql = """
-            SELECT user_id, username, full_name, email, phone,
-                   password_hash, status, warehouse_id, created_by,
-                   created_at, last_login_at, last_login_ip, is_deleted
-            FROM user
-            WHERE email = ?
-              AND status = 'ACTIVE'
-              AND is_deleted = 0
+            SELECT u.*, GROUP_CONCAT(r.name SEPARATOR ', ') as role_names
+            FROM user u
+            LEFT JOIN user_role ur ON u.user_id = ur.user_id
+            LEFT JOIN role r ON ur.role_id = r.role_id
+            WHERE u.email = ?
+              AND u.status = 'ACTIVE'
+              AND u.is_deleted = 0
+            GROUP BY u.user_id
             LIMIT 1
         """;
 
@@ -333,44 +430,41 @@ public class UserDAO {
     }
 
     /**
-     * Tạo token reset password, lưu hash vào DB.
-     * Return rawToken để tạo link gửi email / show dev.
+     * Tạo OTP 6 số để reset password.
+     * Lưu SHA-256(otp) vào DB, trả otp raw để gửi email.
      */
-    public String createPasswordResetToken(Long userId) throws SQLException {
-        // Step 1: token raw (URL-safe)
-        String rawToken = generateTokenUrlSafe(32);
+    public String createPasswordResetOtpByEmail(String email) throws SQLException {
+        User u = findByEmail(email);
+        if (u == null) return null;
 
-        // Step 2: hash token để lưu DB
-        String tokenHash = sha256Hex(rawToken);
-
-        // Step 3: hạn token
+        String otp = generateOtp6Digits();
+        String tokenHash = sha256Hex(otp);
         Timestamp expiresAt = new Timestamp(System.currentTimeMillis() + RESET_TOKEN_TTL.toMillis());
 
-        // Step 4: insert token
         String sql = """
             INSERT INTO password_reset_token (user_id, token_hash, expires_at)
             VALUES (?, ?, ?)
         """;
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, userId);
+            ps.setLong(1, u.getUserId());
             ps.setString(2, tokenHash);
             ps.setTimestamp(3, expiresAt);
             ps.executeUpdate();
         }
 
-        return rawToken;
+        return otp;
     }
 
     /**
-     * Verify token raw:
+     * Verify OTP:
      * - token_hash match
      * - used_at is null
      * - expires_at > now
      * => return user_id nếu hợp lệ
      */
-    public Long verifyResetTokenAndGetUserId(String rawToken) throws SQLException {
-        String tokenHash = sha256Hex(rawToken);
+    public Long verifyResetOtpAndGetUserId(String otp) throws SQLException {
+        String tokenHash = sha256Hex(otp);
 
         String sql = """
             SELECT user_id
@@ -385,21 +479,17 @@ public class UserDAO {
             ps.setString(1, tokenHash);
 
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getLong("user_id");
-                }
+                if (rs.next()) return rs.getLong("user_id");
             }
         }
         return null;
     }
 
     /**
-     * Đổi password_hash cho user.
-     * newHash phải là BCrypt hash (PasswordUtil.hashPassword(...) hoặc BCrypt.hashpw).
+     * Đổi password_hash cho user (hash BCrypt).
      */
     public boolean updatePasswordHash(Long userId, String newHash) throws SQLException {
         String sql = "UPDATE user SET password_hash = ? WHERE user_id = ? AND is_deleted = 0";
-
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, newHash);
             ps.setLong(2, userId);
@@ -408,10 +498,10 @@ public class UserDAO {
     }
 
     /**
-     * Mark token used.
+     * Mark OTP used.
      */
-    public boolean markResetTokenUsed(String rawToken) throws SQLException {
-        String tokenHash = sha256Hex(rawToken);
+    public boolean markResetOtpUsed(String otp) throws SQLException {
+        String tokenHash = sha256Hex(otp);
 
         String sql = """
             UPDATE password_reset_token
@@ -427,11 +517,10 @@ public class UserDAO {
     }
 
     /**
-     * Optional: update last login time/ip (để controller gọi sau login).
+     * Optional: update last login time/ip
      */
     public boolean updateLastLogin(Long userId, String ip) throws SQLException {
         String sql = "UPDATE user SET last_login_at = NOW(), last_login_ip = ? WHERE user_id = ?";
-
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, ip);
             ps.setLong(2, userId);
@@ -439,8 +528,16 @@ public class UserDAO {
         }
     }
 
-    // ===== Helpers for forgot password =====
+    // ==========================
+    // HELPERS
+    // ==========================
+    private String generateOtp6Digits() {
+        int otp = SECURE_RANDOM.nextInt(900000) + 100000; // 100000-999999
+        return String.valueOf(otp);
+    }
 
+    // (để sau này muốn token dài URL-safe vẫn dùng được)
+    @SuppressWarnings("unused")
     private String generateTokenUrlSafe(int numBytes) {
         byte[] bytes = new byte[numBytes];
         SECURE_RANDOM.nextBytes(bytes);

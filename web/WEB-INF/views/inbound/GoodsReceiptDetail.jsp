@@ -2,7 +2,6 @@
 <%@taglib tagdir="/WEB-INF/tags/" prefix="t" %>
 <%@taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <t:layout title="Goods Receipt Details">
-    <t:layout title="Goods Receipt Details">
         <div class="container-fluid py-4">
             <!-- Breadcrumb / Back Link -->
             <div class="d-flex justify-content-between align-items-center mb-4">
@@ -159,27 +158,5 @@
                 </c:if>
             </div>
         </div>
-    </t:layout>
 
-    <style>
-        .breadcrumb-item+.breadcrumb-item::before {
-            content: "›";
-            font-size: 1.2rem;
-            vertical-align: middle;
-        }
-
-        .card {
-            border-radius: 0.75rem;
-            overflow: hidden;
-        }
-
-        .table th {
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-
-        .badge {
-            font-weight: 500;
-        }
-    </style>
 </t:layout>

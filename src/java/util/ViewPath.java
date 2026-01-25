@@ -1,39 +1,42 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package util;
 
-/**
- *
- * @author HungTran
- */
 public class ViewPath {
 
     public static final String PO_LIST = "/WEB-INF/views/inbound/purchase-order-list.jsp";
     public static final String PO_DETAIL = "/WEB-INF/views/inbound/purchase-order-detail.jsp";
-    public static final String PO_FORM = "/WEB-INF/views/inbound/purchase-form.jsp";
+    public static final String PO_FORM_CREATE = "/WEB-INF/views/inbound/purchase-form-create.jsp";
+    public static final String PO_FORM_EDIT = "/WEB-INF/views/inbound/purchase-form-edit.jsp";
 
     public static final String ROLE_LIST = "/WEB-INF/views/admin/role/list.jsp";
     public static final String ROLE_CREATE = "/WEB-INF/views/admin/role/create.jsp";
     public static final String ROLE_UPDATE = "/WEB-INF/views/admin/role/update.jsp";
+    public static final String ROLE_DETAIL = "/WEB-INF/views/admin/role/detail.jsp";
 
     public static final String ADMIN_DASHBOARD = "/WEB-INF/views/admin/dashboard/page.jsp";
 
     public static final String PERMISSION_LIST = "/WEB-INF/views/admin/permission/list.jsp";
     public static final String PERMISSION_CREATE = "/WEB-INF/views/admin/permission/create.jsp";
     public static final String PERMISSION_UPDATE = "/WEB-INF/views/admin/permission/update.jsp";
+    public static final String PERMISSION_DETAIL = "/WEB-INF/views/admin/permission/detail.jsp";
 
     public static final String USER_LIST = "/WEB-INF/views/admin/user/list.jsp";
     public static final String USER_CREATE = "/WEB-INF/views/admin/user/create.jsp";
     public static final String USER_UPDATE = "/WEB-INF/views/admin/user/update.jsp";
+    public static final String USER_DETAIL = "/WEB-INF/views/admin/user/detail.jsp";
 
     public static final String VIEW_LOGIN = "/index.jsp";
-    public static final String VIEW_FORGOT = "/WEB-INF/views/forgot_password.jsp";
-    public static final String VIEW_RESET = "/WEB-INF/views/reset_password.jsp";
+    public static final String VIEW_FORGOT = "/WEB-INF/views/admin/user/forgot_password.jsp";
+    public static final String VIEW_RESET = "/WEB-INF/views/admin/user/reset_password.jsp";
+    public static final String VIEW_VERIFY_OTP = "/WEB-INF/views/admin/user/verify_otp.jsp";
 
     // Goods Receipt
     public static final String GRN_LIST = "/WEB-INF/views/inbound/GoodsReceiptList.jsp";
     public static final String GRN_DETAIL = "/WEB-INF/views/inbound/GoodsReceiptDetail.jsp";
     public static final String GRN_CREATE = "/WEB-INF/views/inbound/GoodsReceiptCreate.jsp";
+
+    // supplier
+    public static final String SUPPLIER_LIST = "/WEB-INF/views/admin/supplier/list.jsp";
+    public static final String SUPPLIER_CREATE = "/WEB-INF/views/admin/supplier/create.jsp";
+    public static final String SUPPLIER_UPDATE = "/WEB-INF/views/admin/supplier/update.jsp";
+    public static final String SUPPLIER_DETAIL = "/WEB-INF/views/admin/supplier/detail.jsp";
 }

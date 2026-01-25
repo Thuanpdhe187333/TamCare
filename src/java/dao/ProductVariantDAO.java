@@ -10,6 +10,8 @@ import java.util.List;
 
 public class ProductVariantDAO extends DBContext {
 
+    Connection con = DBContext.getConnection();
+
     public List<ProductVariantDTO> getActiveVariants() throws Exception {
         List<ProductVariantDTO> list = new ArrayList<>();
 
@@ -25,9 +27,7 @@ public class ProductVariantDAO extends DBContext {
             ORDER BY pv.variant_id
         """;
 
-        try (Connection con = DBContext.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+        try (PreparedStatement ps = con.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
                 ProductVariantDTO v = new ProductVariantDTO();
@@ -41,4 +41,24 @@ public class ProductVariantDAO extends DBContext {
 
         return list;
     }
+
+    public List<ProductVariantDTO> listByProductId(long productId) throws Exception {
+        String sql = "SELECT variant_id, variant_sku, color, size FROM product_variant WHERE product_id=? ORDER BY variant_id";
+        List<ProductVariantDTO> out = new ArrayList<>();
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setLong(1, productId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ProductVariantDTO v = new ProductVariantDTO();
+                    v.setVariantId(rs.getLong("variant_id"));
+                    v.setVariantSku(rs.getString("variant_sku"));
+                    v.setColor(rs.getString("color"));
+                    v.setSize(rs.getString("size"));
+                    out.add(v);
+                }
+            }
+        }
+        return out;
+    }
+
 }
