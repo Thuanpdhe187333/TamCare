@@ -1,187 +1,105 @@
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <%@taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
-<%@page import="java.util.List" %>
-<%@page import="java.util.Set" %>
-<%@page import="java.util.HashSet" %>
-<%@page import="model.Role" %>
-<%@page import="model.User" %>
-<%@page import="model.Warehouse" %>
+<%@taglib prefix="t" tagdir="/WEB-INF/tags/" %>
 
-<%
-  User user = (User) request.getAttribute("user");
-  List<Role> roles = (List<Role>) request.getAttribute("roles");
-  List<Long> selectedRoleIds = (List<Long>) request.getAttribute("selectedRoleIds");
-  List<Warehouse> warehouses = (List<Warehouse>) request.getAttribute("warehouses");
-  String error = (String) request.getAttribute("error");
-  
-  if (user == null) {
-    response.sendRedirect(request.getContextPath() + "/admin/user");
-    return;
-  }
-  if (roles == null) roles = new java.util.ArrayList<>();
-  if (selectedRoleIds == null) selectedRoleIds = new java.util.ArrayList<>();
-  if (warehouses == null) warehouses = new java.util.ArrayList<>();
-  
-  Set<Long> selectedSet = new HashSet<>(selectedRoleIds);
-  Long userWarehouseId = user.getWarehouseId();
-%>
+<t:layout title="Update User">
+    <jsp:attribute name="actions">
+        <t:link url="${pageContext.request.contextPath}/admin/user" variant="split" color="dark" icon="chevron-left">
+            Go back
+        </t:link>
+    </jsp:attribute>
 
-<html>
-  <head>
-    <%@include file="/WEB-INF/admin/layout/head.jspf"%>
-  </head>
-
-  <body class="d-flex flex-column" style="min-height: 100vh;">
-    <%@include file="/WEB-INF/admin/layout/header.jspf"%>
-    
-    <%@include file="/WEB-INF/admin/layout/sidebar.jspf"%>
-    
-    <main class="flex-grow-1 container-fluid py-4">
-      <div class="row">
-        <div class="col-12 col-md-10 col-lg-8 mx-auto">
-          <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1 class="h3 mb-0">
-              <i class="bi bi-person-gear me-2"></i>Cập nhật User
-            </h1>
-            <a href="${pageContext.request.contextPath}/admin/user" class="btn btn-outline-secondary">
-              <i class="bi bi-arrow-left me-1"></i>Quay lại
-            </a>
-          </div>
-
-          <c:if test="${not empty error}">
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-              <i class="bi bi-exclamation-triangle me-2"></i>${error}
-              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-          </c:if>
-
-          <div class="card shadow-sm">
+    <jsp:body>
+        <div class="card shadow-sm">
             <div class="card-body">
-              <form method="POST" action="${pageContext.request.contextPath}/admin/user/update">
-                <input type="hidden" name="id" value="${user.userId}">
+                <form hx-put="${pageContext.request.contextPath}/admin/user?id=${user.userId}" class="m-0">
+                    <input type="hidden" name="id" value="${user.userId}">
 
-                <div class="row">
-                  <div class="col-md-6 mb-3">
-                    <label for="username" class="form-label">
-                      Username <span class="text-danger">*</span>
-                    </label>
-                    <input type="text" class="form-control" id="username" name="username" 
-                           value="${user.username}" readonly>
-                    <small class="text-muted">Username không thể thay đổi</small>
-                  </div>
-
-                  <div class="col-md-6 mb-3">
-                    <label for="fullName" class="form-label">
-                      Họ tên <span class="text-danger">*</span>
-                    </label>
-                    <input type="text" class="form-control" id="fullName" name="fullName" required 
-                           value="${user.fullName}" placeholder="Nhập họ tên">
-                  </div>
-                </div>
-
-                <div class="row">
-                  <div class="col-md-6 mb-3">
-                    <label for="email" class="form-label">
-                      Email <span class="text-danger">*</span>
-                    </label>
-                    <input type="email" class="form-control" id="email" name="email" required 
-                           value="${user.email}" placeholder="example@email.com">
-                  </div>
-
-                  <div class="col-md-6 mb-3">
-                    <label for="phone" class="form-label">Số điện thoại</label>
-                    <input type="tel" class="form-control" id="phone" name="phone" 
-                           value="${user.phone}" placeholder="0123456789">
-                  </div>
-                </div>
-
-                <div class="row">
-                  <div class="col-md-6 mb-3">
-                    <label for="status" class="form-label">Trạng thái</label>
-                    <select class="form-select" id="status" name="status">
-                      <option value="ACTIVE" <%= "ACTIVE".equals(user.getStatus()) ? "selected" : "" %>>Hoạt động</option>
-                      <option value="INACTIVE" <%= "INACTIVE".equals(user.getStatus()) ? "selected" : "" %>>Khóa</option>
-                    </select>
-                  </div>
-
-                  <div class="col-md-6 mb-3">
-                    <label for="warehouseId" class="form-label">Kho</label>
-                    <select class="form-select" id="warehouseId" name="warehouseId">
-                      <option value="">Chọn kho</option>
-                      <c:forEach var="warehouse" items="${warehouses}">
-                        <%
-                          Warehouse w = (Warehouse) pageContext.getAttribute("warehouse");
-                          String selected = "";
-                          if (w != null) {
-                            Long whId = w.getWarehouseId();
-                            // Debug: So sánh userWarehouseId với warehouseId
-                            if (userWarehouseId != null && whId != null) {
-                              if (userWarehouseId.equals(whId)) {
-                                selected = "selected";
-                              }
-                            }
-                          }
-                        %>
-                        <option value="${warehouse.warehouseId}" <%= selected %>>
-                          ${warehouse.name}
-                        </option>
-                      </c:forEach>
-                    </select>
-                  </div>
-                </div>
-
-                <div class="mb-4">
-                  <label class="form-label">Roles</label>
-                  <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
-                    <c:choose>
-                      <c:when test="${empty roles}">
-                        <p class="text-muted mb-0">Chưa có role nào</p>
-                      </c:when>
-                      <c:otherwise>
-                        <div class="row">
-                          <c:forEach var="role" items="${roles}">
-                            <%
-                              model.Role r = (model.Role) pageContext.getAttribute("role");
-                              boolean isChecked = selectedSet.contains(r.getRoleId());
-                            %>
-                            <div class="col-md-6 mb-2">
-                              <div class="form-check">
-                                <input class="form-check-input" type="checkbox" 
-                                       name="roleIds" value="${role.roleId}" 
-                                       id="role_${role.roleId}"
-                                       <%= isChecked ? "checked" : "" %>>
-                                <label class="form-check-label" for="role_${role.roleId}">
-                                  <strong>${role.name}</strong>
-                                  <c:if test="${not empty role.description}">
-                                    <br><small class="text-muted">${role.description}</small>
-                                  </c:if>
-                                </label>
-                              </div>
-                            </div>
-                          </c:forEach>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" class="form-control bg-light" id="username" value="${user.username}" readonly disabled>
                         </div>
-                      </c:otherwise>
-                    </c:choose>
-                  </div>
-                  <small class="text-muted">Chọn các role mà user này được phép sử dụng</small>
-                </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="fullName" class="form-label">Full Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="fullName" name="fullName" required 
+                                   value="${user.fullName}" placeholder="Example: John Doe">
+                        </div>
+                    </div>
 
-                <div class="d-flex justify-content-end gap-2">
-                  <a href="${pageContext.request.contextPath}/admin/user" class="btn btn-secondary">
-                    <i class="bi bi-x-circle me-1"></i>Hủy
-                  </a>
-                  <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-check-circle me-1"></i>Cập nhật
-                  </button>
-                </div>
-              </form>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" id="email" name="email" required 
+                                   value="${user.email}" placeholder="Example: john@example.com">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="phone" class="form-label">Phone</label>
+                            <input type="text" class="form-control" id="phone" name="phone" 
+                                   value="${user.phone}" placeholder="Example: 0987654321">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="ACTIVE" <c:if test="${user.status == 'ACTIVE'}">selected</c:if>>Active</option>
+                                <option value="INACTIVE" <c:if test="${user.status == 'INACTIVE'}">selected</c:if>>Inactive</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="warehouseId" class="form-label">Warehouse</label>
+                            <select class="form-select" id="warehouseId" name="warehouseId">
+                                <option value="">-- No Warehouse --</option>
+                                <c:forEach var="w" items="${warehouses}">
+                                    <option value="${w.warehouseId}" <c:if test="${user.warehouseId == w.warehouseId}">selected</c:if>>
+                                        ${w.name} (${w.code})
+                                    </option>
+                                </c:forEach>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Roles <span class="text-danger">*</span></label>
+                        <div class="border rounded p-3 bg-light" style="max-height: 200px; overflow-y: auto;">
+                            <c:choose>
+                                <c:when test="${empty roles}">
+                                    <p class="text-muted mb-0">No roles available</p>
+                                </c:when>
+                                <c:otherwise>
+                                    <div class="row">
+                                        <c:forEach var="role" items="${roles}">
+                                            <div class="col-md-4 mb-2">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" 
+                                                           name="roleIds" value="${role.roleId}" 
+                                                           id="role_${role.roleId}"
+                                                           <c:if test="${selectedRoleIds.contains(role.roleId)}">checked</c:if>>
+                                                    <label class="form-check-label" for="role_${role.roleId}">
+                                                        ${role.name}
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </c:forEach>
+                                    </div>
+                                </c:otherwise>
+                            </c:choose>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <t:link url="${pageContext.request.contextPath}/admin/user"
+                                icon="x-circle" color="dark" variant="split">
+                            Cancel
+                        </t:link>
+                        <t:button type="submit" variant="split" icon="check-circle" color="primary">
+                            Update
+                        </t:button>
+                    </div>
+                </form>
             </div>
-          </div>
         </div>
-      </div>
-    </main>
-    
-    <%@include file="/WEB-INF/admin/layout/footer.jspf"%>
-    <%@include file="/WEB-INF/admin/layout/toast.jspf"%>
-  </body>
-</html>
+    </jsp:body>
+</t:layout>

@@ -61,8 +61,17 @@ prefix="t" %>
             <td>${role.description}</td>
             <td>
               <a
+                href="${pageContext.request.contextPath}/admin/role/detail?id=${role.roleId}"
+                class="btn btn-sm btn-circle btn-outline-info me-1"
+                title="View Detail"
+              >
+                <i class="bi bi-eye fab"></i>
+              </a>
+
+              <a
                 href="${pageContext.request.contextPath}/admin/role/update?id=${role.roleId}"
                 class="btn btn-sm btn-circle btn-outline-primary me-1"
+                title="Update"
               >
                 <i class="bi bi-pencil fab"></i>
               </a>
@@ -72,6 +81,7 @@ prefix="t" %>
                 class="btn btn-sm btn-circle btn-outline-danger"
                 data-bs-toggle="modal"
                 data-bs-target="#deleteModal${role.roleId}"
+                title="Delete"
               >
                 <i class="bi bi-trash fab"></i>
               </button>

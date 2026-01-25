@@ -37,6 +37,7 @@ public class RoleController extends HttpServlet {
         switch (path) {
             case "/create" -> viewCreate(request, response);
             case "/update" -> viewUpdate(request, response);
+            case "/detail" -> viewDetail(request, response);
             default -> viewList(request, response);
         }
     }
@@ -71,6 +72,24 @@ public class RoleController extends HttpServlet {
             request.getRequestDispatcher(ViewPath.ROLE_LIST).forward(request, response);
         } catch (SQLException e) {
             e.printStackTrace();
+        }
+    }
+
+    private void viewDetail(HttpServletRequest request, HttpServletResponse response)
+    throws ServletException, IOException {
+        try {
+            Long id = Long.valueOf(request.getParameter("id"));
+            var role = roleDao.getById(id);
+            if (role == null) {
+                response.sendError(HttpServletResponse.SC_NOT_FOUND, "Role not found");
+                return;
+            }
+            request.setAttribute("role", role);
+            request.setAttribute("permissions", roleDao.getPermissionsDetailByRoleId(id));
+            request.getRequestDispatcher(ViewPath.ROLE_DETAIL).forward(request, response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error loading detail");
         }
     }
 

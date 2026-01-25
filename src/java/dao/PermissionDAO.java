@@ -124,6 +124,10 @@ public class PermissionDAO extends DBContext implements Dao<Permission> {
     }
 
     public boolean delete(Long id) throws SQLException {
+        // 1. Delete associated role-permissions
+        deleteRolePermissionsByPermissionId(id);
+
+        // 2. Delete the permission itself
         String sql = """
             DELETE FROM permission
             WHERE permission_id = ?
@@ -133,6 +137,15 @@ public class PermissionDAO extends DBContext implements Dao<Permission> {
             ps.setLong(1, id);
 
             return ps.executeUpdate() > 0;
+        }
+    }
+
+    public boolean deleteRolePermissionsByPermissionId(Long permissionId) throws SQLException {
+        String sql = "DELETE FROM role_permission WHERE permission_id = ?";
+        try (PreparedStatement ps = CONNECTION.prepareStatement(sql)) {
+            ps.setLong(1, permissionId);
+            ps.executeUpdate();
+            return true;
         }
     }
 
@@ -167,5 +180,29 @@ public class PermissionDAO extends DBContext implements Dao<Permission> {
             }
         }
         return false;
+    }
+
+    public List<model.Role> getRolesByPermissionId(Long permissionId) throws SQLException {
+        String sql = """
+            SELECT r.*
+            FROM role r
+            JOIN role_permission rp ON r.role_id = rp.role_id
+            WHERE rp.permission_id = ?
+        """;
+
+        List<model.Role> list = new ArrayList<>();
+        try (PreparedStatement ps = CONNECTION.prepareStatement(sql)) {
+            ps.setLong(1, permissionId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    model.Role r = new model.Role();
+                    r.setRoleId(rs.getLong("role_id"));
+                    r.setName(rs.getString("name"));
+                    r.setDescription(rs.getString("description"));
+                    list.add(r);
+                }
+            }
+        }
+        return list;
     }
 }

@@ -34,6 +34,7 @@ public class PermissionController extends HttpServlet {
         switch (path) {
             case "/create" -> viewCreate(request, response);
             case "/update" -> viewUpdate(request, response);
+            case "/detail" -> viewDetail(request, response);
             default -> viewList(request, response);
         }
     }
@@ -74,6 +75,24 @@ public class PermissionController extends HttpServlet {
     private void viewCreate(HttpServletRequest request, HttpServletResponse response)
     throws ServletException, IOException {
         request.getRequestDispatcher(ViewPath.PERMISSION_CREATE).forward(request, response);
+    }
+
+    private void viewDetail(HttpServletRequest request, HttpServletResponse response)
+    throws ServletException, IOException {
+        try {
+            Long id = Long.valueOf(request.getParameter("id"));
+            var permission = permissionDao.getDetail(id);
+            if (permission == null) {
+                response.sendError(HttpServletResponse.SC_NOT_FOUND, "Permission not found");
+                return;
+            }
+            request.setAttribute("permission", permission);
+            request.setAttribute("roles", permissionDao.getRolesByPermissionId(id));
+            request.getRequestDispatcher(ViewPath.PERMISSION_DETAIL).forward(request, response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error loading detail");
+        }
     }
     private void viewUpdate(HttpServletRequest request, HttpServletResponse response)
     throws ServletException, IOException {

@@ -123,6 +123,14 @@ public class RoleDAO extends DBContext implements Dao {
     }
 
     public boolean delete(Long id) throws SQLException {
+        // 1. Delete associated permissions
+        deleteRolePermissions(id);
+
+        // 2. Delete associated user roles
+        UserDAO userDAO = new UserDAO();
+        userDAO.deleteUserRolesByRoleId(id);
+
+        // 3. Delete the role itself
         String sql = """
             DELETE FROM role
             WHERE role_id = ?
@@ -186,6 +194,30 @@ public class RoleDAO extends DBContext implements Dao {
             }
         }
         return permissionIds;
+    }
+
+    public List<model.Permission> getPermissionsDetailByRoleId(Long roleId) throws SQLException {
+        String sql = """
+            SELECT p.*
+            FROM permission p
+            JOIN role_permission rp ON p.permission_id = rp.permission_id
+            WHERE rp.role_id = ?
+        """;
+
+        List<model.Permission> list = new ArrayList<>();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, roleId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    model.Permission p = new model.Permission();
+                    p.setPermissionId(rs.getLong("permission_id"));
+                    p.setCode(rs.getString("code"));
+                    p.setName(rs.getString("name"));
+                    list.add(p);
+                }
+            }
+        }
+        return list;
     }
 
     public boolean deleteRolePermissions(Long roleId) throws SQLException {
