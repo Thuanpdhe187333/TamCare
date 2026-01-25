@@ -1,21 +1,28 @@
 package controller;
 
 import dao.UserDAO;
-import model.User;
-import util.PasswordUtil;
-
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
-
 import java.io.IOException;
+import java.sql.SQLException;
+import model.User;
+import util.PasswordUtil;
+import util.SendEmail;
 import util.ViewPath;
+import java.util.Random;
 
-@WebServlet(name = "AuthenticationController", urlPatterns = {"/authen"})
+@WebServlet(name = "AuthenticationController", urlPatterns = { "/authen" })
 public class AuthenticationController extends HttpServlet {
 
-    
+    private String generateOTP() {
+        Random rnd = new Random();
+        int number = rnd.nextInt(999999);
+        return String.format("%06d", number);
+    }
+
     private static final String SESSION_USER_KEY = "USER";
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -26,7 +33,9 @@ public class AuthenticationController extends HttpServlet {
         // logout
         if ("logout".equalsIgnoreCase(action)) {
             HttpSession session = request.getSession(false);
-            if (session != null) session.invalidate();
+            if (session != null) {
+                session.invalidate();
+            }
             response.sendRedirect(request.getContextPath() + ViewPath.VIEW_LOGIN);
             return;
         }
@@ -37,7 +46,7 @@ public class AuthenticationController extends HttpServlet {
             return;
         }
 
-        // show reset page 
+        // show reset page
         if ("reset".equalsIgnoreCase(action)) {
             request.getRequestDispatcher(ViewPath.VIEW_RESET).forward(request, response);
             return;
@@ -51,22 +60,23 @@ public class AuthenticationController extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
-        // đọc action từ form
         String action = trimOrEmpty(request.getParameter("action"));
 
-        // ===== Forgot Password =====
-//        if ("forgot".equalsIgnoreCase(action)) {
-//            handleForgot(request, response);
-//            return;
-//        }
-//
-//        // ===== Reset Password =====
-//        if ("reset".equalsIgnoreCase(action)) {
-//            handleReset(request, response);
-//            return;
-//        }
+        if ("forgot".equalsIgnoreCase(action)) {
+            handleForgot(request, response);
+            return;
+        }
 
-        // ===== Login (mặc định) =====
+        if ("verify-otp".equalsIgnoreCase(action)) {
+            handleVerifyOtp(request, response);
+            return;
+        }
+
+        if ("reset".equalsIgnoreCase(action)) {
+            handleReset(request, response);
+            return;
+        }
+
         handleLogin(request, response);
     }
 
@@ -88,113 +98,248 @@ public class AuthenticationController extends HttpServlet {
         UserDAO userDAO = new UserDAO();
         User user = userDAO.login(identity, password);
 
-        // success
-        if (user != null) {
-            user.setPasswordHash(null); // bảo mật
-
-            HttpSession session = request.getSession(true);
-            session.setAttribute(SESSION_USER_KEY, user);
-
-            // Optional: update last login
-            //userDAO.updateLastLogin(user.getUserId(), request.getRemoteAddr());
-
-            response.sendRedirect(request.getContextPath() + "/purchase-orders");
+        if (user == null) {
+            request.setAttribute("error", "Sai username/email hoặc password");
+            request.getRequestDispatcher(ViewPath.VIEW_LOGIN).forward(request, response);
             return;
         }
 
-        // fail
-        request.setAttribute("error", "Sai username/email hoặc password");
-        request.getRequestDispatcher(ViewPath.VIEW_LOGIN).forward(request, response);
+        // success
+        try {
+            // Tạo OTP (Session based)
+            String otp = generateOTP();
+
+            // Gửi OTP qua email
+            SendEmail.sendOTP(user.getEmail(), otp);
+
+            // DEV MODE
+            request.setAttribute("devOtp", otp);
+
+            HttpSession session = request.getSession(true);
+            session.setAttribute("AUTH_TYPE", "LOGIN");
+            session.setAttribute("PRE_LOGIN_USER_ID", user.getUserId());
+            session.setAttribute("RESET_EMAIL", user.getEmail());
+            session.setAttribute("CURRENT_OTP", otp);
+            session.setAttribute("OTP_CREATION_TIME", System.currentTimeMillis());
+
+            // Chuyển sang trang verify otp
+            request.getRequestDispatcher(ViewPath.VIEW_VERIFY_OTP).forward(request, response);
+
+        } catch (ServletException | IOException e) {
+            e.printStackTrace();
+            request.setAttribute("error", "Lỗi khi tạo OTP: " + e.getMessage());
+            request.getRequestDispatcher(ViewPath.VIEW_LOGIN).forward(request, response);
+        }
     }
 
-//    private void handleForgot(HttpServletRequest request, HttpServletResponse response)
-//            throws ServletException, IOException {
-//
-//        // lấy email
-//        String email = trimOrEmpty(request.getParameter("email"));
-//
-//       
-//        String msg = "Nếu email tồn tại trong hệ thống, link đặt lại mật khẩu sẽ được gửi.";
-//
-//        UserDAO userDAO = new UserDAO();
-//        User user = userDAO.findByEmail(email);
-//
-//        // Step 3: nếu có user -> tạo token + tạo link (DEV show)
-//        if (user != null) {
-//            String rawToken = userDAO.createPasswordResetToken(user.getUserId());
-//            if (rawToken != null) {
-//                String resetLink = request.getContextPath() + "/authen?action=reset&token=" + rawToken;
-//
-//                // DEV ONLY
-//                request.setAttribute("resetLink", resetLink);
-//                System.out.println("RESET LINK: " + resetLink);
-//            }
-//        }
-//
-//        // Step 4: forward lại forgot page
-//        request.setAttribute("msg", msg);
-//        request.getRequestDispatcher(VIEW_FORGOT).forward(request, response);
-//    }
-//
-//    private void handleReset(HttpServletRequest request, HttpServletResponse response)
-//            throws ServletException, IOException {
-//
-//        // Step 1: lấy token + password mới
-//        String token = trimOrEmpty(request.getParameter("token"));
-//        String newPassword = trimOrEmpty(request.getParameter("newPassword"));
-//        String confirm = trimOrEmpty(request.getParameter("confirmPassword"));
-//
-//        // Step 2: validate
-//        if (token.isEmpty()) {
-//            request.setAttribute("error", "Token không hợp lệ.");
-//            request.getRequestDispatcher(VIEW_RESET).forward(request, response);
-//            return;
-//        }
-//
-//        if (newPassword.length() < 6) {
-//            request.setAttribute("error", "Mật khẩu tối thiểu 6 ký tự.");
-//            request.getRequestDispatcher(VIEW_RESET).forward(request, response);
-//            return;
-//        }
-//
-//        if (!newPassword.equals(confirm)) {
-//            request.setAttribute("error", "Mật khẩu nhập lại không khớp.");
-//            request.getRequestDispatcher(VIEW_RESET).forward(request, response);
-//            return;
-//        }
-//
-//        // Step 3: verify token -> lấy userId
-//        UserDAO userDAO = new UserDAO();
-//        Long userId = userDAO.verifyResetTokenAndGetUserId(token);
-//
-//        if (userId == null) {
-//            request.setAttribute("error", "Link đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.");
-//            request.getRequestDispatcher(VIEW_RESET).forward(request, response);
-//            return;
-//        }
-//
-//        // Step 4: hash password mới (BCrypt)
-//        String newHash = PasswordUtil.hashPassword(newPassword);
-//
-//        // Step 5: update password + mark token used
-//        boolean updated = userDAO.updatePasswordHash(userId, newHash);
-//        boolean marked = userDAO.markResetTokenUsed(token);
-//
-//        if (!updated || !marked) {
-//            request.setAttribute("error", "Có lỗi xảy ra khi đổi mật khẩu. Vui lòng thử lại.");
-//            request.getRequestDispatcher(VIEW_RESET).forward(request, response);
-//            return;
-//        }
-//
-//        // Step 6: về login
-//        request.setAttribute("msg", "Đổi mật khẩu thành công. Vui lòng đăng nhập lại.");
-//        request.getRequestDispatcher(VIEW_LOGIN).forward(request, response);
-//    }
-
-    // ======================
-    // Utils
-    // ======================
     private String trimOrEmpty(String s) {
         return s == null ? "" : s.trim();
+    }
+
+    private void handleForgot(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
+        String email = trimOrEmpty(request.getParameter("email"));
+
+        // validate
+        if (email.isEmpty()) {
+            request.setAttribute("error", "Vui lòng nhập email");
+            request.getRequestDispatcher(ViewPath.VIEW_FORGOT).forward(request, response);
+            return;
+        }
+
+        UserDAO dao = new UserDAO();
+        try {
+            // Check email exists
+            User user = dao.findByEmail(email);
+            if (user == null) {
+                request.setAttribute("error", "Email không tồn tại trong hệ thống");
+                request.getRequestDispatcher(ViewPath.VIEW_FORGOT).forward(request, response);
+                return;
+            }
+
+            // Tạo OTP (Session based)
+            String otp = generateOTP();
+
+            // Gửi OTP qua email
+            SendEmail.sendOTP(email, otp);
+
+            // DEV MODE
+            request.setAttribute("devOtp", otp);
+
+            // lưu email vào session
+            HttpSession session = request.getSession(true);
+            session.setAttribute("RESET_EMAIL", email);
+            session.setAttribute("AUTH_TYPE", "RESET"); // Đánh dấu là flow Reset Password
+            session.setAttribute("CURRENT_OTP", otp);
+            session.setAttribute("OTP_CREATION_TIME", System.currentTimeMillis());
+
+            // chuyển sang trang verify otp
+            request.getRequestDispatcher(ViewPath.VIEW_VERIFY_OTP).forward(request, response);
+        } catch (ServletException | IOException | SQLException e) {
+            e.printStackTrace();
+            request.setAttribute("error", "Có lỗi xảy ra. Vui lòng thử lại.");
+            request.getRequestDispatcher(ViewPath.VIEW_FORGOT).forward(request, response);
+        }
+    }
+
+    private void handleVerifyOtp(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        String otp = trimOrEmpty(request.getParameter("otp"));
+
+        if (otp.isEmpty()) {
+            request.setAttribute("error", "Vui lòng nhập OTP");
+            request.getRequestDispatcher(ViewPath.VIEW_VERIFY_OTP).forward(request, response);
+            return;
+        }
+
+        // Validate Session OTP
+        HttpSession session = request.getSession(false);
+        if (session == null) {
+            response.sendRedirect(request.getContextPath() + ViewPath.VIEW_LOGIN);
+            return;
+        }
+
+        String sessionOtp = (String) session.getAttribute("CURRENT_OTP");
+        Long creationTime = (Long) session.getAttribute("OTP_CREATION_TIME");
+
+        if (sessionOtp == null || creationTime == null) {
+            request.setAttribute("error", "Yêu cầu hết hạn. Vui lòng thử lại.");
+            if ("RESET".equals(session.getAttribute("AUTH_TYPE"))) {
+                request.getRequestDispatcher(ViewPath.VIEW_FORGOT).forward(request, response);
+            } else {
+                request.getRequestDispatcher(ViewPath.VIEW_LOGIN).forward(request, response);
+            }
+            return;
+        }
+
+        // Check Expiry (5 minutes)
+        if (System.currentTimeMillis() - creationTime > 5 * 60 * 1000) {
+            session.removeAttribute("CURRENT_OTP");
+            session.removeAttribute("OTP_CREATION_TIME");
+            request.setAttribute("error", "OTP đã hết hạn. Vui lòng lấy mã mới.");
+            request.getRequestDispatcher(ViewPath.VIEW_VERIFY_OTP).forward(request, response);
+            return;
+        }
+
+        // Check Match
+        if (!sessionOtp.equals(otp)) {
+            request.setAttribute("error", "OTP không chính xác");
+            request.getRequestDispatcher(ViewPath.VIEW_VERIFY_OTP).forward(request, response);
+            return;
+        }
+
+        // OTP Valid
+        session.removeAttribute("CURRENT_OTP"); // Clear OTP to prevent replay
+
+        String authType = (String) session.getAttribute("AUTH_TYPE");
+
+        // CASE 1: LOGIN
+        if ("LOGIN".equals(authType)) {
+            Long preUserId = (Long) session.getAttribute("PRE_LOGIN_USER_ID");
+
+            UserDAO dao = new UserDAO();
+            try {
+                User user = dao.getById(preUserId);
+                if (user != null) {
+                    user.setPasswordHash(null);
+                    session.setAttribute(SESSION_USER_KEY, user);
+
+                    // Cleanup session
+                    session.removeAttribute("AUTH_TYPE");
+                    session.removeAttribute("PRE_LOGIN_USER_ID");
+                    session.removeAttribute("RESET_EMAIL");
+                    session.removeAttribute("OTP_CREATION_TIME");
+
+                    response.sendRedirect(request.getContextPath() + "/purchase-orders");
+                    return;
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+
+        // CASE 2: RESET PASSWORD (default)
+        // lưu vào session để sang bước reset
+        session.setAttribute("VERIFIED_OTP", "TRUE"); // Mark as verified for next step
+
+        // Chuyển sang trang reset password
+        request.getRequestDispatcher(ViewPath.VIEW_RESET).forward(request, response);
+    }
+
+    private void handleReset(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
+        // Không lấy OTP từ param nữa, mà lấy từ session
+        HttpSession session = request.getSession(false);
+        String otp = (session != null) ? (String) session.getAttribute("VERIFIED_OTP") : null;
+
+        if (otp == null) {
+            // Chưa verify OTP mà nhảy vào đây -> đá về forgot
+            response.sendRedirect(request.getContextPath() + "/authen?action=forgot");
+            return;
+        }
+
+        String newPassword = trimOrEmpty(request.getParameter("newPassword"));
+        String confirmPassword = trimOrEmpty(request.getParameter("confirmPassword"));
+
+        // validate input
+        if (newPassword.isEmpty() || confirmPassword.isEmpty()) {
+            request.setAttribute("error", "Vui lòng nhập mật khẩu mới");
+            request.getRequestDispatcher(ViewPath.VIEW_RESET).forward(request, response);
+            return;
+        }
+
+        if (!newPassword.equals(confirmPassword)) {
+            request.setAttribute("error", "Mật khẩu xác nhận không khớp");
+            request.getRequestDispatcher(ViewPath.VIEW_RESET).forward(request, response);
+            return;
+        }
+
+        UserDAO dao = new UserDAO();
+        try {
+            // Get Email from session
+            String email = (String) session.getAttribute("RESET_EMAIL");
+            if (email == null) {
+                response.sendRedirect(request.getContextPath() + ViewPath.VIEW_LOGIN);
+                return;
+            }
+
+            User user = dao.findByEmail(email);
+            if (user == null) {
+                request.setAttribute("error", "User không tìm thấy");
+                request.getRequestDispatcher(ViewPath.VIEW_RESET).forward(request, response);
+                return;
+            }
+
+            Long userId = user.getUserId();
+
+            // hash password mới (BCrypt)
+            String newHash = PasswordUtil.hashPassword(newPassword);
+
+            boolean updated = dao.updatePasswordHash(userId, newHash);
+            if (!updated) {
+                request.setAttribute("error", "Không thể cập nhật mật khẩu");
+                request.getRequestDispatcher(ViewPath.VIEW_RESET).forward(request, response);
+                return;
+            }
+
+            // xóa session reset
+            if (session != null) {
+                session.removeAttribute("RESET_EMAIL");
+                session.removeAttribute("VERIFIED_OTP"); // clear otp
+                session.removeAttribute("OTP_CREATION_TIME");
+            }
+
+            // thành công → quay về login
+            request.setAttribute("message",
+                    "Đổi mật khẩu thành công. Vui lòng đăng nhập lại.");
+            request.getRequestDispatcher(ViewPath.VIEW_LOGIN).forward(request, response);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            request.setAttribute("error", "Có lỗi xảy ra. Vui lòng thử lại.");
+            request.getRequestDispatcher(ViewPath.VIEW_RESET).forward(request, response);
+        }
     }
 }
