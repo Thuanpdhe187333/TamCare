@@ -1,15 +1,20 @@
 package dao;
 
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.List;
 
 public interface Dao<T> {
 
-    default List<T> getAll() throws SQLException {
+    default List<T> getList(Object[] parameters) throws SQLException {
         return null;
     }
 
-    default T getById(Long id) throws SQLException {
+    default Long getPageCount(Object... parameters) throws SQLException {
+        return null;
+    }
+
+    default T getDetail(Long id) throws SQLException {
         return null;
     }
 
@@ -23,5 +28,13 @@ public interface Dao<T> {
 
     default boolean delete(Long id) throws SQLException {
         return false;
+    }
+
+    default void prepare(PreparedStatement statement, Object... parameters) throws SQLException {
+        if (parameters != null) {
+            for (int i = 0; i < parameters.length; i++) {
+                statement.setObject(i + 1, parameters[i]);
+            }
+        }
     }
 }

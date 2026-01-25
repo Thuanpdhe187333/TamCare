@@ -10,34 +10,54 @@ import java.util.ArrayList;
 import java.util.List;
 import model.Role;
 
-public class RoleDAO extends DBContext {
+public class RoleDAO extends DBContext implements Dao {
 
     private final Connection conn = DBContext.getConnection();
 
-    public List<Role> getAll(int limit, int offset) throws SQLException {
-        String sql = """
-            SELECT role_id, name, description
-            FROM role
-            ORDER BY role_id DESC
-            LIMIT ? OFFSET ?
+    public List<Role> getList(String search, String sort, Long page, Long size) throws SQLException {
+        List<Role> list = new ArrayList<>();
+
+        String query = """
+            SELECT * FROM role
+            WHERE (name LIKE ? OR description LIKE ?)
+            ORDER BY
+                CASE WHEN ? = 'name' THEN name END ASC,
+                CASE WHEN ? = 'description' THEN description END ASC
+            LIMIT ? OFFSET ?;
         """;
 
-        List<Role> list = new ArrayList<>();
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, limit);
-            ps.setInt(2, offset);
+        PreparedStatement statement = conn.prepareStatement(query);
+        var offset = (page - 1) * size;
+        this.prepare(statement, search, search, sort, sort, size, offset);
 
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    Role role = new Role();
-                    role.setRoleId(rs.getLong("role_id"));
-                    role.setName(rs.getString("name"));
-                    role.setDescription(rs.getString("description"));
-                    list.add(role);
-                }
-            }
+        ResultSet result = statement.executeQuery();
+
+        while (result.next()) {
+            Role role = new Role();
+            role.setRoleId(result.getLong("role_id"));
+            role.setName(result.getString("name"));
+            role.setDescription(result.getString("description"));
+            list.add(role);
         }
+
         return list;
+    }
+
+    public Long getPageCount(String search) throws SQLException {
+        String query = """
+            SELECT COUNT(*) FROM role
+            WHERE (name LIKE ? OR description LIKE ?)
+        """;
+
+        PreparedStatement statement = conn.prepareStatement(query);
+        this.prepare(statement, search, search);
+
+        ResultSet result = statement.executeQuery();
+        if (result.next()) {
+            return result.getLong(1);
+        }
+
+        return 0L;
     }
 
     public Role getById(Long id) throws SQLException {
@@ -103,6 +123,14 @@ public class RoleDAO extends DBContext {
     }
 
     public boolean delete(Long id) throws SQLException {
+        // 1. Delete associated permissions
+        deleteRolePermissions(id);
+
+        // 2. Delete associated user roles
+        UserDAO userDAO = new UserDAO();
+        userDAO.deleteUserRolesByRoleId(id);
+
+        // 3. Delete the role itself
         String sql = """
             DELETE FROM role
             WHERE role_id = ?
@@ -166,6 +194,30 @@ public class RoleDAO extends DBContext {
             }
         }
         return permissionIds;
+    }
+
+    public List<model.Permission> getPermissionsDetailByRoleId(Long roleId) throws SQLException {
+        String sql = """
+            SELECT p.*
+            FROM permission p
+            JOIN role_permission rp ON p.permission_id = rp.permission_id
+            WHERE rp.role_id = ?
+        """;
+
+        List<model.Permission> list = new ArrayList<>();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, roleId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    model.Permission p = new model.Permission();
+                    p.setPermissionId(rs.getLong("permission_id"));
+                    p.setCode(rs.getString("code"));
+                    p.setName(rs.getString("name"));
+                    list.add(p);
+                }
+            }
+        }
+        return list;
     }
 
     public boolean deleteRolePermissions(Long roleId) throws SQLException {

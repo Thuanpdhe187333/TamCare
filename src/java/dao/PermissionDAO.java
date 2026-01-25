@@ -1,5 +1,6 @@
 package dao;
 
+import context.DBContext;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -7,56 +8,79 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
-
-import context.DBContext;
 import model.Permission;
 
-public class PermissionDAO extends DBContext {
+public class PermissionDAO extends DBContext implements Dao<Permission> {
 
     private final Connection CONNECTION = DBContext.getConnection();
 
-    public List<Permission> getAll() throws SQLException {
-        String sql = """
-            SELECT permission_id, code, name
-            FROM permission
-            ORDER BY permission_id ASC
+    public List<Permission> getList(String search, String sort, Long page, Long size) throws SQLException {
+        List<Permission> list = new ArrayList<>();
+
+        String query = """
+            SELECT * FROM permission
+            WHERE (name LIKE ? OR code LIKE ?)
+            ORDER BY
+                CASE WHEN ? = 'name' THEN name END ASC,
+                CASE WHEN ? = 'code' THEN code END ASC
+            LIMIT ? OFFSET ?;
         """;
 
-        List<Permission> list = new ArrayList<>();
-        try (PreparedStatement ps = CONNECTION.prepareStatement(sql)) {
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    Permission permission = new Permission();
-                    permission.setPermissionId(rs.getLong("permission_id"));
-                    permission.setCode(rs.getString("code"));
-                    permission.setName(rs.getString("name"));
-                    list.add(permission);
-                }
-            }
+        PreparedStatement statement = CONNECTION.prepareStatement(query);
+        var offset = (page - 1) * size;
+        this.prepare(statement, search, search, sort, sort, size, offset);
+
+        ResultSet result = statement.executeQuery();
+
+        while (result.next()) {
+            Permission permission = new Permission();
+            permission.setPermissionId(result.getLong("permission_id"));
+            permission.setCode(result.getString("code"));
+            permission.setName(result.getString("name"));
+            list.add(permission);
         }
+
         return list;
     }
 
-    public Permission getById(Long id) throws SQLException {
-        String sql = """
-            SELECT permission_id, code, name
+    public Long getPageCount(String search) throws SQLException {
+
+        String query = """
+            SELECT COUNT(*) FROM permission
+            WHERE (name LIKE ? OR code LIKE ?)
+        """;
+
+        PreparedStatement statement = CONNECTION.prepareStatement(query);
+        this.prepare(statement, search, search);
+
+        ResultSet result = statement.executeQuery();
+        if (result.next()) {
+            return result.getLong(1);
+        }
+
+        return Long.valueOf("0");
+    }
+
+    @Override
+    public Permission getDetail(Long id) throws SQLException {
+        String query = """
+            SELECT *
             FROM permission
             WHERE permission_id = ?
         """;
 
-        try (PreparedStatement ps = CONNECTION.prepareStatement(sql)) {
-            ps.setLong(1, id);
+        PreparedStatement statement = CONNECTION.prepareStatement(query);
+        this.prepare(statement, id);
 
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    Permission permission = new Permission();
-                    permission.setPermissionId(rs.getLong("permission_id"));
-                    permission.setCode(rs.getString("code"));
-                    permission.setName(rs.getString("name"));
-                    return permission;
-                }
-            }
+        ResultSet result = statement.executeQuery();
+        if (result.next()) {
+            Permission permission = new Permission();
+            permission.setPermissionId(result.getLong("permission_id"));
+            permission.setCode(result.getString("code"));
+            permission.setName(result.getString("name"));
+            return permission;
         }
+
         return null;
     }
 
@@ -100,6 +124,10 @@ public class PermissionDAO extends DBContext {
     }
 
     public boolean delete(Long id) throws SQLException {
+        // 1. Delete associated role-permissions
+        deleteRolePermissionsByPermissionId(id);
+
+        // 2. Delete the permission itself
         String sql = """
             DELETE FROM permission
             WHERE permission_id = ?
@@ -109,6 +137,15 @@ public class PermissionDAO extends DBContext {
             ps.setLong(1, id);
 
             return ps.executeUpdate() > 0;
+        }
+    }
+
+    public boolean deleteRolePermissionsByPermissionId(Long permissionId) throws SQLException {
+        String sql = "DELETE FROM role_permission WHERE permission_id = ?";
+        try (PreparedStatement ps = CONNECTION.prepareStatement(sql)) {
+            ps.setLong(1, permissionId);
+            ps.executeUpdate();
+            return true;
         }
     }
 
@@ -127,7 +164,7 @@ public class PermissionDAO extends DBContext {
 
     public boolean codeExists(String code, Long excludeId) throws SQLException {
         String sql = """
-            SELECT COUNT(*) FROM permission 
+            SELECT COUNT(*) FROM permission
             WHERE code = ? AND (? IS NULL OR permission_id != ?)
         """;
 
@@ -143,5 +180,29 @@ public class PermissionDAO extends DBContext {
             }
         }
         return false;
+    }
+
+    public List<model.Role> getRolesByPermissionId(Long permissionId) throws SQLException {
+        String sql = """
+            SELECT r.*
+            FROM role r
+            JOIN role_permission rp ON r.role_id = rp.role_id
+            WHERE rp.permission_id = ?
+        """;
+
+        List<model.Role> list = new ArrayList<>();
+        try (PreparedStatement ps = CONNECTION.prepareStatement(sql)) {
+            ps.setLong(1, permissionId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    model.Role r = new model.Role();
+                    r.setRoleId(rs.getLong("role_id"));
+                    r.setName(rs.getString("name"));
+                    r.setDescription(rs.getString("description"));
+                    list.add(r);
+                }
+            }
+        }
+        return list;
     }
 }
