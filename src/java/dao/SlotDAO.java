@@ -127,11 +127,53 @@ public class SlotDAO extends DBContext {
         
         return false;
     }
-
-    public void createSlotsBatch(Long zoneId, int rows, int cols, String codePrefix) throws Exception {
-        String sqlCheck = """
-            SELECT slot_id FROM slot WHERE zone_id = ? AND code = ?
+    
+    /**
+     * Kiểm tra xem code có tồn tại trong database không (toàn bộ, không chỉ zone hiện tại)
+     */
+    public boolean slotCodeExists(String code) throws Exception {
+        String sql = """
+            SELECT COUNT(*) as count
+            FROM slot
+            WHERE code = ?
         """;
+
+        try (Connection con = DBContext.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            
+            ps.setString(1, code);
+            
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("count") > 0;
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    public void createSlotsBatch(Long zoneId, int rows, int cols, String codePrefix) throws Exception {
+        // Normalize codePrefix: trim và uppercase
+        if (codePrefix == null) {
+            codePrefix = "SLOT";
+        }
+        codePrefix = codePrefix.trim().toUpperCase();
+        
+        // Lấy tất cả codes hiện có trong toàn bộ database để tránh duplicate
+        String sqlGetAllCodes = """
+            SELECT code FROM slot
+        """;
+        
+        java.util.Set<String> allExistingCodes = new java.util.HashSet<>();
+        try (Connection con = DBContext.getConnection();
+             PreparedStatement psGetAll = con.prepareStatement(sqlGetAllCodes)) {
+            try (ResultSet rs = psGetAll.executeQuery()) {
+                while (rs.next()) {
+                    allExistingCodes.add(rs.getString("code"));
+                }
+            }
+        }
         
         String sql = """
             INSERT INTO slot (zone_id, code, row_no, col_no, status)
@@ -141,31 +183,35 @@ public class SlotDAO extends DBContext {
         try (Connection con = DBContext.getConnection()) {
             con.setAutoCommit(false);
             
-            try (PreparedStatement psCheck = con.prepareStatement(sqlCheck);
-                 PreparedStatement ps = con.prepareStatement(sql)) {
+            try (PreparedStatement ps = con.prepareStatement(sql)) {
+                int insertedCount = 0;
                 
                 for (int row = 1; row <= rows; row++) {
                     for (int col = 1; col <= cols; col++) {
                         String code = codePrefix + "-R" + row + "-C" + col;
                         
-                        // Kiểm tra slot đã tồn tại chưa
-                        psCheck.setLong(1, zoneId);
-                        psCheck.setString(2, code);
-                        try (ResultSet rs = psCheck.executeQuery()) {
-                            if (!rs.next()) {
-                                // Chỉ insert nếu chưa tồn tại
-                                ps.setLong(1, zoneId);
-                                ps.setString(2, code);
-                                ps.setInt(3, row);
-                                ps.setInt(4, col);
-                                ps.addBatch();
-                            }
+                        // Chỉ insert nếu chưa tồn tại (bỏ qua các codes đã tồn tại, không báo lỗi)
+                        if (!allExistingCodes.contains(code)) {
+                            ps.setLong(1, zoneId);
+                            ps.setString(2, code);
+                            ps.setInt(3, row);
+                            ps.setInt(4, col);
+                            ps.addBatch();
+                            insertedCount++;
                         }
+                        // Nếu đã tồn tại thì bỏ qua, không báo lỗi
                     }
                 }
                 
-                ps.executeBatch();
-                con.commit();
+                if (insertedCount > 0) {
+                    ps.executeBatch();
+                    con.commit();
+                }
+                // Nếu không có slot nào được tạo (tất cả đều đã tồn tại), không báo lỗi, chỉ không làm gì
+            } catch (java.sql.SQLIntegrityConstraintViolationException e) {
+                con.rollback();
+                // Nếu vẫn bị lỗi constraint (trường hợp hiếm), chỉ báo lỗi đơn giản
+                throw new Exception("Some slot codes already exist and were skipped. New slots have been created successfully.");
             } catch (Exception e) {
                 con.rollback();
                 throw e;

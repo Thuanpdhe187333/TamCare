@@ -13,25 +13,81 @@ import java.util.List;
 public class ProductDAO extends DBContext {
 
     public List<ProductListDTO> getAllProducts(int limit, int offset) throws Exception {
+        return getAllProducts(limit, offset, null, null, null, "product_id", "DESC");
+    }
+    
+    public List<ProductListDTO> getAllProducts(int limit, int offset, String filterSku, 
+                                                String filterName, String filterBarcode,
+                                                String sortBy, String sortOrder) throws Exception {
         List<ProductListDTO> list = new ArrayList<>();
         
-        String sql = """
-            SELECT 
-                p.product_id,
-                p.sku,
-                p.name,
-                p.barcode,
-                p.created_at
-            FROM product p
-            ORDER BY p.product_id DESC
-            LIMIT ? OFFSET ?
-        """;
+        // Validate sortBy to prevent SQL injection
+        String[] allowedSortColumns = {"product_id", "sku", "name", "barcode", "created_at"};
+        String validSortBy = "product_id";
+        for (String col : allowedSortColumns) {
+            if (col.equalsIgnoreCase(sortBy)) {
+                validSortBy = col;
+                break;
+            }
+        }
+        
+        // Validate sortOrder
+        String validSortOrder = "DESC";
+        if ("ASC".equalsIgnoreCase(sortOrder)) {
+            validSortOrder = "ASC";
+        }
+        
+        // Build WHERE clause for filters
+        StringBuilder whereClause = new StringBuilder();
+        java.util.List<String> conditions = new ArrayList<>();
+        
+        if (filterSku != null && !filterSku.isBlank()) {
+            conditions.add("p.sku LIKE ?");
+        }
+        if (filterName != null && !filterName.isBlank()) {
+            conditions.add("p.name LIKE ?");
+        }
+        if (filterBarcode != null && !filterBarcode.isBlank()) {
+            conditions.add("p.barcode LIKE ?");
+        }
+        
+        if (!conditions.isEmpty()) {
+            whereClause.append("WHERE ").append(String.join(" AND ", conditions));
+        }
+        
+        StringBuilder sqlBuilder = new StringBuilder();
+        sqlBuilder.append("SELECT ");
+        sqlBuilder.append("    p.product_id, ");
+        sqlBuilder.append("    p.sku, ");
+        sqlBuilder.append("    p.name, ");
+        sqlBuilder.append("    p.barcode, ");
+        sqlBuilder.append("    p.created_at ");
+        sqlBuilder.append("FROM product p ");
+        sqlBuilder.append(whereClause.toString());
+        sqlBuilder.append(" ORDER BY p.").append(validSortBy).append(" ").append(validSortOrder);
+        sqlBuilder.append(" LIMIT ? OFFSET ?");
+        
+        String sql = sqlBuilder.toString();
 
         try (Connection con = DBContext.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
             
-            ps.setInt(1, limit);
-            ps.setInt(2, offset);
+            int paramIndex = 1;
+            
+            // Set filter parameters
+            if (filterSku != null && !filterSku.isBlank()) {
+                ps.setString(paramIndex++, "%" + filterSku + "%");
+            }
+            if (filterName != null && !filterName.isBlank()) {
+                ps.setString(paramIndex++, "%" + filterName + "%");
+            }
+            if (filterBarcode != null && !filterBarcode.isBlank()) {
+                ps.setString(paramIndex++, "%" + filterBarcode + "%");
+            }
+            
+            // Set limit and offset
+            ps.setInt(paramIndex++, limit);
+            ps.setInt(paramIndex, offset);
             
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {

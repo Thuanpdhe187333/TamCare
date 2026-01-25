@@ -85,7 +85,80 @@ public class ZoneDAO extends DBContext {
         return null;
     }
 
+    /**
+     * Kiểm tra xem zone code đã tồn tại trong warehouse này chưa
+     */
+    public boolean zoneCodeExistsInWarehouse(Long warehouseId, String code) throws Exception {
+        String sql = """
+            SELECT COUNT(*) as count
+            FROM zone
+            WHERE warehouse_id = ? AND code = ?
+        """;
+
+        try (Connection con = DBContext.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            
+            ps.setLong(1, warehouseId);
+            ps.setString(2, code);
+            
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("count") > 0;
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Kiểm tra xem zone code đã tồn tại trong toàn bộ database chưa
+     * (Nếu unique constraint là global)
+     */
+    public boolean zoneCodeExists(String code) throws Exception {
+        String sql = """
+            SELECT COUNT(*) as count
+            FROM zone
+            WHERE code = ?
+        """;
+
+        try (Connection con = DBContext.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            
+            ps.setString(1, code);
+            
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("count") > 0;
+                }
+            }
+        }
+        
+        return false;
+    }
+    
     public Long createZone(Long warehouseId, String code, String name, String zoneType) throws Exception {
+        // Normalize code: trim và uppercase
+        if (code == null || code.isBlank()) {
+            throw new Exception("Zone code cannot be empty");
+        }
+        code = code.trim().toUpperCase();
+        
+        // Validate code không được chứa ký tự đặc biệt
+        if (!code.matches("^[A-Z0-9_-]+$")) {
+            throw new Exception("Zone code can only contain letters, numbers, hyphens and underscores");
+        }
+        
+        // Kiểm tra code đã tồn tại trong warehouse này chưa
+        if (zoneCodeExistsInWarehouse(warehouseId, code)) {
+            throw new Exception("Zone code '" + code + "' already exists in this warehouse. Please use a different code");
+        }
+        
+        // Kiểm tra code đã tồn tại trong toàn bộ database chưa (nếu unique constraint là global)
+        if (zoneCodeExists(code)) {
+            throw new Exception("Zone code '" + code + "' already exists in the system. Please use a different code");
+        }
+        
         String sql = """
             INSERT INTO zone (warehouse_id, code, name, zone_type, status)
             VALUES (?, ?, ?, ?, 'ACTIVE')
@@ -106,6 +179,8 @@ public class ZoneDAO extends DBContext {
                     return rs.getLong(1);
                 }
             }
+        } catch (java.sql.SQLIntegrityConstraintViolationException e) {
+            throw new Exception("Zone code '" + code + "' already exists in the system. Please use a different code");
         }
         
         return null;

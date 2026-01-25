@@ -69,6 +69,18 @@
       <span>Goods Receipt</span>
     </a>
   </li>
+  <li class="nav-item">
+    <a class="nav-link" href="${pageContext.request.contextPath}/products">
+      <i class="fas fa-fw fa-box"></i>
+      <span>Products</span>
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="${pageContext.request.contextPath}/warehouse-layout">
+      <i class="fas fa-fw fa-warehouse"></i>
+      <span>Warehouse Layout</span>
+    </a>
+  </li>
 
   <!-- Divider -->
   <hr class="sidebar-divider" />

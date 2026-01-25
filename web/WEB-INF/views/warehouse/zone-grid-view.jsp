@@ -5,7 +5,10 @@
 <%@page import="dto.SlotDetailDTO"%>
 <%@page import="model.Zone"%>
 <%@page import="dto.ProductVariantDTO"%>
-<%@taglib uri="jakarta.tags.core" prefix="c"%>
+<%@taglib tagdir="/WEB-INF/tags/" prefix="t"%>
+<%@taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+<%@taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt"%>
 
 <%
     List<SlotDetailDTO> slots = (List<SlotDetailDTO>) request.getAttribute("slots");
@@ -13,33 +16,28 @@
     Long warehouseId = (Long) request.getAttribute("warehouseId");
     List<ProductVariantDTO> variants = (List<ProductVariantDTO>) request.getAttribute("variants");
     
-    // Tạo map để tổ chức slots theo row và col
-    Map<Integer, Map<Integer, SlotDetailDTO>> slotGrid = new HashMap<>();
+    // Tính toán maxRow và maxCol
     int maxRow = 0;
     int maxCol = 0;
     
-    if (slots != null) {
+    if (slots != null && !slots.isEmpty()) {
         for (SlotDetailDTO slot : slots) {
-            if (slot.getRowNo() != null && slot.getColNo() != null) {
-                int row = slot.getRowNo();
-                int col = slot.getColNo();
-                
-                if (!slotGrid.containsKey(row)) {
-                    slotGrid.put(row, new HashMap<>());
-                }
-                slotGrid.get(row).put(col, slot);
-                
-                if (row > maxRow) maxRow = row;
-                if (col > maxCol) maxCol = col;
+            if (slot.getRowNo() != null && slot.getRowNo() > maxRow) {
+                maxRow = slot.getRowNo();
+            }
+            if (slot.getColNo() != null && slot.getColNo() > maxCol) {
+                maxCol = slot.getColNo();
             }
         }
     }
+    
+    // Set vào request attribute để JSTL có thể sử dụng
+    request.setAttribute("maxRow", maxRow);
+    request.setAttribute("maxCol", maxCol);
 %>
 
-<jsp:include page="../layout/head.jspf" />
-
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<style>
+<t:layout title="Zone Layout - ${zone.code}">
+    <style>
     .slot-grid-container {
         margin: 20px 0;
         padding: 20px;
@@ -181,103 +179,171 @@
     }
 </style>
 
-<div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h4 class="mb-0">
-                Layout Zone: <span class="badge bg-info"><c:out value="${zone.code}" /></span>
+                Zone Layout: <span class="badge bg-info"><c:out value="${zone.code}" /></span>
                 <c:out value="${zone.name}" />
             </h4>
-            <small class="text-muted">Loại: <c:out value="${zone.zoneType}" /></small>
+            <small class="text-muted">Type: <c:out value="${zone.zoneType}" /></small>
         </div>
-        <a href="<%= request.getContextPath() %>/warehouse-layout?warehouseId=<%= warehouseId %>" 
-           class="btn btn-secondary">Quay lại</a>
+        <a href="${pageContext.request.contextPath}/warehouse-layout?warehouseId=${warehouseId}" 
+           class="btn btn-secondary">Back</a>
     </div>
 
-    <!-- Chú thích -->
+    <!-- Legend -->
     <div class="legend">
         <div class="legend-item">
             <div class="legend-color empty" style="background-color: #d1ecf1; border-color: #0dcaf0;"></div>
-            <span>Slot trống (Có thể đặt hàng)</span>
+            <span>Empty Slot (Available)</span>
         </div>
         <div class="legend-item">
             <div class="legend-color occupied" style="background-color: #d4edda; border-color: #28a745;"></div>
-            <span>Slot có hàng</span>
+            <span>Occupied Slot</span>
         </div>
         <div class="legend-item">
             <div class="legend-color full" style="background-color: #fff3cd; border-color: #ffc107;"></div>
-            <span>Slot đầy</span>
+            <span>Full Slot</span>
         </div>
         <div class="legend-item">
             <div class="legend-color blocked" style="background-color: #f8d7da; border-color: #dc3545;"></div>
-            <span>Slot bị khóa</span>
+            <span>Blocked Slot</span>
         </div>
     </div>
 
-    <!-- Hướng dẫn -->
+    <!-- Instructions -->
     <div class="instructions">
-        <strong>Hướng dẫn:</strong>
+        <strong>Instructions:</strong>
         <ul class="mb-0">
-            <li>Click vào slot để xem chi tiết và quản lý sản phẩm trong slot đó</li>
-            <li>Slot trống (màu xanh nhạt) sẽ được làm nổi bật để dễ nhận biết</li>
-            <li>Slot có hàng hiển thị màu xanh lá, slot đầy màu vàng, slot bị khóa màu đỏ</li>
+            <li>Click on a slot to view details and manage products in that slot</li>
+            <li>Empty slots (light blue) will be highlighted for easy recognition</li>
+            <li>Occupied slots are green, full slots are yellow, blocked slots are red</li>
         </ul>
     </div>
 
     <!-- Slot Grid -->
     <div class="slot-grid-container">
-        <div class="screen-indicator">KHU VỰC VẬN HÀNH</div>
+        <div class="screen-indicator">OPERATION AREA</div>
         
-        <div class="slot-grid" id="slotGrid" style="grid-template-columns: 30px repeat(<%= maxCol > 0 ? maxCol : 10 %>, 80px); grid-template-rows: 30px repeat(<%= maxRow > 0 ? maxRow : 8 %>, 80px);">
+        <c:if test="${empty slots}">
+            <div style="text-align: center; padding: 40px; color: #6c757d; background-color: #f8f9fa; border-radius: 8px; margin: 20px 0;">
+                <h5>No slots in this zone</h5>
+                <p>Please go back and create slots for this zone first.</p>
+                <a href="${pageContext.request.contextPath}/warehouse-layout?warehouseId=${warehouseId}" class="btn btn-primary">Back</a>
+            </div>
+        </c:if>
+        
+        <c:if test="${not empty slots}">
+        <c:set var="maxColValue" value="${maxCol > 0 ? maxCol : 10}" />
+        <c:set var="maxRowValue" value="${maxRow > 0 ? maxRow : 8}" />
+        <div class="slot-grid" id="slotGrid" style="grid-template-columns: 30px repeat(${maxColValue}, 80px); grid-template-rows: 30px repeat(${maxRowValue}, 80px);">
             <!-- Header row -->
             <div></div>
-            <% for (int col = 1; col <= maxCol; col++) { %>
-            <div class="col-header"><%= col %></div>
-            <% } %>
+            <c:if test="${maxCol > 0}">
+            <c:forEach var="col" begin="1" end="${maxCol}">
+            <div class="col-header">${col}</div>
+            </c:forEach>
+            </c:if>
             
             <!-- Slot rows -->
-            <% for (int row = 1; row <= maxRow; row++) { %>
-                <div class="row-label"><%= (char)('A' + row - 1) %></div>
-                <% for (int col = 1; col <= maxCol; col++) { 
-                    SlotDetailDTO slot = null;
-                    if (slotGrid.containsKey(row) && slotGrid.get(row).containsKey(col)) {
-                        slot = slotGrid.get(row).get(col);
-                    }
-                %>
-                    <% if (slot != null) { %>
-                        <div class="slot-item 
-                            <%= slot.getStatus().equals("BLOCKED") ? "blocked" : 
-                                (slot.getIsEmpty() ? "empty" : 
-                                (slot.getMaxCapacity() != null && slot.getUsedCapacity().compareTo(slot.getMaxCapacity()) >= 0 ? "full" : "occupied")) %>"
-                             data-slot-id="<%= slot.getSlotId() %>"
-                             onclick="openSlotDetail(<%= slot.getSlotId() %>)">
-                            <div class="slot-code"><%= slot.getSlotCode() %></div>
-                            <% if (!slot.getIsEmpty()) { %>
-                                <div class="slot-info">
-                                    <%= slot.getProducts().size() %> SP<br>
-                                    <%= slot.getUsedCapacity() != null ? slot.getUsedCapacity().stripTrailingZeros().toPlainString() : "0" %>
-                                </div>
-                            <% } else { %>
-                                <div class="slot-info">Trống</div>
-                            <% } %>
-                        </div>
-                    <% } else { %>
-                        <div style="width: 80px; height: 80px;"></div>
-                    <% } %>
-                <% } %>
-            <% } %>
+            <c:if test="${maxRow > 0}">
+            <c:forEach var="row" begin="1" end="${maxRow}">
+                <c:set var="rowCharIndex" value="${row - 1}" />
+                <c:set var="rowChar" value="" />
+                <c:choose>
+                    <c:when test="${rowCharIndex == 0}"><c:set var="rowChar" value="A" /></c:when>
+                    <c:when test="${rowCharIndex == 1}"><c:set var="rowChar" value="B" /></c:when>
+                    <c:when test="${rowCharIndex == 2}"><c:set var="rowChar" value="C" /></c:when>
+                    <c:when test="${rowCharIndex == 3}"><c:set var="rowChar" value="D" /></c:when>
+                    <c:when test="${rowCharIndex == 4}"><c:set var="rowChar" value="E" /></c:when>
+                    <c:when test="${rowCharIndex == 5}"><c:set var="rowChar" value="F" /></c:when>
+                    <c:when test="${rowCharIndex == 6}"><c:set var="rowChar" value="G" /></c:when>
+                    <c:when test="${rowCharIndex == 7}"><c:set var="rowChar" value="H" /></c:when>
+                    <c:when test="${rowCharIndex == 8}"><c:set var="rowChar" value="I" /></c:when>
+                    <c:when test="${rowCharIndex == 9}"><c:set var="rowChar" value="J" /></c:when>
+                    <c:when test="${rowCharIndex == 10}"><c:set var="rowChar" value="K" /></c:when>
+                    <c:when test="${rowCharIndex == 11}"><c:set var="rowChar" value="L" /></c:when>
+                    <c:when test="${rowCharIndex == 12}"><c:set var="rowChar" value="M" /></c:when>
+                    <c:when test="${rowCharIndex == 13}"><c:set var="rowChar" value="N" /></c:when>
+                    <c:when test="${rowCharIndex == 14}"><c:set var="rowChar" value="O" /></c:when>
+                    <c:when test="${rowCharIndex == 15}"><c:set var="rowChar" value="P" /></c:when>
+                    <c:when test="${rowCharIndex == 16}"><c:set var="rowChar" value="Q" /></c:when>
+                    <c:when test="${rowCharIndex == 17}"><c:set var="rowChar" value="R" /></c:when>
+                    <c:when test="${rowCharIndex == 18}"><c:set var="rowChar" value="S" /></c:when>
+                    <c:when test="${rowCharIndex == 19}"><c:set var="rowChar" value="T" /></c:when>
+                    <c:when test="${rowCharIndex == 20}"><c:set var="rowChar" value="U" /></c:when>
+                    <c:when test="${rowCharIndex == 21}"><c:set var="rowChar" value="V" /></c:when>
+                    <c:when test="${rowCharIndex == 22}"><c:set var="rowChar" value="W" /></c:when>
+                    <c:when test="${rowCharIndex == 23}"><c:set var="rowChar" value="X" /></c:when>
+                    <c:when test="${rowCharIndex == 24}"><c:set var="rowChar" value="Y" /></c:when>
+                    <c:otherwise><c:set var="rowChar" value="Z" /></c:otherwise>
+                </c:choose>
+                <div class="row-label">${rowChar}</div>
+                <c:forEach var="col" begin="1" end="${maxCol}">
+                    <c:set var="slot" value="${null}" />
+                    <c:forEach items="${slots}" var="s">
+                        <c:if test="${s.rowNo == row && s.colNo == col}">
+                            <c:set var="slot" value="${s}" />
+                        </c:if>
+                    </c:forEach>
+                    <c:choose>
+                        <c:when test="${slot != null}">
+                            <c:set var="slotClass" value="" />
+                            <c:choose>
+                                <c:when test="${slot.status == 'BLOCKED'}">
+                                    <c:set var="slotClass" value="blocked" />
+                                </c:when>
+                                <c:when test="${slot.isEmpty}">
+                                    <c:set var="slotClass" value="empty" />
+                                </c:when>
+                                <c:when test="${slot.maxCapacity != null && slot.usedCapacity >= slot.maxCapacity}">
+                                    <c:set var="slotClass" value="full" />
+                                </c:when>
+                                <c:otherwise>
+                                    <c:set var="slotClass" value="occupied" />
+                                </c:otherwise>
+                            </c:choose>
+                            <div class="slot-item ${slotClass}"
+                                 data-slot-id="${slot.slotId}"
+                                 onclick="openSlotDetail(${slot.slotId})">
+                                <div class="slot-code"><c:out value="${slot.slotCode}" /></div>
+                                <c:choose>
+                                    <c:when test="${!slot.isEmpty}">
+                                        <div class="slot-info">
+                                            ${fn:length(slot.products)} SP<br>
+                                            <c:choose>
+                                                <c:when test="${slot.usedCapacity != null}">
+                                                    <fmt:formatNumber value="${slot.usedCapacity}" minFractionDigits="0" maxFractionDigits="2" />
+                                                </c:when>
+                                                <c:otherwise>0</c:otherwise>
+                                            </c:choose>
+                                        </div>
+                                    </c:when>
+                                    <c:otherwise>
+                                        <div class="slot-info">Empty</div>
+                                    </c:otherwise>
+                                </c:choose>
+                            </div>
+                        </c:when>
+                        <c:otherwise>
+                            <div style="width: 80px; height: 80px;"></div>
+                        </c:otherwise>
+                    </c:choose>
+                </c:forEach>
+            </c:forEach>
+            </c:if>
         </div>
+        </c:if>
     </div>
-</div>
 
-<!-- Modal chi tiết Slot -->
-<div class="modal fade" id="slotDetailModal" tabindex="-1" aria-labelledby="slotDetailModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="slotDetailModalLabel">Chi tiết Slot</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
+    <!-- Modal chi tiết Slot -->
+    <div class="modal fade" id="slotDetailModal" tabindex="-1" aria-labelledby="slotDetailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="slotDetailModalLabel">Chi tiết Slot</h5>
+                    <button type="button" class="btn-close-modal" onclick="closeSlotDetailModal()" aria-label="Close" style="background: none; border: none; font-size: 24px; color: #dc3545; cursor: pointer; padding: 0; width: 30px; height: 30px; line-height: 30px; text-align: center;">×</button>
+                </div>
             <div class="modal-body" id="slotDetailContent">
                 <div class="text-center">
                     <div class="spinner-border" role="status">
@@ -289,64 +355,83 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-const warehouseId = <%= warehouseId %>;
-const zoneId = <%= zone.getZoneId() %>;
-const variants = [
-    <% if (variants != null) {
-        for (int i = 0; i < variants.size(); i++) {
-            ProductVariantDTO v = variants.get(i);
-            if (i > 0) out.print(",");
-    %>
-    {
-        variantId: <%= v.getVariantId() %>,
-        variantSku: "<%= v.getVariantSku() != null ? v.getVariantSku().replace("\"", "\\\"") : "" %>",
-        productName: "<%= v.getProductName() != null ? v.getProductName().replace("\"", "\\\"") : "" %>"
-    }<% } } %>
-];
+    <script>
+    const warehouseId = ${warehouseId};
+    const zoneId = ${zone.zoneId};
+    const variants = [
+        <c:forEach items="${variants}" var="v" varStatus="status">
+        <c:if test="${status.index > 0}">,</c:if>
+        {
+            variantId: ${v.variantId},
+            variantSku: "<c:out value='${v.variantSku}' escapeXml='false' />",
+            productName: "<c:out value='${v.productName}' escapeXml='false' />"
+        }
+        </c:forEach>
+    ];
+
+let slotDetailModal = null;
 
 function openSlotDetail(slotId) {
-    const modal = new bootstrap.Modal(document.getElementById('slotDetailModal'));
+    const modalElement = document.getElementById('slotDetailModal');
+    if (!slotDetailModal) {
+        slotDetailModal = new bootstrap.Modal(modalElement, {
+            backdrop: true,
+            keyboard: true
+        });
+    }
     const modalContent = document.getElementById('slotDetailContent');
     modalContent.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-    modal.show();
+    slotDetailModal.show();
     
     loadSlotDetail(slotId);
+}
+
+function closeSlotDetailModal() {
+    if (slotDetailModal) {
+        slotDetailModal.hide();
+    } else {
+        const modalElement = document.getElementById('slotDetailModal');
+        if (modalElement) {
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) {
+                modal.hide();
+            }
+        }
+    }
 }
 
 function loadSlotDetail(slotId) {
     const modalContent = document.getElementById('slotDetailContent');
     
-    fetch('<%= request.getContextPath() %>/warehouse-layout?action=slot-detail&slotId=' + slotId + '&warehouseId=' + warehouseId)
+    fetch('${pageContext.request.contextPath}/warehouse-layout?action=slot-detail&slotId=' + slotId + '&warehouseId=' + warehouseId)
         .then(response => response.json())
         .then(data => {
             displaySlotDetail(data, slotId);
         })
         .catch(error => {
-            modalContent.innerHTML = '<div class="alert alert-danger">Lỗi: ' + error.message + '</div>';
+            modalContent.innerHTML = '<div class="alert alert-danger">Error: ' + error.message + '</div>';
         });
 }
 
 function displaySlotDetail(slot, slotId) {
     const modalContent = document.getElementById('slotDetailContent');
     let html = '<div class="mb-3">';
-    html += '<h6>Thông tin Slot</h6>';
+    html += '<h6>Slot Information</h6>';
     html += '<table class="table table-sm">';
-    html += '<tr><td><strong>Mã Slot:</strong></td><td>' + (slot.slotCode || '') + '</td></tr>';
-    html += '<tr><td><strong>Trạng thái:</strong></td><td><span class="badge bg-' + 
+    html += '<tr><td><strong>Slot Code:</strong></td><td>' + (slot.slotCode || '') + '</td></tr>';
+    html += '<tr><td><strong>Status:</strong></td><td><span class="badge bg-' + 
         (slot.status === 'ACTIVE' ? 'success' : slot.status === 'BLOCKED' ? 'danger' : 'secondary') + '">' + 
         (slot.status || '') + '</span></td></tr>';
-    html += '<tr><td><strong>Trống:</strong></td><td>' + (slot.isEmpty ? 'Có' : 'Không') + '</td></tr>';
-    html += '<tr><td><strong>Đã sử dụng:</strong></td><td>' + (slot.usedCapacity || '0') + '</td></tr>';
-    html += '<tr><td><strong>Còn trống:</strong></td><td>' + (slot.availableCapacity || '0') + '</td></tr>';
-    html += '<tr><td><strong>Sức chứa tối đa:</strong></td><td>' + (slot.maxCapacity || 'Không giới hạn') + '</td></tr>';
+    html += '<tr><td><strong>Empty:</strong></td><td>' + (slot.isEmpty ? 'Yes' : 'No') + '</td></tr>';
+    html += '<tr><td><strong>Used Capacity:</strong></td><td>' + (slot.usedCapacity || '0') + '</td></tr>';
+    html += '<tr><td><strong>Available Capacity:</strong></td><td>' + (slot.availableCapacity || '0') + '</td></tr>';
+    html += '<tr><td><strong>Max Capacity:</strong></td><td>' + (slot.maxCapacity || 'Unlimited') + '</td></tr>';
     html += '</table></div>';
     
-    html += '<div class="mb-3"><h6>Sản phẩm trong slot</h6>';
+    html += '<div class="mb-3"><h6>Products in Slot</h6>';
     if (slot.products && slot.products.length > 0) {
         html += '<div class="table-responsive"><table class="table table-sm table-bordered">';
-        html += '<thead><tr><th>SKU</th><th>Tên sản phẩm</th><th>Điều kiện</th><th>Tồn kho</th><th>Có sẵn</th></tr></thead><tbody>';
+        html += '<thead><tr><th>SKU</th><th>Product Name</th><th>Condition</th><th>On Hand</th><th>Available</th></tr></thead><tbody>';
         slot.products.forEach(p => {
             html += '<tr>';
             html += '<td>' + (p.variantSku || '') + '</td>';
@@ -358,12 +443,12 @@ function displaySlotDetail(slot, slotId) {
         });
         html += '</tbody></table></div>';
     } else {
-        html += '<p class="text-muted">Chưa có sản phẩm nào trong slot này</p>';
+        html += '<p class="text-muted">No products in this slot</p>';
     }
     html += '</div>';
     
-    html += '<div><h6>Thêm sản phẩm vào slot</h6>';
-    html += '<form method="post" action="<%= request.getContextPath() %>/warehouse-layout" id="assignProductForm">';
+    html += '<div><h6>Add Product to Slot</h6>';
+    html += '<form method="post" action="${pageContext.request.contextPath}/warehouse-layout" id="assignProductForm">';
     html += '<input type="hidden" name="action" value="assign-product">';
     html += '<input type="hidden" name="warehouseId" value="' + warehouseId + '">';
     html += '<input type="hidden" name="slotId" value="' + slotId + '">';
@@ -371,32 +456,31 @@ function displaySlotDetail(slot, slotId) {
     
     html += '<div class="row mb-3">';
     html += '<div class="col-md-6">';
-    html += '<label class="form-label">Sản phẩm (Variant)</label>';
+    html += '<label class="form-label">Product (Variant)</label>';
     html += '<select name="variantId" class="form-select" required>';
-    html += '<option value="">-- Chọn sản phẩm --</option>';
+    html += '<option value="">-- Select Product --</option>';
     variants.forEach(v => {
         html += '<option value="' + v.variantId + '">' + v.variantSku + ' - ' + v.productName + '</option>';
     });
     html += '</select></div>';
     
     html += '<div class="col-md-3">';
-    html += '<label class="form-label">Số lượng</label>';
+    html += '<label class="form-label">Quantity</label>';
     html += '<input type="number" name="qty" class="form-control" min="0.01" step="0.01" required>';
     html += '</div>';
     
     html += '<div class="col-md-3">';
-    html += '<label class="form-label">Điều kiện</label>';
+    html += '<label class="form-label">Condition</label>';
     html += '<select name="condition" class="form-select">';
     html += '<option value="GOOD">GOOD</option>';
     html += '<option value="DAMAGED">DAMAGED</option>';
     html += '<option value="EXPIRED">EXPIRED</option>';
     html += '</select></div></div>';
     
-    html += '<button type="submit" class="btn btn-primary">Thêm sản phẩm</button>';
+    html += '<button type="submit" class="btn btn-primary">Add Product</button>';
     html += '</form></div>';
     
     modalContent.innerHTML = html;
 }
-</script>
-
-<jsp:include page="../layout/footer.jspf" />
+    </script>
+</t:layout>

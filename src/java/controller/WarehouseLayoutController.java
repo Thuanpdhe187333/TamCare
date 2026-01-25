@@ -77,7 +77,7 @@ public class WarehouseLayoutController extends HttpServlet {
     }
         } catch (Exception ex) {
             Logger.getLogger(WarehouseLayoutController.class.getName()).log(Level.SEVERE, null, ex);
-            request.setAttribute("error", "Có lỗi xảy ra: " + ex.getMessage());
+            request.setAttribute("error", "An error occurred: " + ex.getMessage());
             try {
                 forwardLayoutForm(request, response);
             } catch (Exception e) {
@@ -91,6 +91,12 @@ public class WarehouseLayoutController extends HttpServlet {
         
         WarehouseDAO warehouseDAO = new WarehouseDAO();
         request.setAttribute("warehouses", warehouseDAO.getAll());
+        
+        // Kiểm tra error từ URL parameter
+        String errorParam = request.getParameter("error");
+        if (errorParam != null && !errorParam.isBlank()) {
+            request.setAttribute("error", java.net.URLDecoder.decode(errorParam, "UTF-8"));
+        }
         
         String warehouseIdParam = request.getParameter("warehouseId");
         if (warehouseIdParam != null && !warehouseIdParam.isBlank()) {
@@ -121,10 +127,34 @@ public class WarehouseLayoutController extends HttpServlet {
         String name = request.getParameter("name");
         String zoneType = request.getParameter("zoneType");
         
-        ZoneDAO zoneDAO = new ZoneDAO();
-        zoneDAO.createZone(warehouseId, code, name, zoneType);
+        // Validate input
+        if (code == null || code.isBlank()) {
+            request.setAttribute("error", "Zone code cannot be empty");
+            forwardLayoutForm(request, response);
+            return;
+        }
         
-        response.sendRedirect(request.getContextPath() + "/warehouse-layout?warehouseId=" + warehouseId);
+        if (name == null || name.isBlank()) {
+            request.setAttribute("error", "Zone name cannot be empty");
+            forwardLayoutForm(request, response);
+            return;
+        }
+        
+        if (zoneType == null || zoneType.isBlank()) {
+            request.setAttribute("error", "Please select zone type");
+            forwardLayoutForm(request, response);
+            return;
+        }
+        
+        ZoneDAO zoneDAO = new ZoneDAO();
+        try {
+            zoneDAO.createZone(warehouseId, code, name, zoneType);
+            response.sendRedirect(request.getContextPath() + "/warehouse-layout?warehouseId=" + warehouseId);
+        } catch (Exception e) {
+            // Hiển thị lỗi và quay lại form
+            request.setAttribute("error", e.getMessage());
+            forwardLayoutForm(request, response);
+        }
     }
 
     private void handleCreateSlots(HttpServletRequest request, HttpServletResponse response)
@@ -135,25 +165,58 @@ public class WarehouseLayoutController extends HttpServlet {
         int cols = Integer.parseInt(request.getParameter("cols"));
         String codePrefix = request.getParameter("codePrefix");
         
+        // Validate input
+        if (rows <= 0 || rows > 100) {
+            throw new Exception("Number of rows must be between 1 and 100");
+        }
+        if (cols <= 0 || cols > 100) {
+            throw new Exception("Number of columns must be between 1 and 100");
+        }
         if (codePrefix == null || codePrefix.isBlank()) {
             codePrefix = "SLOT";
         }
         
-        SlotDAO slotDAO = new SlotDAO();
-        slotDAO.createSlotsBatch(zoneId, rows, cols, codePrefix);
+        // Normalize codePrefix
+        codePrefix = codePrefix.trim().toUpperCase();
         
-        // Lấy warehouseId từ zone để redirect
-        ZoneDAO zoneDAO = new ZoneDAO();
-        model.Zone zone = zoneDAO.getZoneById(zoneId);
-        Long warehouseId = null;
-        if (zone != null) {
-            warehouseId = zone.getWarehouseId();
+        // Validate codePrefix không được chứa ký tự đặc biệt
+        if (!codePrefix.matches("^[A-Z0-9_-]+$")) {
+            throw new Exception("Prefix can only contain letters, numbers, hyphens and underscores");
         }
         
-        if (warehouseId != null) {
-            response.sendRedirect(request.getContextPath() + "/warehouse-layout?warehouseId=" + warehouseId);
-        } else {
-            response.sendRedirect(request.getContextPath() + "/warehouse-layout");
+        SlotDAO slotDAO = new SlotDAO();
+        try {
+            slotDAO.createSlotsBatch(zoneId, rows, cols, codePrefix);
+            
+            // Lấy warehouseId từ zone để redirect
+            ZoneDAO zoneDAO = new ZoneDAO();
+            model.Zone zone = zoneDAO.getZoneById(zoneId);
+            Long warehouseId = null;
+            if (zone != null) {
+                warehouseId = zone.getWarehouseId();
+            }
+            
+            if (warehouseId != null) {
+                response.sendRedirect(request.getContextPath() + "/warehouse-layout?warehouseId=" + warehouseId);
+            } else {
+                response.sendRedirect(request.getContextPath() + "/warehouse-layout");
+            }
+        } catch (Exception e) {
+            // Lấy warehouseId để hiển thị lại form với lỗi
+            ZoneDAO zoneDAO = new ZoneDAO();
+            model.Zone zone = zoneDAO.getZoneById(zoneId);
+            Long warehouseId = null;
+            if (zone != null) {
+                warehouseId = zone.getWarehouseId();
+            }
+            
+            String errorMessage = e.getMessage();
+            if (warehouseId != null) {
+                response.sendRedirect(request.getContextPath() + "/warehouse-layout?warehouseId=" + warehouseId + "&error=" + java.net.URLEncoder.encode(errorMessage, "UTF-8"));
+            } else {
+                request.setAttribute("error", errorMessage);
+                forwardLayoutForm(request, response);
+            }
         }
     }
 

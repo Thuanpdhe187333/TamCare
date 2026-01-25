@@ -47,9 +47,25 @@ public class ProductController extends HttpServlet {
         int page = parseInt(request.getParameter("page"), DEFAULT_PAGE);
         int size = DEFAULT_SIZE;
         int offset = (page - 1) * size;
+        
+        // Get filter parameters
+        String filterSku = request.getParameter("filterSku");
+        String filterName = request.getParameter("filterName");
+        String filterBarcode = request.getParameter("filterBarcode");
+        
+        // Get sort parameters
+        String sortBy = request.getParameter("sortBy");
+        String sortOrder = request.getParameter("sortOrder");
+        
+        if (sortBy == null || sortBy.isBlank()) {
+            sortBy = "product_id";
+        }
+        if (sortOrder == null || sortOrder.isBlank() || (!sortOrder.equalsIgnoreCase("ASC") && !sortOrder.equalsIgnoreCase("DESC"))) {
+            sortOrder = "DESC";
+        }
 
         ProductDAO dao = new ProductDAO();
-        List<ProductListDTO> products = dao.getAllProducts(size, offset);
+        List<ProductListDTO> products = dao.getAllProducts(size, offset, filterSku, filterName, filterBarcode, sortBy, sortOrder);
 
         request.setAttribute("products", products);
         request.setAttribute("page", page);
