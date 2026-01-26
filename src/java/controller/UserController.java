@@ -1,8 +1,8 @@
 package controller;
 
-import dao.RoleDAO;
-import dao.UserDAO;
-import dao.WarehouseDAO;
+import dto.PageResponseDTO;
+import dto.UserDTO;
+import dto.UserRequest;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -14,8 +14,9 @@ import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
-import model.User;
-import util.PasswordUtil;
+import service.RoleService;
+import service.UserService;
+import service.WarehouseService;
 import util.ViewPath;
 
 @WebServlet(name = "UserController", urlPatterns = {"/admin/user", "/admin/user/*"})
@@ -24,9 +25,9 @@ public class UserController extends HttpServlet {
     private static final Long DEFAULT_PAGE = 1L;
     private static final Long DEFAULT_SIZE = 10L;
 
-    private final UserDAO userDao = new UserDAO();
-    private final RoleDAO roleDao = new RoleDAO();
-    private final WarehouseDAO warehouseDao = new WarehouseDAO();
+    private final UserService userService = new UserService();
+    private final RoleService roleService = new RoleService();
+    private final WarehouseService warehouseService = new WarehouseService();
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -73,9 +74,7 @@ public class UserController extends HttpServlet {
                 isDeleted = "1".equals(isDeletedRaw) || "true".equalsIgnoreCase(isDeletedRaw);
             }
 
-            var total = userDao.getPageCount(search, roleId, status, isDeleted);
-            var pages = (total + size - 1) / size;
-            var users = userDao.getList(search, sort, page, size, roleId, status, isDeleted);
+            PageResponseDTO<UserDTO> pageResponse = userService.getPagedList(search, sort, page, size, roleId, status, isDeleted);
 
             request.setAttribute("page", page);
             request.setAttribute("size", size);
@@ -84,10 +83,10 @@ public class UserController extends HttpServlet {
             request.setAttribute("roleId", roleId);
             request.setAttribute("status", status);
             request.setAttribute("isDeleted", isDeletedRaw);
-            request.setAttribute("pages", pages);
-            request.setAttribute("total", total);
-            request.setAttribute("users", users);
-            request.setAttribute("availableRoles", roleDao.getList("%%", "name", 1L, 100L));
+            request.setAttribute("pages", pageResponse.getTotalPages());
+            request.setAttribute("total", pageResponse.getTotalItems());
+            request.setAttribute("users", pageResponse.getItems());
+            request.setAttribute("availableRoles", roleService.getAll());
 
             request.getRequestDispatcher(ViewPath.USER_LIST).forward(request, response);
         } catch (SQLException e) {
@@ -99,24 +98,14 @@ public class UserController extends HttpServlet {
     throws ServletException, IOException {
         try {
             Long id = Long.valueOf(request.getParameter("id"));
-            var user = userDao.getById(id);
+            UserDTO user = userService.getById(id);
             if (user == null) {
                 response.sendError(HttpServletResponse.SC_NOT_FOUND, "User not found");
                 return;
             }
             
-            // Get roles for the user
-            var roles = userDao.getRolesDetailByUserId(id);
-            
-            // Create a map of roles to their permissions
-            var rolePermissionsMap = new java.util.LinkedHashMap<model.Role, java.util.List<model.Permission>>();
-            for (var role : roles) {
-                var permissions = roleDao.getPermissionsDetailByRoleId(role.getRoleId());
-                rolePermissionsMap.put(role, permissions);
-            }
-            
             request.setAttribute("user", user);
-            request.setAttribute("rolePermissionsMap", rolePermissionsMap);
+            request.setAttribute("rolePermissionsMap", userService.getRolePermissionsMap(id));
             request.getRequestDispatcher(ViewPath.USER_DETAIL).forward(request, response);
         } catch (Exception e) {
             e.printStackTrace();
@@ -127,8 +116,8 @@ public class UserController extends HttpServlet {
     private void viewCreate(HttpServletRequest request, HttpServletResponse response)
     throws ServletException, IOException {
         try {
-            request.setAttribute("roles", roleDao.getList("%%", "name", 1L, 1000L));
-            request.setAttribute("warehouses", warehouseDao.getAll());
+            request.setAttribute("roles", roleService.getAll());
+            request.setAttribute("warehouses", warehouseService.getAll());
             request.getRequestDispatcher(ViewPath.USER_CREATE).forward(request, response);
         } catch (SQLException e) {
             e.printStackTrace();
@@ -140,15 +129,15 @@ public class UserController extends HttpServlet {
     throws ServletException, IOException {
         try {
             Long id = Long.valueOf(request.getParameter("id"));
-            var user = userDao.getById(id);
+            UserDTO user = userService.getById(id);
             if (user == null) {
                 response.sendRedirect(request.getContextPath() + "/admin/user");
                 return;
             }
             request.setAttribute("user", user);
-            request.setAttribute("roles", roleDao.getList("%%", "name", 1L, 1000L));
-            request.setAttribute("selectedRoleIds", new java.util.HashSet<>(userDao.getRolesByUserId(id)));
-            request.setAttribute("warehouses", warehouseDao.getAll());
+            request.setAttribute("roles", roleService.getAll());
+            request.setAttribute("selectedRoleIds", new java.util.HashSet<>(userService.getRolesByUserId(id)));
+            request.setAttribute("warehouses", warehouseService.getAll());
             request.getRequestDispatcher(ViewPath.USER_UPDATE).forward(request, response);
         } catch (ServletException | IOException | NumberFormatException | SQLException e) {
             e.printStackTrace();
@@ -159,40 +148,31 @@ public class UserController extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
     throws ServletException, IOException {
-        String username = request.getParameter("username");
-        String fullName = request.getParameter("fullName");
-        String email = request.getParameter("email");
-        String phone = request.getParameter("phone");
-        String password = request.getParameter("password");
-        String status = request.getParameter("status");
-        String warehouseIdRaw = request.getParameter("warehouseId");
-        String[] roleIds = request.getParameterValues("roleIds");
-
-        String passwordHash = PasswordUtil.hashPassword(password);
-
-        User u = new User();
-        u.setUsername(username);
-        u.setFullName(fullName);
-        u.setEmail(email);
-        u.setPhone(phone);
-        u.setPasswordHash(passwordHash);
-        u.setStatus(status != null ? status : "ACTIVE");
-
-        if (warehouseIdRaw != null && !warehouseIdRaw.isBlank()) {
-            u.setWarehouseId(Long.valueOf(warehouseIdRaw));
+        UserRequest uReq = new UserRequest();
+        uReq.setUsername(request.getParameter("username"));
+        uReq.setFullName(request.getParameter("fullName"));
+        uReq.setEmail(request.getParameter("email"));
+        uReq.setPhone(request.getParameter("phone"));
+        uReq.setPassword(request.getParameter("password"));
+        uReq.setStatus(request.getParameter("status"));
+        
+        String wIdRaw = request.getParameter("warehouseId");
+        if (wIdRaw != null && !wIdRaw.isBlank()) uReq.setWarehouseId(Long.valueOf(wIdRaw));
+        
+        String[] rIds = request.getParameterValues("roleIds");
+        if (rIds != null) {
+            uReq.setRoleIds(java.util.Arrays.stream(rIds).map(Long::valueOf).toList());
         }
 
         Long createdBy = (Long) request.getSession().getAttribute("userId");
-        u.setCreatedBy(createdBy);
 
         try {
-            if (userDao.create(u)) {
-                if (roleIds != null) {
-                    java.util.List<Long> rList = java.util.Arrays.stream(roleIds).map(Long::valueOf).toList();
-                    userDao.setUserRoles(u.getUserId(), rList);
-                }
-            }
+            userService.create(uReq, createdBy);
             response.sendRedirect(request.getContextPath() + "/admin/user");
+        } catch (util.ValidationException e) {
+            request.setAttribute("error", e.getMessage());
+            request.setAttribute("user", uReq);
+            viewCreate(request, response);
         } catch (SQLException e) {
             e.printStackTrace();
             viewList(request, response);
@@ -208,32 +188,29 @@ public class UserController extends HttpServlet {
             String idRaw = request.getParameter("id");
             if (idRaw == null && params.containsKey("id"))
                 idRaw = params.get("id")[0];
-
             Long id = Long.valueOf(idRaw);
-            String fullName = params.get("fullName")[0];
-            String email = params.get("email")[0];
-            String phone = params.get("phone")[0];
-            String status = params.get("status")[0];
-            String warehouseIdRaw = params.containsKey("warehouseId") ? params.get("warehouseId")[0] : null;
-            String[] roleIds = params.get("roleIds");
 
-            User u = userDao.getById(id);
-            if (u != null) {
-                u.setFullName(fullName);
-                u.setEmail(email);
-                u.setPhone(phone);
-                u.setStatus(status);
-                u.setWarehouseId((warehouseIdRaw == null || warehouseIdRaw.isBlank()) ? null : Long.valueOf(warehouseIdRaw));
-
-                if (userDao.update(u)) {
-                    java.util.List<Long> rList = roleIds != null
-                    ? java.util.Arrays.stream(roleIds).map(Long::valueOf).toList()
-                    : new java.util.ArrayList<>();
-                    userDao.setUserRoles(id, rList);
-                }
+            UserRequest uReq = new UserRequest();
+            uReq.setFullName(params.get("fullName")[0]);
+            uReq.setEmail(params.get("email")[0]);
+            uReq.setPhone(params.get("phone")[0]);
+            uReq.setStatus(params.get("status")[0]);
+            
+            String wIdRaw = params.containsKey("warehouseId") ? params.get("warehouseId")[0] : null;
+            if (wIdRaw != null && !wIdRaw.isBlank()) uReq.setWarehouseId(Long.valueOf(wIdRaw));
+            
+            String[] rIds = params.get("roleIds");
+            if (rIds != null) {
+                uReq.setRoleIds(java.util.Arrays.stream(rIds).map(Long::valueOf).toList());
             }
 
-            response.setHeader("HX-Location", request.getContextPath() + "/admin/user");
+            try {
+                userService.update(id, uReq);
+                response.setHeader("HX-Location", request.getContextPath() + "/admin/user");
+            } catch (util.ValidationException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write(e.getMessage());
+            }
         } catch (Exception e) {
             e.printStackTrace();
             response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Cập nhật thất bại");
@@ -247,7 +224,7 @@ public class UserController extends HttpServlet {
             String idRaw = request.getParameter("id");
             if (idRaw != null) {
                 Long id = Long.valueOf(idRaw);
-                userDao.delete(id);
+                userService.delete(id);
             }
             response.setHeader("HX-Location", request.getContextPath() + "/admin/user");
         } catch (NumberFormatException | SQLException e) {
@@ -262,7 +239,7 @@ public class UserController extends HttpServlet {
             String idRaw = request.getParameter("id");
             if (idRaw != null) {
                 Long id = Long.valueOf(idRaw);
-                userDao.restore(id);
+                userService.restore(id);
             }
             response.setHeader("HX-Redirect", request.getContextPath() + "/admin/user");
         } catch (Exception e) {
