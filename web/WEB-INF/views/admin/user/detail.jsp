@@ -2,7 +2,7 @@
 uri="http://java.sun.com/jsp/jstl/core"%> <%@taglib prefix="t"
 tagdir="/WEB-INF/tags/" %>
 
-<t:layout title="User Detail: ${user.username}">
+<t:layout title="User Detail">
   <jsp:attribute name="actions">
     <t:link
       url="${pageContext.request.contextPath}/admin/user"
@@ -15,32 +15,32 @@ tagdir="/WEB-INF/tags/" %>
   </jsp:attribute>
 
   <jsp:body>
-    <div class="card shadow-sm border-0 d-flex flex-column gap-4">
-      <div class="card-body mb-4">
-        <div class="row">
-          <div class="col-md-6 mb-3">
+    <div class="card shadow-sm border-0 d-flex flex-column mb-4">
+      <div class="card-body">
+        <div class="row row-cols-2 g-2">
+          <div class="col">
             <label class="text-muted small text-uppercase fw-bold"
               >Username</label
             >
             <p class="mb-0 fs-5 fw-bold text-primary">${user.username}</p>
           </div>
-          <div class="col-md-6 mb-3">
+          <div class="col">
             <label class="text-muted small text-uppercase fw-bold"
               >Full Name</label
             >
             <p class="mb-0 fs-5">${user.fullName}</p>
           </div>
-          <div class="col-md-6 mb-3">
+          <div class="col">
             <label class="text-muted small text-uppercase fw-bold">Email</label>
             <p class="mb-0">${user.email}</p>
           </div>
-          <div class="col-md-6 mb-3">
+          <div class="col">
             <label class="text-muted small text-uppercase fw-bold">Phone</label>
             <p class="mb-0 text-muted">
               ${empty user.phone ? 'Not provided' : user.phone}
             </p>
           </div>
-          <div class="col-md-6 mb-3">
+          <div class="col">
             <label class="text-muted small text-uppercase fw-bold"
               >Status</label
             >
@@ -55,7 +55,7 @@ tagdir="/WEB-INF/tags/" %>
               </c:choose>
             </p>
           </div>
-          <div class="col-md-6 mb-3">
+          <div class="col">
             <label class="text-muted small text-uppercase fw-bold"
               >Created At</label
             >
@@ -66,81 +66,99 @@ tagdir="/WEB-INF/tags/" %>
     </div>
 
     <div class="row">
-      <!-- Assigned Roles Table -->
+      <!-- Roles and Permissions Accordion -->
       <div class="col-md-12">
-        <c:set var="roleColumns" value='${["Index", "Role Name"]}' />
-        <t:table columns="${roleColumns}">
-          <jsp:attribute name="head">
-            <div class="d-flex align-items-center justify-content-between">
-              <h6 class="m-0 font-weight-bold text-primary">Assigned Roles</h6>
-              <span class="badge bg-primary text-white"
-                >${roles.size()} Total</span
-              >
-            </div>
-          </jsp:attribute>
-          <jsp:body>
-            <c:choose>
-              <c:when test="${empty roles}">
-                <tr>
-                  <td colspan="2" class="text-center py-4 text-muted italic">
-                    No roles assigned
-                  </td>
-                </tr>
-              </c:when>
-              <c:otherwise>
-                <c:forEach var="r" items="${roles}" varStatus="status">
-                  <tr>
-                    <td style="width: 50px">${status.index + 1}</td>
-                    <td>
-                      <div class="fw-bold">${r.name}</div>
-                    </td>
-                  </tr>
-                </c:forEach>
-              </c:otherwise>
-            </c:choose>
-          </jsp:body>
-        </t:table>
-      </div>
-
-      <!-- Inherited Permissions Table -->
-      <div class="col-md-12">
-        <c:set var="permColumns" value='${["Index", "Permission Code"]}' />
-        <t:table columns="${permColumns}">
-          <jsp:attribute name="head">
+        <div class="card shadow-sm border-0">
+          <div class="card-header bg-white">
             <div class="d-flex align-items-center justify-content-between">
               <h6 class="m-0 font-weight-bold text-primary">
-                Inherited Permissions
+                Roles & Permissions
               </h6>
               <span class="badge bg-primary text-white"
-                >${permissions.size()} Total</span
+                >${rolePermissionsMap.size()} Role(s)</span
               >
             </div>
-          </jsp:attribute>
-          <jsp:body>
+          </div>
+          <div class="card-body">
             <c:choose>
-              <c:when test="${empty permissions}">
-                <tr>
-                  <td colspan="2" class="text-center py-4 text-muted italic">
-                    No permissions inherited
-                  </td>
-                </tr>
+              <c:when test="${empty rolePermissionsMap}">
+                <div class="text-center py-4 text-muted italic">
+                  No roles assigned to this user
+                </div>
               </c:when>
               <c:otherwise>
-                <c:forEach var="p" items="${permissions}" varStatus="status">
-                  <tr>
-                    <td style="width: 50px">${status.index + 1}</td>
-                    <td>
-                      <div class="d-flex align-items-center">
-                        <div class="fw-bold text-info">${p.code}</div>
-                        <div class="ms-2 small text-muted">(${p.name})</div>
+                <div class="accordion" id="rolesAccordion">
+                  <c:forEach
+                    var="entry"
+                    items="${rolePermissionsMap}"
+                    varStatus="status"
+                  >
+                    <div class="accordion-item border">
+                      <h2 class="accordion-header" id="heading${status.index}">
+                        <button
+                          class="accordion-button collapsed"
+                          type="button"
+                          data-bs-toggle="collapse"
+                          data-bs-target="#collapse${status.index}"
+                          aria-expanded="false"
+                          aria-controls="collapse${status.index}"
+                        >
+                          <div
+                            class="d-flex align-items-center justify-content-between w-100 me-3"
+                          >
+                            <span class="fw-bold text-primary"
+                              >${entry.key.name}</span
+                            >
+                            <span class="badge bg-info text-white ms-2"
+                              >${entry.value.size()} Permission(s)</span
+                            >
+                          </div>
+                        </button>
+                      </h2>
+                      <div
+                        id="collapse${status.index}"
+                        class="accordion-collapse collapse"
+                        aria-labelledby="heading${status.index}"
+                        data-bs-parent="#rolesAccordion"
+                      >
+                        <div class="accordion-body p-0">
+                          <c:choose>
+                            <c:when test="${empty entry.value}">
+                              <div class="text-center py-3 text-muted italic">
+                                No permissions assigned to this role
+                              </div>
+                            </c:when>
+                            <c:otherwise>
+                              <t:table
+                                columns="${['Index', 'Permission Code', 'Permission Name']}"
+                              >
+                                <c:forEach
+                                  var="perm"
+                                  items="${entry.value}"
+                                  varStatus="permStatus"
+                                >
+                                  <tr>
+                                    <td>${permStatus.index + 1}</td>
+                                    <td>
+                                      <span class="badge bg-secondary"
+                                        >${perm.code}</span
+                                      >
+                                    </td>
+                                    <td class="text-muted">${perm.name}</td>
+                                  </tr>
+                                </c:forEach>
+                              </t:table>
+                            </c:otherwise>
+                          </c:choose>
+                        </div>
                       </div>
-                    </td>
-                  </tr>
-                </c:forEach>
+                    </div>
+                  </c:forEach>
+                </div>
               </c:otherwise>
             </c:choose>
-          </jsp:body>
-        </t:table>
+          </div>
+        </div>
       </div>
     </div>
   </jsp:body>

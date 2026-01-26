@@ -125,7 +125,7 @@ public class UserDAO extends DBContext implements Dao<User> {
             FROM user u
             LEFT JOIN user_role ur ON u.user_id = ur.user_id
             LEFT JOIN role r ON ur.role_id = r.role_id
-            WHERE u.user_id = ? AND u.is_deleted = 0
+            WHERE u.user_id = ?
             GROUP BY u.user_id
         """;
 
@@ -143,8 +143,8 @@ public class UserDAO extends DBContext implements Dao<User> {
 
     public boolean create(User user) throws SQLException {
         String sql = """
-            INSERT INTO user (username, full_name, email, phone, password_hash,
-                             status, warehouse_id, created_by, created_at, is_deleted)
+            INSERT INTO user 
+            (username, full_name, email, phone, password_hash, status, warehouse_id, created_by, created_at, is_deleted)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), 0)
         """;
 

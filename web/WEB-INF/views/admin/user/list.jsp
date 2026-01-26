@@ -143,7 +143,7 @@
                                     <!-- Restore button for deleted users -->
                                     <button
                                       type="button"
-                                      class="btn btn-sm btn-circle btn-outline-success"
+                                      class="btn btn-sm btn-circle btn-outline-danger"
                                       data-bs-toggle="modal"
                                       data-bs-target="#restoreModal${user.userId}"
                                       title="Restore"

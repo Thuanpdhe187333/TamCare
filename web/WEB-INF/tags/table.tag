@@ -1,11 +1,12 @@
 <%@tag description="put the tag description here" pageEncoding="UTF-8"%>
 <%@taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 
+<%@attribute name="id" type="java.lang.String"%>
 <%@attribute name="columns" type="java.util.List<String>"%>
-<%@attribute name="head" fragment="true" required="false" %>
-<%@attribute name="foot" fragment="true" required="false" %>
+<%@attribute name="head" fragment="true" required="false"%>
+<%@attribute name="foot" fragment="true" required="false"%>
 
-<div class="card shadow mb-4">
+<div id="${id}" class="card">
     <c:if test="${not empty head}">
         <div class="card-header py-3">
             <jsp:invoke fragment="head" />

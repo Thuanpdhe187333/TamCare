@@ -21,6 +21,7 @@ public class PermissionController extends HttpServlet {
     private static final Long DEFAULT_SIZE = (long) 10;
 
     private final PermissionDAO permissionDao = new PermissionDAO();
+    private final dao.RoleDAO roleDao = new dao.RoleDAO();
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -74,7 +75,13 @@ public class PermissionController extends HttpServlet {
 
     private void viewCreate(HttpServletRequest request, HttpServletResponse response)
     throws ServletException, IOException {
-        request.getRequestDispatcher(ViewPath.PERMISSION_CREATE).forward(request, response);
+        try {
+            request.setAttribute("roles", roleDao.getAll());
+            request.getRequestDispatcher(ViewPath.PERMISSION_CREATE).forward(request, response);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error loading roles");
+        }
     }
 
     private void viewDetail(HttpServletRequest request, HttpServletResponse response)
@@ -104,6 +111,8 @@ public class PermissionController extends HttpServlet {
                 return;
             }
             request.setAttribute("permission", permission);
+            request.setAttribute("roles", roleDao.getAll());
+            request.setAttribute("currentRoleIds", permissionDao.getRolesByPermissionId(id).stream().map(model.Role::getRoleId).toList());
             request.getRequestDispatcher(ViewPath.PERMISSION_UPDATE).forward(request, response);
         } catch (Exception e) {
             e.printStackTrace();
@@ -124,6 +133,16 @@ public class PermissionController extends HttpServlet {
 
         try {
             permissionDao.create(p);
+            
+            String[] roleIdsRaw = request.getParameterValues("roleIds");
+            if (roleIdsRaw != null) {
+                java.util.List<Long> roleIds = new java.util.ArrayList<>();
+                for (String id : roleIdsRaw) {
+                    roleIds.add(Long.valueOf(id));
+                }
+                permissionDao.setPermissionRoles(p.getPermissionId(), roleIds);
+            }
+
             response.sendRedirect(request.getContextPath() + "/admin/permission");
         } catch (SQLException e) {
             e.printStackTrace();
@@ -150,6 +169,35 @@ public class PermissionController extends HttpServlet {
             p.setName(name);
 
             permissionDao.update(p);
+
+            String roleIdsStr = params.get("roleIds");
+            if (roleIdsStr != null && !roleIdsStr.isEmpty()) {
+                // Since this is parsed from body manually in parseFormBody, and multiple values with same key might be lost or handled differently.
+                // Wait, parseFormBody uses a Map<String, String>, which overwrites keys. It doesn't support multiple values for same key (like checkboxes).
+                // I need to fix parseFormBody or handle it differently.
+                // Actually, standard HTML form submission puts multiple 'roleIds' params.
+                // My parseFormBody splits by '&', loops. It puts into map. It will overwrite.
+                // I should fix parseFormBody or just use request.getParameterValues if it's not a PUT/DELETE where container doesn't parse body?
+                // Tomcat *does* parse body for POST. For PUT, standard Servlet API might not populate getParameterXXX.
+                // The custom parseFormBody is used for PUT. I need to update it to support lists or comma separated.
+                
+                // Let's assume for now I will fix parseFormBody to return Map<String, List<String>> or just handle checking for duplicates?
+                // Or I can send it as a comma separated string from frontend? standard form submit sends multiple entries.
+                // Let's modify parseFormBody to combine values with comma?
+            }
+            
+            // Re-implementation of the PUT logic block below to correct handling
+            
+            // We need to re-read the roles from the raw body correctly or change parseFormBody.
+            // Let's change parseFormBody to return Map<String, List<String>>? Or just List.
+            // But Map<String, String> is the signature.
+            // Let's Quick fix: append values with comma in parseFormBody?
+            
+            // Actually, I can just re-parse the body inside doPut or change parseFormBody signature. 
+            // Changing signature affects doDelete too.
+            // For now, I will assume I can fix parseFormBody in this same tool call to handle multiple values (e.g. join with comma).
+            
+            permissionDao.setPermissionRoles(id, getRoleIdsFromParams(params, "roleIds"));
             response.setHeader("HX-Location", request.getContextPath() + "/admin/permission");
         } catch (Exception e) {
             e.printStackTrace();
@@ -157,6 +205,21 @@ public class PermissionController extends HttpServlet {
         }
     }
 
+
+
+    private java.util.List<Long> getRoleIdsFromParams(Map<String, String> params, String key) {
+        java.util.List<Long> list = new java.util.ArrayList<>();
+        if (params.containsKey(key)) {
+             // In parseFormBody, if I change it to append with comma, then split here
+             String val = params.get(key);
+             for(String s : val.split(",")) {
+                 if(!s.isBlank()) list.add(Long.valueOf(s.trim()));
+             }
+        }
+        return list;
+    }
+
+    // Updating parseFormBody to handle multiple values by comma separation
     private Map<String, String> parseFormBody(HttpServletRequest request) throws IOException {
         Map<String, String> params = new HashMap<>();
         byte[] bytes = request.getInputStream().readAllBytes();
@@ -167,8 +230,13 @@ public class PermissionController extends HttpServlet {
             for (String pair : pairs) {
                 String[] kv = pair.split("=");
                 if (kv.length == 2) {
-                    params.put(URLDecoder.decode(kv[0], StandardCharsets.UTF_8),
-                               URLDecoder.decode(kv[1], StandardCharsets.UTF_8));
+                    String key = URLDecoder.decode(kv[0], StandardCharsets.UTF_8);
+                    String value = URLDecoder.decode(kv[1], StandardCharsets.UTF_8);
+                    if (params.containsKey(key)) {
+                        params.put(key, params.get(key) + "," + value);
+                    } else {
+                        params.put(key, value);
+                    }
                 }
             }
         }

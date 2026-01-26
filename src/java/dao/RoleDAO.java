@@ -250,4 +250,19 @@ public class RoleDAO extends DBContext implements Dao {
             }
         }
     }
+    public List<Role> getAll() throws SQLException {
+        List<Role> list = new ArrayList<>();
+        String query = "SELECT * FROM role ORDER BY name ASC";
+        try (PreparedStatement ps = conn.prepareStatement(query);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                Role role = new Role();
+                role.setRoleId(rs.getLong("role_id"));
+                role.setName(rs.getString("name"));
+                role.setDescription(rs.getString("description"));
+                list.add(role);
+            }
+        }
+        return list;
+    }
 }

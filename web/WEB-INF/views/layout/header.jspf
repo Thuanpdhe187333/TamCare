@@ -1,4 +1,4 @@
-<%@taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+ï»¿<%@taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 
 <c:set var="root" value="${pageContext.request.contextPath}" />
 
@@ -172,7 +172,7 @@
                             Hi there! I am wondering if you can help me with a
                             problem I've been having.
                         </div>
-                        <div class="small text-gray-500">Emily Fowler · 58m</div>
+                        <div class="small text-gray-500">Emily Fowler ï¿½ 58m</div>
                     </div>
                 </a>
                 <a class="dropdown-item d-flex align-items-center" href="#">
@@ -189,7 +189,7 @@
                             I have the photos that you ordered last month, how would
                             you like them sent to you?
                         </div>
-                        <div class="small text-gray-500">Jae Chun · 1d</div>
+                        <div class="small text-gray-500">Jae Chun ï¿½ 1d</div>
                     </div>
                 </a>
                 <a class="dropdown-item d-flex align-items-center" href="#">
@@ -206,7 +206,7 @@
                             Last month's report looks great, I am very happy with
                             the progress so far, keep up the good work!
                         </div>
-                        <div class="small text-gray-500">Morgan Alvarez · 2d</div>
+                        <div class="small text-gray-500">Morgan Alvarez ï¿½ 2d</div>
                     </div>
                 </a>
                 <a class="dropdown-item d-flex align-items-center" href="#">
@@ -225,7 +225,7 @@
                             aren't good...
                         </div>
                         <div class="small text-gray-500">
-                            Chicken the Dog · 2w
+                            Chicken the Dog ï¿½ 2w
                         </div>
                     </div>
                 </a>
@@ -251,7 +251,7 @@
               aria-expanded="false"
               >
                 <span class="mr-2 d-none d-lg-inline text-gray-600 small"
-                      >Douglas McGee</span
+                      >${sessionScope.USER.fullName}</span
                 >
                 <img
                   class="img-profile rounded-circle"
@@ -263,7 +263,7 @@
               class="dropdown-menu dropdown-menu-right shadow animated--grow-in"
               aria-labelledby="userDropdown"
               >
-                <a class="dropdown-item" href="#">
+                <a class="dropdown-item" href="${pageContext.request.contextPath}/profile">
                     <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
                     Profile
                 </a>

@@ -104,9 +104,19 @@ public class UserController extends HttpServlet {
                 response.sendError(HttpServletResponse.SC_NOT_FOUND, "User not found");
                 return;
             }
+            
+            // Get roles for the user
+            var roles = userDao.getRolesDetailByUserId(id);
+            
+            // Create a map of roles to their permissions
+            var rolePermissionsMap = new java.util.LinkedHashMap<model.Role, java.util.List<model.Permission>>();
+            for (var role : roles) {
+                var permissions = roleDao.getPermissionsDetailByRoleId(role.getRoleId());
+                rolePermissionsMap.put(role, permissions);
+            }
+            
             request.setAttribute("user", user);
-            request.setAttribute("roles", userDao.getRolesDetailByUserId(id));
-            request.setAttribute("permissions", userDao.getPermissionsDetailByUserId(id));
+            request.setAttribute("rolePermissionsMap", rolePermissionsMap);
             request.getRequestDispatcher(ViewPath.USER_DETAIL).forward(request, response);
         } catch (Exception e) {
             e.printStackTrace();
