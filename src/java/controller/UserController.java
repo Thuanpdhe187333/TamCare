@@ -41,6 +41,7 @@ public class UserController extends HttpServlet {
             case "/create" -> viewCreate(request, response);
             case "/update" -> viewUpdate(request, response);
             case "/detail" -> viewDetail(request, response);
+            case "/restore" -> restoreUser(request, response);
             default -> viewList(request, response);
         }
     }
@@ -66,9 +67,15 @@ public class UserController extends HttpServlet {
             var statusRaw = request.getParameter("status");
             var status = (statusRaw == null || statusRaw.isEmpty()) ? null : statusRaw;
 
-            var total = userDao.getPageCount(search, roleId, status);
+            var isDeletedRaw = request.getParameter("isDeleted");
+            Boolean isDeleted = null;
+            if (isDeletedRaw != null && !isDeletedRaw.isEmpty()) {
+                isDeleted = "1".equals(isDeletedRaw) || "true".equalsIgnoreCase(isDeletedRaw);
+            }
+
+            var total = userDao.getPageCount(search, roleId, status, isDeleted);
             var pages = (total + size - 1) / size;
-            var users = userDao.getList(search, sort, page, size, roleId, status);
+            var users = userDao.getList(search, sort, page, size, roleId, status, isDeleted);
 
             request.setAttribute("page", page);
             request.setAttribute("size", size);
@@ -76,6 +83,7 @@ public class UserController extends HttpServlet {
             request.setAttribute("search", searchRaw);
             request.setAttribute("roleId", roleId);
             request.setAttribute("status", status);
+            request.setAttribute("isDeleted", isDeletedRaw);
             request.setAttribute("pages", pages);
             request.setAttribute("total", total);
             request.setAttribute("users", users);
@@ -235,6 +243,21 @@ public class UserController extends HttpServlet {
         } catch (NumberFormatException | SQLException e) {
             e.printStackTrace();
             response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Xóa thất bại");
+        }
+    }
+
+    private void restoreUser(HttpServletRequest request, HttpServletResponse response)
+    throws ServletException, IOException {
+        try {
+            String idRaw = request.getParameter("id");
+            if (idRaw != null) {
+                Long id = Long.valueOf(idRaw);
+                userDao.restore(id);
+            }
+            response.setHeader("HX-Redirect", request.getContextPath() + "/admin/user");
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Khôi phục thất bại");
         }
     }
 

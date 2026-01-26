@@ -1,25 +1,23 @@
 package dao;
 
 import context.DBContext;
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
-import model.User;
-import org.mindrot.jbcrypt.BCrypt;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.sql.*;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
+import model.User;
+import org.mindrot.jbcrypt.BCrypt;
 
 public class UserDAO extends DBContext implements Dao<User> {
 
-    
     private final Connection conn = DBContext.getConnection();
     private static final Duration RESET_TOKEN_TTL = Duration.ofMinutes(15);
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
-    
     public User login(String identity, String password) {
         String sql = """
             SELECT user_id, username, full_name, email, phone,
@@ -64,8 +62,7 @@ public class UserDAO extends DBContext implements Dao<User> {
         return null;
     }
 
-
-    public List<User> getList(String search, String sort, Long page, Long size, Long roleId, String status) throws SQLException {
+    public List<User> getList(String search, String sort, Long page, Long size, Long roleId, String status, Boolean isDeleted) throws SQLException {
         List<User> list = new ArrayList<>();
 
         String query = """
@@ -73,12 +70,13 @@ public class UserDAO extends DBContext implements Dao<User> {
             FROM user u
             LEFT JOIN user_role ur ON u.user_id = ur.user_id
             LEFT JOIN role r ON ur.role_id = r.role_id
-            WHERE u.is_deleted = 0
-              AND (u.username LIKE ? OR u.full_name LIKE ? OR u.email LIKE ?)
+            WHERE (u.username LIKE ? OR u.full_name LIKE ? OR u.email LIKE ?)
               AND (? IS NULL OR u.user_id IN (SELECT ur2.user_id FROM user_role ur2 WHERE ur2.role_id = ?))
               AND (? IS NULL OR u.status = ?)
+              AND (? IS NULL OR u.is_deleted = ?)
             GROUP BY u.user_id
             ORDER BY
+                u.is_deleted ASC,
                 CASE WHEN ? = 'username' THEN u.username END ASC,
                 CASE WHEN ? = 'full_name' THEN u.full_name END ASC,
                 CASE WHEN ? = 'email' THEN u.email END ASC,
@@ -88,7 +86,7 @@ public class UserDAO extends DBContext implements Dao<User> {
 
         PreparedStatement statement = conn.prepareStatement(query);
         var offset = (page - 1) * size;
-        this.prepare(statement, search, search, search, roleId, roleId, status, status, sort, sort, sort, sort, sort, sort, size, offset);
+        this.prepare(statement, search, search, search, roleId, roleId, status, status, isDeleted, isDeleted, sort, sort, sort, sort, sort, sort, size, offset);
 
         ResultSet result = statement.executeQuery();
 
@@ -100,18 +98,18 @@ public class UserDAO extends DBContext implements Dao<User> {
         return list;
     }
 
-    public Long getPageCount(String search, Long roleId, String status) throws SQLException {
+    public Long getPageCount(String search, Long roleId, String status, Boolean isDeleted) throws SQLException {
         String query = """
             SELECT COUNT(DISTINCT u.user_id) FROM user u
             LEFT JOIN user_role ur ON u.user_id = ur.user_id
-            WHERE u.is_deleted = 0
-              AND (u.username LIKE ? OR u.full_name LIKE ? OR u.email LIKE ?)
+            WHERE (u.username LIKE ? OR u.full_name LIKE ? OR u.email LIKE ?)
               AND (? IS NULL OR ur.role_id = ?)
               AND (? IS NULL OR u.status = ?)
+              AND (? IS NULL OR u.is_deleted = ?)
         """;
 
         PreparedStatement statement = conn.prepareStatement(query);
-        this.prepare(statement, search, search, search, roleId, roleId, status, status);
+        this.prepare(statement, search, search, search, roleId, roleId, status, status, isDeleted, isDeleted);
 
         ResultSet result = statement.executeQuery();
         if (result.next()) {
@@ -197,6 +195,19 @@ public class UserDAO extends DBContext implements Dao<User> {
         String sql = """
             UPDATE user
             SET is_deleted = 1
+            WHERE user_id = ?
+        """;
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, id);
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    public boolean restore(Long id) throws SQLException {
+        String sql = """
+            UPDATE user
+            SET is_deleted = 0
             WHERE user_id = ?
         """;
 
@@ -403,7 +414,7 @@ public class UserDAO extends DBContext implements Dao<User> {
 
         return user;
     }
-    
+
     public User findByEmail(String email) throws SQLException {
         String sql = """
             SELECT u.*, GROUP_CONCAT(r.name SEPARATOR ', ') as role_names
@@ -430,8 +441,8 @@ public class UserDAO extends DBContext implements Dao<User> {
     }
 
     /**
-     * Tạo OTP 6 số để reset password.
-     * Lưu SHA-256(otp) vào DB, trả otp raw để gửi email.
+     * Tạo OTP 6 số để reset password. Lưu SHA-256(otp) vào DB, trả otp raw để
+     * gửi email.
      */
     public String createPasswordResetOtpByEmail(String email) throws SQLException {
         User u = findByEmail(email);
@@ -457,11 +468,8 @@ public class UserDAO extends DBContext implements Dao<User> {
     }
 
     /**
-     * Verify OTP:
-     * - token_hash match
-     * - used_at is null
-     * - expires_at > now
-     * => return user_id nếu hợp lệ
+     * Verify OTP: - token_hash match - used_at is null - expires_at > now =>
+     * return user_id nếu hợp lệ
      */
     public Long verifyResetOtpAndGetUserId(String otp) throws SQLException {
         String tokenHash = sha256Hex(otp);
@@ -550,7 +558,9 @@ public class UserDAO extends DBContext implements Dao<User> {
             byte[] hash = md.digest(input.getBytes(StandardCharsets.UTF_8));
 
             StringBuilder sb = new StringBuilder(hash.length * 2);
-            for (byte b : hash) sb.append(String.format("%02x", b));
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
             return sb.toString();
         } catch (Exception e) {
             throw new RuntimeException("SHA-256 not available", e);
