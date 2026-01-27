@@ -14,20 +14,20 @@ import model.Supplier;
 public class SupplierDAO extends DBContext {
 
     private final Connection CONNECTION = DBContext.getConnection();
-    
+
     public List<SupplierDTO> getActiveSuppliers() throws Exception {
         List<SupplierDTO> list = new ArrayList<>();
 
         String sql = """
-            SELECT supplier_id, code, name
-            FROM supplier
-            WHERE status = 'ACTIVE'
-            ORDER BY name
-        """;
+                    SELECT supplier_id, code, name
+                    FROM supplier
+                    WHERE status = 'ACTIVE'
+                    ORDER BY name
+                """;
 
         try (Connection con = getConnection();
-             PreparedStatement ps = con.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+                PreparedStatement ps = con.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
                 SupplierDTO s = new SupplierDTO();

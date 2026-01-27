@@ -3,6 +3,11 @@
 <%@taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 
 <t:layout title="Dashboard">
+    <jsp:attribute name="actions">
+        <a href="${pageContext.request.contextPath}/goods-receipt?action=create" class="btn btn-sm btn-success shadow-sm">
+            <i class="fas fa-plus fa-sm text-white-50"></i> Tạo phiếu nhập
+        </a>
+    </jsp:attribute>
 
     <div class="row">
       <!-- Earnings (Monthly) Card Example -->

@@ -17,12 +17,10 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@WebServlet(name = "GoodsReceiptController", urlPatterns = {"/goods-receipt"})
+@WebServlet(name = "GoodsReceiptController", urlPatterns = { "/goods-receipt" })
 public class GoodsReceiptController extends HttpServlet {
-
-    private final GoodsReceiptDAO grnDao = new GoodsReceiptDAO();
-    private final PurchaseOrderDAO poDao = new PurchaseOrderDAO();
-    private final SupplierDAO supplierDao = new SupplierDAO();
+    // We instantiate DAOs per request to avoid "connection closed" issues
+    // while respecting the "don't edit other files" constraint.
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -50,6 +48,8 @@ public class GoodsReceiptController extends HttpServlet {
 
     private void handleList(HttpServletRequest request, HttpServletResponse response)
             throws Exception {
+        GoodsReceiptDAO grnDao = new GoodsReceiptDAO();
+        SupplierDAO supplierDao = new SupplierDAO();
         String grnNumber = request.getParameter("grnNumber");
         String supplierIdStr = request.getParameter("supplierId");
         Long supplierId = (supplierIdStr != null && !supplierIdStr.isBlank()) ? Long.parseLong(supplierIdStr) : null;
@@ -80,13 +80,16 @@ public class GoodsReceiptController extends HttpServlet {
 
     private void handleCreateForm(HttpServletRequest request, HttpServletResponse response)
             throws Exception {
+        SupplierDAO supplierDao = new SupplierDAO();
+        GoodsReceiptDAO grnDao = new GoodsReceiptDAO();
         request.setAttribute("suppliers", supplierDao.getActiveSuppliers());
-        // Could also list pending POs to select from
+        request.setAttribute("variants", grnDao.getActiveVariants());
         request.getRequestDispatcher(ViewPath.GRN_CREATE).forward(request, response);
     }
 
     private void handleDetail(HttpServletRequest request, HttpServletResponse response)
             throws Exception {
+        GoodsReceiptDAO grnDao = new GoodsReceiptDAO();
         Long id = Long.parseLong(request.getParameter("id"));
         GoodsReceipt grn = grnDao.getById(id);
         if (grn == null) {
@@ -116,6 +119,7 @@ public class GoodsReceiptController extends HttpServlet {
     }
 
     private void handleSave(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        GoodsReceiptDAO grnDao = new GoodsReceiptDAO();
         User user = (User) request.getSession().getAttribute("USER");
         if (user == null) {
             response.sendRedirect(request.getContextPath() + "/authen");
@@ -125,7 +129,11 @@ public class GoodsReceiptController extends HttpServlet {
         GoodsReceipt grn = new GoodsReceipt();
         grn.setGrnNumber(request.getParameter("grnNumber"));
         grn.setPoId(Long.parseLong(request.getParameter("poId")));
-        grn.setWarehouseId(Long.parseLong(request.getParameter("warehouseId")));
+
+        // Default Warehouse ID to 1 since it's removed from UI
+        String whId = request.getParameter("warehouseId");
+        grn.setWarehouseId((whId != null && !whId.isBlank()) ? Long.parseLong(whId) : 1L);
+
         grn.setCreatedBy(user.getUserId());
         grn.setDeliveredBy(request.getParameter("deliveredBy"));
         grn.setNote(request.getParameter("note"));
@@ -157,6 +165,7 @@ public class GoodsReceiptController extends HttpServlet {
 
     private void handleApprove(HttpServletRequest request, HttpServletResponse response, String status)
             throws Exception {
+        GoodsReceiptDAO grnDao = new GoodsReceiptDAO();
         Long id = Long.parseLong(request.getParameter("id"));
         User user = (User) request.getSession().getAttribute("USER");
         if (user != null) {
