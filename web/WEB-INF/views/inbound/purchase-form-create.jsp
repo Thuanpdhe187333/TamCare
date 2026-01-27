@@ -131,11 +131,13 @@
     let idx = 0;
 
     function addLine() {
+        //lấy phần tbody để append thêm dòng
         const tbody = document.querySelector("#linesTable tbody");
+        //tạo thêm dòng mới 
         const tr = document.createElement("tr");
-
+        //lấy template product
         const productOptionsHtml = document.getElementById("productOptionsTpl").innerHTML;
-
+        //gán html cho row
         tr.innerHTML =
                 '<td>' +
                 '  <select class="form-control product-select" name="lines[' + idx + '].productId">' +
@@ -143,15 +145,17 @@
                 '  </select>' +
                 '</td>' +
                 '<td>' +
+                //disabled chỉ bật khi chọn product
                 '  <select class="form-control variant-select" name="lines[' + idx + '].variantId" disabled>' +
                 '    <option value="">-- Select product first --</option>' +
                 '  </select>' +
                 '</td>' +
-                '<td><input class="form-control qty-input" type="number" step="1"   name="lines[' + idx + '].qty"></td>' +
+                '<td><input class="form-control qty-input" type="number" step="1" name="lines[' + idx + '].qty"></td>' +
                 '<td><input class="form-control unit-input" type="number" step="0.01" \n\
  name="lines[' + idx + '].unitPrice"></td>' +
                 '<td><input class="form-control" name="lines[' + idx + '].currency" value="VND"></td>' +
                 '<td class="text-center"><button type="button" class="btn btn-sm btn-danger btn-remove">X</button></td>';
+                //apend vào tbody
         tbody.appendChild(tr);
         idx++;
     }
