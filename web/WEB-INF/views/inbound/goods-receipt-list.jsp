@@ -1,6 +1,6 @@
 <%@page contentType="text/html" pageEncoding="UTF-8" %>
     <%@taglib tagdir="/WEB-INF/tags/" prefix="t" %>
-        <%@taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+        <%@taglib uri="jakarta.tags.core" prefix="c" %>
             <t:layout title="Goods Receipt List">
                 <div class="container-fluid">
 
@@ -69,7 +69,6 @@
                                             class="fas fa-sort"></i></th>
                                     <th style="cursor: pointer;" onclick="toggleSort('status')">Status <i
                                             class="fas fa-sort"></i></th>
-                                    <th>Delivered By</th>
                                     <th>Created At</th>
                                     <th>Actions</th>
                                 </tr>
@@ -86,17 +85,45 @@
                                                 ${gr.status}
                                             </span>
                                         </td>
-                                        <td>${gr.deliveredBy}</td>
                                         <td class="text-center">${gr.createdAt}</td>
                                         <td class="text-center">
-                                            <a href="${pageContext.request.contextPath}/goods-receipt?action=detail&id=${gr.grnId}"
-                                                class="btn btn-sm btn-info shadow-sm">View Details</a>
+                                            <div class="d-flex justify-content-center align-items-center gap-2">
+                                                <!-- View 버튼 -->
+                                                <a href="${pageContext.request.contextPath}/goods-receipt?action=detail&id=${gr.grnId}"
+                                                    class="btn btn-sm btn-info shadow-sm text-white d-flex align-items-center justify-content-center"
+                                                    style="width: 85px; height: 32px;" title="View Details">
+                                                    <i class="fas fa-eye me-1"></i> View
+                                                </a>
+
+                                                <!-- Edit 버튼 -->
+                                                <div style="width: 85px; height: 32px;">
+                                                    <c:if test="${gr.status == 'PENDING' || gr.status == 'DRAFT'}">
+                                                        <a href="${pageContext.request.contextPath}/goods-receipt?action=edit&id=${gr.grnId}"
+                                                            class="btn btn-sm btn-warning shadow-sm d-flex align-items-center justify-content-center h-100 w-100"
+                                                            title="Edit">
+                                                            <i class="fas fa-edit me-1"></i> Edit
+                                                        </a>
+                                                    </c:if>
+                                                </div>
+
+                                                <!-- Delete 버튼 -->
+                                                <div style="width: 85px; height: 32px;">
+                                                    <c:if test="${gr.status == 'PENDING' || gr.status == 'DRAFT'}">
+                                                        <a href="${pageContext.request.contextPath}/goods-receipt?action=delete&id=${gr.grnId}"
+                                                            class="btn btn-sm btn-danger shadow-sm d-flex align-items-center justify-content-center h-100 w-100"
+                                                            title="Delete"
+                                                            onclick="return confirm('Are you sure you want to delete this GRN?')">
+                                                            <i class="fas fa-trash me-1"></i> Delete
+                                                        </a>
+                                                    </c:if>
+                                                </div>
+                                            </div>
                                         </td>
                                     </tr>
                                 </c:forEach>
                                 <c:if test="${empty grns}">
                                     <tr>
-                                        <td colspan="7" class="text-center py-4 text-muted">No data found in the system.
+                                        <td colspan="6" class="text-center py-4 text-muted">No data found in the system.
                                         </td>
                                     </tr>
                                 </c:if>

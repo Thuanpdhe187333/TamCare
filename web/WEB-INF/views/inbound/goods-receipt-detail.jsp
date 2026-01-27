@@ -1,6 +1,6 @@
 <%@page contentType="text/html" pageEncoding="UTF-8" %>
     <%@taglib tagdir="/WEB-INF/tags/" prefix="t" %>
-        <%@taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+        <%@taglib uri="jakarta.tags.core" prefix="c" %>
             <t:layout title="Goods Receipt Details">
                 <div class="container-fluid py-4">
                     <!-- Breadcrumb / Back Link -->
@@ -41,18 +41,6 @@
                                             <p class="mb-0 fw-semibold">#${grn.poId}</p>
                                         </div>
                                         <div class="col">
-                                            <p class="text-muted small mb-1 text-uppercase fw-bold">Warehouse</p>
-                                            <p class="mb-0 fw-semibold"><i
-                                                    class="fas fa-warehouse me-1 text-primary"></i>
-                                                ${grn.warehouseId}</p>
-                                        </div>
-                                        <div class="col">
-                                            <p class="text-muted small mb-1 text-uppercase fw-bold">Delivered By</p>
-                                            <p class="mb-0 fw-semibold"><i class="fas fa-truck me-1 text-primary"></i>
-                                                ${grn.deliveredBy !=
-                                                null ? grn.deliveredBy : '--'}</p>
-                                        </div>
-                                        <div class="col">
                                             <p class="text-muted small mb-1 text-uppercase fw-bold">Created At</p>
                                             <p class="mb-0 fw-semibold">${grn.createdAt}</p>
                                         </div>
@@ -83,21 +71,19 @@
                                         <table class="table table-hover align-middle mb-0">
                                             <thead class="table-light text-secondary text-uppercase small">
                                                 <tr class="text-center">
-                                                    <th>Variant ID</th>
-                                                    <th>Expected</th>
+                                                    <th class="text-start">Product</th>
                                                     <th>Good</th>
                                                     <th>Damaged</th>
                                                     <th>Missing</th>
-                                                    <th>Extra</th>
                                                     <th class="text-start">Note</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 <c:forEach var="l" items="${lines}">
                                                     <tr class="text-center">
-                                                        <td class="fw-bold text-dark">#${l.variantId}</td>
-                                                        <td><span
-                                                                class="badge bg-light text-dark border">${l.qtyExpected}</span>
+                                                        <td class="text-start">
+                                                            <div class="fw-bold text-dark">${l.sku}</div>
+                                                            <div class="small text-muted">${l.productName}</div>
                                                         </td>
                                                         <td><span
                                                                 class="badge bg-success-subtle text-success px-3">${l.qtyGood}</span>
@@ -107,9 +93,6 @@
                                                         </td>
                                                         <td><span
                                                                 class="badge bg-warning-subtle text-warning px-3">${l.qtyMissing}</span>
-                                                        </td>
-                                                        <td><span
-                                                                class="badge bg-info-subtle text-info px-3">${l.qtyExtra}</span>
                                                         </td>
                                                         <td class="text-start small text-muted">${l.note}</td>
                                                     </tr>
@@ -138,19 +121,47 @@
 
                         <c:if test="${grn.status == 'PENDING'}">
                             <div class="d-flex gap-2">
+                                <!-- Nút Edit -->
+                                <a href="${pageContext.request.contextPath}/goods-receipt?action=edit&id=${grn.grnId}"
+                                    class="btn btn-warning shadow-sm text-dark d-flex align-items-center justify-content-center"
+                                    style="width: 100px; height: 38px; padding: 0;">
+                                    <i class="fas fa-edit me-2"></i>Edit
+                                </a>
+
+                                <!-- Nút Delete -->
+                                <form action="${pageContext.request.contextPath}/goods-receipt" method="post"
+                                    onsubmit="return confirm('Are you sure you want to delete this GRN? This action cannot be undone.')">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="id" value="${grn.grnId}">
+                                    <button type="submit"
+                                        class="btn btn-danger shadow-sm d-flex align-items-center justify-content-center"
+                                        style="width: 100px; height: 38px; padding: 0;">
+                                        <i class="fas fa-trash-alt me-2"></i>Delete
+                                    </button>
+                                </form>
+
+                                <div class="vr mx-2"></div>
+
+                                <!-- Nút Approve -->
                                 <form action="${pageContext.request.contextPath}/goods-receipt" method="post"
                                     onsubmit="return confirm('Are you sure you want to approve this GRN?')">
                                     <input type="hidden" name="action" value="approve">
                                     <input type="hidden" name="id" value="${grn.grnId}">
-                                    <button type="submit" class="btn btn-success px-4 shadow-sm">
+                                    <button type="submit"
+                                        class="btn btn-success shadow-sm d-flex align-items-center justify-content-center"
+                                        style="width: 100px; height: 38px; padding: 0;">
                                         <i class="fas fa-check me-2"></i>Approve
                                     </button>
                                 </form>
+
+                                <!-- Nút Reject -->
                                 <form action="${pageContext.request.contextPath}/goods-receipt" method="post"
                                     onsubmit="return confirm('Are you sure you want to reject this GRN?')">
                                     <input type="hidden" name="action" value="reject">
                                     <input type="hidden" name="id" value="${grn.grnId}">
-                                    <button type="submit" class="btn btn-danger px-4 shadow-sm">
+                                    <button type="submit"
+                                        class="btn btn-danger shadow-sm d-flex align-items-center justify-content-center"
+                                        style="width: 100px; height: 38px; padding: 0;">
                                         <i class="fas fa-times me-2"></i>Reject
                                     </button>
                                 </form>

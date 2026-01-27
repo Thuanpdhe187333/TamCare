@@ -44,6 +44,23 @@
 
         <!-- Divider -->
         <hr class="sidebar-divider" />
+        
+        <!-- Nav Item - Purchase Order -->
+        <li class="nav-item">
+            <a class="nav-link" href="${pageContext.request.contextPath}/purchase-orders">
+                <i class="fas fa-fw fa-file-invoice"></i>
+                <span>Purchase Order</span></a>
+        </li>
+
+        <!-- Nav Item - Goods Receipt -->
+        <li class="nav-item">
+            <a class="nav-link" href="${pageContext.request.contextPath}/goods-receipt?action=list">
+                <i class="fas fa-fw fa-clipboard-check"></i>
+                <span>Goods Receipt</span></a>
+        </li>
+
+        <!-- Divider -->
+        <hr class="sidebar-divider" />
 
         <!-- Heading -->
         <div class="sidebar-heading">Warehouse Operations</div>

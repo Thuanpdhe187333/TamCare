@@ -1,7 +1,7 @@
 <%@page contentType="text/html" pageEncoding="UTF-8" %>
     <%@taglib tagdir="/WEB-INF/tags/" prefix="t" %>
-        <%@taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
-            <t:layout title="Create Goods Receipt Note">
+        <%@taglib uri="jakarta.tags.core" prefix="c" %>
+            <t:layout title="${not empty grnId ? 'Edit' : 'Create'} Goods Receipt Note">
                 <div class="container-fluid py-4">
                     <!-- Back Link -->
                     <div class="mb-3">
@@ -13,14 +13,15 @@
 
                     <form action="${pageContext.request.contextPath}/goods-receipt" method="post" id="grnForm">
                         <input type="hidden" name="action" value="save" />
+                        <input type="hidden" name="grnId" value="${grnId}" />
 
                         <div class="row">
                             <!-- Header Section -->
                             <div class="col-lg-12">
                                 <div class="card shadow-sm border-0 mb-4">
                                     <div class="card-header bg-primary text-white py-3">
-                                        <h5 class="card-title mb-0"><i class="fas fa-file-invoice me-2"></i>Header
-                                            Information</h5>
+                                        <h5 class="card-title mb-0"><i class="fas fa-file-invoice me-2"></i>
+                                            ${not empty grnId ? 'Edit' : 'Header'} Information</h5>
                                     </div>
                                     <div class="card-body">
                                         <div class="row g-3">
@@ -29,18 +30,37 @@
                                                 <div class="input-group">
                                                     <span class="input-group-text bg-light"><i
                                                             class="fas fa-hashtag"></i></span>
-                                                    <input class="form-control" name="grnNumber"
+                                                    <input
+                                                        class="form-control ${not empty fieldErrors.grnNumber ? 'is-invalid' : ''}"
+                                                        name="grnNumber"
+                                                        value="${oldGrnNumber != null ? oldGrnNumber : ''}"
                                                         placeholder="GRN-YYYY-XXXX" required>
                                                 </div>
+                                                <c:if test="${not empty fieldErrors.grnNumber}">
+                                                    <div class="text-danger small mt-1">${fieldErrors.grnNumber}</div>
+                                                </c:if>
                                             </div>
                                             <div class="col-md-3">
-                                                <label class="form-label fw-bold">Reference PO ID</label>
+                                                <label class="form-label fw-bold">Reference PO</label>
                                                 <div class="input-group">
                                                     <span class="input-group-text bg-light"><i
                                                             class="fas fa-shopping-cart"></i></span>
-                                                    <input type="number" class="form-control" name="poId" required>
+                                                    <select
+                                                        class="form-control ${not empty fieldErrors.poId ? 'is-invalid' : ''}"
+                                                        name="poId" required>
+                                                        <option value="">-- Select Purchase Order --</option>
+                                                        <c:forEach var="po" items="${purchaseOrders}">
+                                                            <option value="${po.poId}" ${oldPoId==po.poId ? 'selected'
+                                                                : '' }>
+                                                                ${po.poNumber} (#${po.poId})
+                                                            </option>
+                                                        </c:forEach>
+                                                    </select>
                                                 </div>
-                                                <small class="text-muted">Enter the related Purchase Order ID</small>
+                                                <c:if test="${not empty fieldErrors.poId}">
+                                                    <div class="text-danger small mt-1">${fieldErrors.poId}</div>
+                                                </c:if>
+                                                <small class="text-muted">Choose the related Purchase Order</small>
                                             </div>
                                             <div class="col-md-3">
                                                 <label class="form-label fw-bold">Supplier</label>
@@ -50,24 +70,20 @@
                                                     <select class="form-control" name="supplierId">
                                                         <option value="">-- Select Supplier --</option>
                                                         <c:forEach var="s" items="${suppliers}">
-                                                            <option value="${s.supplierId}">${s.name}</option>
+                                                            <option value="${s.supplierId}"
+                                                                ${oldSupplierId==s.supplierId ? 'selected' : '' }>
+                                                                ${s.name}</option>
                                                         </c:forEach>
                                                     </select>
                                                 </div>
                                             </div>
                                             <div class="col-md-3">
-                                                <label class="form-label fw-bold">Delivered By</label>
-                                                <div class="input-group">
-                                                    <span class="input-group-text bg-light"><i
-                                                            class="fas fa-truck"></i></span>
-                                                    <input class="form-control" name="deliveredBy"
-                                                        placeholder="Driver name / Carrier">
-                                                </div>
+                                                <!-- Delivered By removed as per user request -->
                                             </div>
                                             <div class="col-12">
                                                 <label class="form-label fw-bold">Internal Note</label>
                                                 <textarea class="form-control" name="note" rows="2"
-                                                    placeholder="Any special instructions or observations..."></textarea>
+                                                    placeholder="Any special instructions or observations...">${oldNote != null ? oldNote : ''}</textarea>
                                             </div>
                                         </div>
                                     </div>
@@ -80,6 +96,9 @@
                                     <div
                                         class="card-header d-flex justify-content-between align-items-center bg-dark text-white py-3">
                                         <h5 class="card-title mb-0"><i class="fas fa-boxes me-2"></i>SKU Details</h5>
+                                        <c:if test="${not empty fieldErrors.lines}">
+                                            <span class="badge bg-danger">${fieldErrors.lines}</span>
+                                        </c:if>
                                         <div class="btn-group">
                                             <a href="#" class="btn btn-sm btn-outline-info me-2">
                                                 <i class="fas fa-dolly me-1"></i> Putaway
@@ -97,11 +116,9 @@
                                                     class="table-light text-center text-secondary text-uppercase small">
                                                     <tr>
                                                         <th style="min-width: 250px;">Product</th>
-                                                        <th style="width: 100px;">Expected</th>
                                                         <th style="width: 100px;">Good</th>
                                                         <th style="width: 100px;">Damaged</th>
                                                         <th style="width: 100px;">Missing</th>
-                                                        <th style="width: 100px;">Extra</th>
                                                         <th>Note</th>
                                                         <th style="width: 50px;"></th>
                                                     </tr>
@@ -114,7 +131,8 @@
                                         <a href="${pageContext.request.contextPath}/goods-receipt?action=list"
                                             class="btn btn-outline-secondary px-4">Cancel</a>
                                         <button class="btn btn-success px-5 shadow-sm" type="submit">
-                                            <i class="fas fa-save me-2"></i>Save Goods Receipt
+                                            <i class="fas fa-save me-2"></i>${not empty grnId ? 'Update' : 'Save'} Goods
+                                            Receipt
                                         </button>
                                     </div>
                                 </div>
@@ -151,19 +169,28 @@
                 ]
             </script>
 
+            <script id="oldLinesData" type="application/json">
+                [
+                    <c:forEach var="l" items="${oldLines}" varStatus="status">
+                        {"variantId": "${l.variantId}", "qtyGood": "${l.qtyGood}", "qtyDamaged": "${l.qtyDamaged}", "qtyMissing": "${l.qtyMissing}", "note": "${l.note != null ? l.note : ''}"}${!status.last ? ',' : ''}
+                    </c:forEach>
+                ]
+            </script>
+
             <script>
                 let idx = 0;
                 const variantsData = document.getElementById('variantsData').textContent;
                 const variants = JSON.parse(variantsData);
 
-                function addLine() {
+                function addLine(data = null) {
                     const tbody = document.querySelector("#linesTable tbody");
                     const tr = document.createElement("tr");
                     tr.className = "line-row";
 
                     let variantOptions = '<option value="">-- Select Product --</option>';
                     variants.forEach(v => {
-                        variantOptions += `<option value="${v.id}">${v.sku} - ${v.name}</option>`;
+                        const selected = (data && data.variantId == v.id) ? 'selected' : '';
+                        variantOptions += `<option value="\${v.id}" \${selected}>\${v.sku} - \${v.name}</option>`;
                     });
 
                     tr.innerHTML = `
@@ -172,12 +199,10 @@
         \${variantOptions}
     </select>
 </td>
-<td><input type="number" min="0" step="1" class="form-control form-control-sm text-center" name="lines[\${idx}].qtyExpected" value="0" oninput="this.value = Math.abs(Math.floor(this.value))"></td>
-<td><input type="number" min="0" step="1" class="form-control form-control-sm text-center border-success-subtle" name="lines[\${idx}].qtyGood" value="0" oninput="this.value = Math.abs(Math.floor(this.value))"></td>
-<td><input type="number" min="0" step="1" class="form-control form-control-sm text-center border-danger-subtle" name="lines[\${idx}].qtyDamaged" value="0" oninput="this.value = Math.abs(Math.floor(this.value))"></td>
-<td><input type="number" min="0" step="1" class="form-control form-control-sm text-center border-warning-subtle" name="lines[\${idx}].qtyMissing" value="0" oninput="this.value = Math.abs(Math.floor(this.value))"></td>
-<td><input type="number" min="0" step="1" class="form-control form-control-sm text-center border-info-subtle" name="lines[\${idx}].qtyExtra" value="0" oninput="this.value = Math.abs(Math.floor(this.value))"></td>
-<td><input type="text" class="form-control form-control-sm" name="lines[\${idx}].note" placeholder="Remark"></td>
+<td><input type="number" min="0" step="1" class="form-control form-control-sm text-center border-success-subtle" name="lines[\${idx}].qtyGood" value="\${data ? data.qtyGood : 0}" oninput="this.value = Math.abs(Math.floor(this.value))"></td>
+<td><input type="number" min="0" step="1" class="form-control form-control-sm text-center border-danger-subtle" name="lines[\${idx}].qtyDamaged" value="\${data ? data.qtyDamaged : 0}" oninput="this.value = Math.abs(Math.floor(this.value))"></td>
+<td><input type="number" min="0" step="1" class="form-control form-control-sm text-center border-warning-subtle" name="lines[\${idx}].qtyMissing" value="\${data ? data.qtyMissing : 0}" oninput="this.value = Math.abs(Math.floor(this.value))"></td>
+<td><input type="text" class="form-control form-control-sm" name="lines[\${idx}].note" placeholder="Remark" value="\${data ? data.note : ''}"></td>
 <td class="text-center">
     <button type="button" class="btn btn-link text-danger p-0" onclick="removeLine(this)">
         <i class="fas fa-trash-alt"></i>
@@ -192,8 +217,15 @@
                     btn.closest('tr').remove();
                 }
 
-                // Initialize with one line
+                // Initialize with lines
                 document.addEventListener("DOMContentLoaded", function () {
-                    addLine();
+                    const oldLinesData = document.getElementById('oldLinesData').textContent;
+                    const oldLines = JSON.parse(oldLinesData);
+
+                    if (oldLines && oldLines.length > 0) {
+                        oldLines.forEach(line => addLine(line));
+                    } else {
+                        addLine();
+                    }
                 });
             </script>

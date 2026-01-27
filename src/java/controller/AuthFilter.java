@@ -1,10 +1,9 @@
-package controller;
+/*package controller;
 
 import jakarta.servlet.*;
 import jakarta.servlet.annotation.WebFilter;
 import jakarta.servlet.http.*;
 import java.io.IOException;
-
 
 @WebFilter("/*")
 public class AuthFilter implements Filter {
@@ -21,8 +20,7 @@ public class AuthFilter implements Filter {
         String ctx = req.getContextPath();
 
         boolean isAuth = uri.startsWith(ctx + "/authen");
-        boolean isStatic =
-                uri.startsWith(ctx + "/assets/") ||
+        boolean isStatic = uri.startsWith(ctx + "/assets/") ||
                 uri.endsWith(".css") || uri.endsWith(".js") ||
                 uri.endsWith(".png") || uri.endsWith(".jpg") || uri.endsWith(".jpeg") ||
                 uri.endsWith(".svg") || uri.endsWith(".woff") || uri.endsWith(".woff2");
@@ -43,4 +41,4 @@ public class AuthFilter implements Filter {
         chain.doFilter(request, response);
     }
 }
-
+*/
