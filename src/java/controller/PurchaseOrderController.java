@@ -83,7 +83,7 @@ public class PurchaseOrderController extends HttpServlet {
             throw new ServletException(e);
         }
     }
-
+    //AJAX load Variant
     private void handleGetVariants(HttpServletRequest request, HttpServletResponse response)
             throws Exception {
 
@@ -97,12 +97,14 @@ public class PurchaseOrderController extends HttpServlet {
         }
 
         dao.ProductVariantDAO vDao = new dao.ProductVariantDAO();
+        //lấy danh sách variant theo productid
         List<ProductVariantDTO> list = vDao.listByProductId(productId);
-
+        //khai báo json
         response.setContentType("application/json;charset=UTF-8");
         response.setCharacterEncoding("UTF-8");
 
         StringBuilder sb = new StringBuilder();
+        //tạo json thủ công
         sb.append("[");
         for (int i = 0; i < list.size(); i++) {
             dto.ProductVariantDTO v = list.get(i);
@@ -153,8 +155,11 @@ public class PurchaseOrderController extends HttpServlet {
         List<PurchaseOrderListDTO> pos
                 = dao.searchPurchaseOrders(keyword, status, expectedFrom, expectedTo, size, offset);
         // window pagination
+        //luôn hiển thị 2 trang trước 2 trang sau
         int window = 2;
+        //dòng 1
         int startPage = Math.max(1, page - window);
+        //không vượt quá total page
         int endPage = Math.min(totalPages, page + window);
         if (endPage - startPage < window * 2) {
             if (startPage == 1) {
