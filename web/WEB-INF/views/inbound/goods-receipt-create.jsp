@@ -227,5 +227,28 @@
                     } else {
                         addLine();
                     }
+
+                    // Form validation
+                    document.getElementById('grnForm').addEventListener('submit', function (e) {
+                        const rows = document.querySelectorAll('.line-row');
+                        let isValid = true;
+                        let emptyRowFound = false;
+
+                        rows.forEach((row, index) => {
+                            const qGood = parseFloat(row.querySelector(`input[name="lines[\${index}].qtyGood"]`).value) || 0;
+                            const qDamaged = parseFloat(row.querySelector(`input[name="lines[\${index}].qtyDamaged"]`).value) || 0;
+                            const qMissing = parseFloat(row.querySelector(`input[name="lines[\${index}].qtyMissing"]`).value) || 0;
+
+                            if (qGood + qDamaged + qMissing <= 0) {
+                                emptyRowFound = true;
+                                isValid = false;
+                            }
+                        });
+
+                        if (!isValid && emptyRowFound) {
+                            alert("Mỗi dòng hàng phải có ít nhất một giá trị Số lượng (Good/Damaged/Missing) lớn hơn 0.");
+                            e.preventDefault();
+                        }
+                    });
                 });
             </script>

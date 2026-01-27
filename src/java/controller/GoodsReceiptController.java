@@ -174,6 +174,7 @@ public class GoodsReceiptController extends HttpServlet {
             // Tạm thời gán User mặc định để test khi AuthFilter bị tắt
             user = new User();
             user.setUserId(1L);
+            user.setRoleNames("ADMIN");
         }
 
         String grnIdStr = request.getParameter("grnId");
@@ -240,16 +241,24 @@ public class GoodsReceiptController extends HttpServlet {
                 line.setQtyExpected(
                         qExp != null && !qExp.isBlank() ? new java.math.BigDecimal(qExp) : java.math.BigDecimal.ZERO);
 
-                line.setQtyGood(new java.math.BigDecimal(rowData.get("qtyGood")));
-                line.setQtyReceived(line.getQtyGood());
-
                 String qDam = rowData.get("qtyDamaged");
-                line.setQtyDamaged(
-                        qDam != null && !qDam.isBlank() ? new java.math.BigDecimal(qDam) : java.math.BigDecimal.ZERO);
-
                 String qMiss = rowData.get("qtyMissing");
-                line.setQtyMissing(qMiss != null && !qMiss.isBlank() ? new java.math.BigDecimal(qMiss)
-                        : java.math.BigDecimal.ZERO);
+
+                java.math.BigDecimal g = new java.math.BigDecimal(rowData.get("qtyGood"));
+                java.math.BigDecimal d = (qDam != null && !qDam.isBlank()) ? new java.math.BigDecimal(qDam)
+                        : java.math.BigDecimal.ZERO;
+                java.math.BigDecimal m = (qMiss != null && !qMiss.isBlank()) ? new java.math.BigDecimal(qMiss)
+                        : java.math.BigDecimal.ZERO;
+
+                if (g.add(d).add(m).compareTo(java.math.BigDecimal.ZERO) <= 0) {
+                    fieldErrors.put("lines",
+                            "Mỗi dòng hàng phải có ít nhất một giá trị Số lượng (Good/Damaged/Missing) lớn hơn 0.");
+                }
+
+                line.setQtyGood(g);
+                line.setQtyReceived(g);
+                line.setQtyDamaged(d);
+                line.setQtyMissing(m);
 
                 String qExt = request.getParameter("lines[" + i + "].qtyExtra");
                 line.setQtyExtra(
@@ -337,8 +346,14 @@ public class GoodsReceiptController extends HttpServlet {
                 // Tạm thời gán User mặc định để test khi AuthFilter bị tắt/chưa login
                 user = new User();
                 user.setUserId(1L);
+                user.setRoleNames("ADMIN");
             }
-            grnDao.updateStatus(id, status, user.getUserId());
+
+            // Kiểm tra quyền: Chỉ ADMIN hoặc WAREHOUSE_MANAGER mới được duyệt/từ chối
+            String roles = user.getRoleNames();
+            if (roles != null && (roles.contains("ADMIN") || roles.contains("WAREHOUSE_MANAGER"))) {
+                grnDao.updateStatus(id, status, user.getUserId());
+            }
             response.sendRedirect(request.getContextPath() + "/goods-receipt?action=detail&id=" + id);
         } else {
             response.sendRedirect(request.getContextPath() + "/goods-receipt?action=list");
