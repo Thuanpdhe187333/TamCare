@@ -48,33 +48,68 @@
     <c:if test="${fn:contains(sessionScope.USER.roleNames, 'ADMIN')}">
         <div class="sidebar-heading">Master Data</div>
 
-        <!-- Nav Item - Authorization Collapse Menu -->
-        <li class="nav-item">
-            <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#authorization"
-                aria-expanded="true" aria-controls="authorization">
-                <i class="fas fa-fw fa-user-shield"></i>
-                <span>Authorization</span>
-            </a>
-            <div id="authorization" class="collapse" aria-labelledby="authorization" data-parent="#accordionSidebar">
-                <div class="bg-white py-2 collapse-inner rounded">
-                    <a class="collapse-item" href="${pageContext.request.contextPath}/admin/user">User</a>
-                    <a class="collapse-item" href="${pageContext.request.contextPath}/admin/role">Role</a>
-                    <a class="collapse-item" href="${pageContext.request.contextPath}/admin/permission">Permission</a>
-                </div>
-            </div>
-        </li>
-        
-        <!-- Nav Item - Supplier -->
-        <li class="nav-item">
-            <a class="nav-link" href="${pageContext.request.contextPath}/admin/supplier">
-                <i class="fas fa-fw fa-building"></i>
-                <span>Supplier</span></a>
-        </li>
-        
-        <!-- Divider -->
-        <hr class="sidebar-divider" />
-    </c:if>
+  <!-- Nav Item - Pages Collapse Menu -->
+  <li class="nav-item">
+    <a
+      class="nav-link collapsed"
+      href="#"
+      data-toggle="collapse"
+      data-target="#account"
+      aria-expanded="true"
+      aria-controls="account"
+    >
+      <i class="fas fa-fw fa-user"></i>
+      <span>Account</span>
+    </a>
+    <div
+      id="account"
+      class="collapse"
+      aria-labelledby="account"
+      data-parent="#accordionSidebar"
+    >
+      <div class="bg-white py-2 collapse-inner rounded">
+        <a class="collapse-item" href="/warehouse-management/admin/permission"
+          >Permission</a
+        >
+        <a class="collapse-item" href="/warehouse-management/admin/role"
+          >Role</a
+        >
+        <a class="collapse-item" href="/warehouse-management/admin/user"
+          >User</a
+        >
+      </div>
+    </div>
+  </li>
 
+  <!-- Nav Item - Pages Collapse Menu -->
+  <li class="nav-item">
+    <a
+      class="nav-link collapsed"
+      href="#"
+      data-toggle="collapse"
+      data-target="#product"
+      aria-expanded="true"
+      aria-controls="product"
+    >
+      <i class="fas fa-fw fa-box"></i>
+      <span>Product</span>
+    </a>
+    <div
+      id="product"
+      class="collapse"
+      aria-labelledby="product"
+      data-parent="#accordionSidebar"
+    >
+      <div class="bg-white py-2 collapse-inner rounded">
+        <a class="collapse-item" href="/warehouse-management/admin/supplier"
+          >Supplier</a
+        >
+      </div>
+    </div>
+  </li>
+
+  <!-- Divider -->
+  <hr class="sidebar-divider" />
 
     <!-- Sidebar Toggler (Sidebar) -->
     <div class="text-center d-none d-md-inline">

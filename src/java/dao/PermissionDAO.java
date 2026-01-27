@@ -205,4 +205,21 @@ public class PermissionDAO extends DBContext implements Dao<Permission> {
         }
         return list;
     }
+    public void setPermissionRoles(Long permissionId, List<Long> roleIds) throws SQLException {
+        // 1. Delete existing roles
+        deleteRolePermissionsByPermissionId(permissionId);
+
+        // 2. Insert new roles
+        if (roleIds != null && !roleIds.isEmpty()) {
+            String sql = "INSERT INTO role_permission (role_id, permission_id) VALUES (?, ?)";
+            try (PreparedStatement ps = CONNECTION.prepareStatement(sql)) {
+                for (Long roleId : roleIds) {
+                    ps.setLong(1, roleId);
+                    ps.setLong(2, permissionId);
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+        }
+    }
 }

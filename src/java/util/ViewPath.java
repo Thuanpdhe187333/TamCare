@@ -39,4 +39,7 @@ public class ViewPath {
     public static final String SUPPLIER_CREATE = "/WEB-INF/views/admin/supplier/create.jsp";
     public static final String SUPPLIER_UPDATE = "/WEB-INF/views/admin/supplier/update.jsp";
     public static final String SUPPLIER_DETAIL = "/WEB-INF/views/admin/supplier/detail.jsp";
+
+    // profile
+    public static final String PROFILE_INDEX = "/WEB-INF/views/admin/profile/profile.jsp";
 }
