@@ -1,6 +1,8 @@
 package controller;
 
-import dao.PermissionDAO;
+import dto.PageResponseDTO;
+import dto.PermissionDTO;
+import dto.PermissionRequest;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -12,6 +14,8 @@ import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
+import service.PermissionService;
+import service.RoleService;
 import util.ViewPath;
 
 @WebServlet(name = "PermissionController", urlPatterns = {"/admin/permission", "/admin/permission/*"})
@@ -20,7 +24,8 @@ public class PermissionController extends HttpServlet {
     private static final Long DEFAULT_PAGE = (long) 1;
     private static final Long DEFAULT_SIZE = (long) 10;
 
-    private final PermissionDAO permissionDao = new PermissionDAO();
+    private final PermissionService permissionService = new PermissionService();
+    private final RoleService roleService = new RoleService();
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -54,17 +59,15 @@ public class PermissionController extends HttpServlet {
             var searchRaw = request.getParameter("search");
             var search = searchRaw == null ? "%%" : "%" + searchRaw + "%";
 
-            var total = permissionDao.getPageCount(search);
-            var pages = (total + size - 1) / size;
-            var permissions = permissionDao.getList(search, sort, page, size);
+            PageResponseDTO<PermissionDTO> pageResponse = permissionService.getPagedList(search, sort, page, size);
 
             request.setAttribute("page", page);
             request.setAttribute("size", size);
             request.setAttribute("sort", sortRaw);
             request.setAttribute("search", searchRaw);
-            request.setAttribute("pages", pages);
-            request.setAttribute("total", total);
-            request.setAttribute("permissions", permissions);
+            request.setAttribute("pages", pageResponse.getTotalPages());
+            request.setAttribute("total", pageResponse.getTotalItems());
+            request.setAttribute("permissions", pageResponse.getItems());
 
             request.getRequestDispatcher(ViewPath.PERMISSION_LIST).forward(request, response);
         } catch (SQLException e) {
@@ -74,36 +77,45 @@ public class PermissionController extends HttpServlet {
 
     private void viewCreate(HttpServletRequest request, HttpServletResponse response)
     throws ServletException, IOException {
-        request.getRequestDispatcher(ViewPath.PERMISSION_CREATE).forward(request, response);
+        try {
+            request.setAttribute("roles", roleService.getAll());
+            request.getRequestDispatcher(ViewPath.PERMISSION_CREATE).forward(request, response);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error loading roles");
+        }
     }
 
     private void viewDetail(HttpServletRequest request, HttpServletResponse response)
     throws ServletException, IOException {
         try {
             Long id = Long.valueOf(request.getParameter("id"));
-            var permission = permissionDao.getDetail(id);
+            PermissionDTO permission = permissionService.getDetail(id);
             if (permission == null) {
                 response.sendError(HttpServletResponse.SC_NOT_FOUND, "Permission not found");
                 return;
             }
             request.setAttribute("permission", permission);
-            request.setAttribute("roles", permissionDao.getRolesByPermissionId(id));
+            request.setAttribute("roles", permissionService.getRolesByPermissionId(id));
             request.getRequestDispatcher(ViewPath.PERMISSION_DETAIL).forward(request, response);
         } catch (Exception e) {
             e.printStackTrace();
             response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error loading detail");
         }
     }
+
     private void viewUpdate(HttpServletRequest request, HttpServletResponse response)
     throws ServletException, IOException {
         try {
             Long id = Long.valueOf(request.getParameter("id"));
-            var permission = permissionDao.getDetail(id);
+            PermissionDTO permission = permissionService.getDetail(id);
             if (permission == null) {
                 response.sendRedirect(request.getContextPath() + "/admin/permission");
                 return;
             }
             request.setAttribute("permission", permission);
+            request.setAttribute("roles", roleService.getAll());
+            request.setAttribute("currentRoleIds", permissionService.getRolesByPermissionId(id).stream().map(model.Role::getRoleId).toList());
             request.getRequestDispatcher(ViewPath.PERMISSION_UPDATE).forward(request, response);
         } catch (Exception e) {
             e.printStackTrace();
@@ -111,20 +123,25 @@ public class PermissionController extends HttpServlet {
         }
     }
 
-
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
     throws ServletException, IOException {
-        String code = request.getParameter("code");
-        String name = request.getParameter("name");
-
-        model.Permission p = new model.Permission();
-        p.setCode(code);
-        p.setName(name);
+        PermissionRequest pReq = new PermissionRequest();
+        pReq.setCode(request.getParameter("code"));
+        pReq.setName(request.getParameter("name"));
+        
+        String[] roleIdsRaw = request.getParameterValues("roleIds");
+        if (roleIdsRaw != null) {
+            pReq.setRoleIds(java.util.Arrays.stream(roleIdsRaw).map(Long::valueOf).toList());
+        }
 
         try {
-            permissionDao.create(p);
+            permissionService.create(pReq);
             response.sendRedirect(request.getContextPath() + "/admin/permission");
+        } catch (util.ValidationException e) {
+            request.setAttribute("error", e.getMessage());
+            request.setAttribute("permission", pReq);
+            viewCreate(request, response);
         } catch (SQLException e) {
             e.printStackTrace();
             viewList(request, response);
@@ -138,23 +155,36 @@ public class PermissionController extends HttpServlet {
             Map<String, String> params = parseFormBody(request);
             
             String idRaw = params.get("id");
-            if (idRaw == null) idRaw = request.getParameter("id"); // Try query param
-
+            if (idRaw == null) idRaw = request.getParameter("id");
             Long id = Long.valueOf(idRaw);
-            String code = params.get("code");
-            String name = params.get("name");
 
-            model.Permission p = new model.Permission();
-            p.setPermissionId(id);
-            p.setCode(code);
-            p.setName(name);
-
-            permissionDao.update(p);
-            response.setHeader("HX-Location", request.getContextPath() + "/admin/permission");
+            PermissionRequest pReq = new PermissionRequest();
+            pReq.setCode(params.get("code"));
+            pReq.setName(params.get("name"));
+            pReq.setRoleIds(getRoleIdsFromParams(params, "roleIds"));
+            
+            try {
+                permissionService.update(id, pReq);
+                response.setHeader("HX-Location", request.getContextPath() + "/admin/permission");
+            } catch (util.ValidationException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write(e.getMessage());
+            }
         } catch (Exception e) {
             e.printStackTrace();
             response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Cập nhật thất bại");
         }
+    }
+
+    private java.util.List<Long> getRoleIdsFromParams(Map<String, String> params, String key) {
+        java.util.List<Long> list = new java.util.ArrayList<>();
+        if (params.containsKey(key)) {
+             String val = params.get(key);
+             for(String s : val.split(",")) {
+                 if(!s.isBlank()) list.add(Long.valueOf(s.trim()));
+             }
+        }
+        return list;
     }
 
     private Map<String, String> parseFormBody(HttpServletRequest request) throws IOException {
@@ -167,8 +197,13 @@ public class PermissionController extends HttpServlet {
             for (String pair : pairs) {
                 String[] kv = pair.split("=");
                 if (kv.length == 2) {
-                    params.put(URLDecoder.decode(kv[0], StandardCharsets.UTF_8),
-                               URLDecoder.decode(kv[1], StandardCharsets.UTF_8));
+                    String key = URLDecoder.decode(kv[0], StandardCharsets.UTF_8);
+                    String value = URLDecoder.decode(kv[1], StandardCharsets.UTF_8);
+                    if (params.containsKey(key)) {
+                        params.put(key, params.get(key) + "," + value);
+                    } else {
+                        params.put(key, value);
+                    }
                 }
             }
         }
@@ -182,9 +217,8 @@ public class PermissionController extends HttpServlet {
             String idRaw = request.getParameter("id");
             if (idRaw != null) {
                 Long id = Long.valueOf(idRaw);
-                permissionDao.delete(id);
+                permissionService.delete(id);
             }
-
             response.setHeader("HX-Location", request.getContextPath() + "/admin/permission");
         } catch (NumberFormatException | SQLException e) {
             e.printStackTrace();

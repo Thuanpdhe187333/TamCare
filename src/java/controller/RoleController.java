@@ -1,7 +1,8 @@
 package controller;
 
-import dao.PermissionDAO;
-import dao.RoleDAO;
+import dto.PageResponseDTO;
+import dto.RoleDTO;
+import dto.RoleRequest;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -13,7 +14,8 @@ import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
-import model.Role;
+import service.PermissionService;
+import service.RoleService;
 import util.ViewPath;
 
 @WebServlet(name = "RoleController", urlPatterns = {"/admin/role", "/admin/role/*"})
@@ -22,8 +24,8 @@ public class RoleController extends HttpServlet {
     private static final Long DEFAULT_PAGE = 1L;
     private static final Long DEFAULT_SIZE = 10L;
 
-    private final RoleDAO roleDao = new RoleDAO();
-    private final PermissionDAO permissionDao = new PermissionDAO();
+    private final RoleService roleService = new RoleService();
+    private final PermissionService permissionService = new PermissionService();
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -57,17 +59,15 @@ public class RoleController extends HttpServlet {
             var searchRaw = request.getParameter("search");
             var search = searchRaw == null ? "%%" : "%" + searchRaw + "%";
 
-            var total = roleDao.getPageCount(search);
-            var pages = (total + size - 1) / size;
-            var roles = roleDao.getList(search, sort, page, size);
+            PageResponseDTO<RoleDTO> pageResponse = roleService.getPagedList(search, sort, page, size);
 
             request.setAttribute("page", page);
             request.setAttribute("size", size);
             request.setAttribute("sort", sortRaw);
             request.setAttribute("search", searchRaw);
-            request.setAttribute("pages", pages);
-            request.setAttribute("total", total);
-            request.setAttribute("roles", roles);
+            request.setAttribute("pages", pageResponse.getTotalPages());
+            request.setAttribute("total", pageResponse.getTotalItems());
+            request.setAttribute("roles", pageResponse.getItems());
 
             request.getRequestDispatcher(ViewPath.ROLE_LIST).forward(request, response);
         } catch (SQLException e) {
@@ -79,13 +79,13 @@ public class RoleController extends HttpServlet {
     throws ServletException, IOException {
         try {
             Long id = Long.valueOf(request.getParameter("id"));
-            var role = roleDao.getById(id);
+            RoleDTO role = roleService.getById(id);
             if (role == null) {
                 response.sendError(HttpServletResponse.SC_NOT_FOUND, "Role not found");
                 return;
             }
             request.setAttribute("role", role);
-            request.setAttribute("permissions", roleDao.getPermissionsDetailByRoleId(id));
+            request.setAttribute("permissions", roleService.getPermissionsDetailByRoleId(id));
             request.getRequestDispatcher(ViewPath.ROLE_DETAIL).forward(request, response);
         } catch (Exception e) {
             e.printStackTrace();
@@ -96,7 +96,7 @@ public class RoleController extends HttpServlet {
     private void viewCreate(HttpServletRequest request, HttpServletResponse response)
     throws ServletException, IOException {
         try {
-            request.setAttribute("permissions", permissionDao.getList("%%", "code", 1L, 1000L));
+            request.setAttribute("permissions", permissionService.getAll("%%", "code"));
             request.getRequestDispatcher(ViewPath.ROLE_CREATE).forward(request, response);
         } catch (SQLException e) {
             e.printStackTrace();
@@ -108,14 +108,14 @@ public class RoleController extends HttpServlet {
     throws ServletException, IOException {
         try {
             Long id = Long.valueOf(request.getParameter("id"));
-            var role = roleDao.getById(id);
+            RoleDTO role = roleService.getById(id);
             if (role == null) {
                 response.sendRedirect(request.getContextPath() + "/admin/role");
                 return;
             }
             request.setAttribute("role", role);
-            request.setAttribute("permissions", permissionDao.getList("%%", "code", 1L, 1000L));
-            request.setAttribute("selectedPermissionIds", roleDao.getPermissionsByRoleId(id));
+            request.setAttribute("permissions", permissionService.getAll("%%", "code"));
+            request.setAttribute("selectedPermissionIds", roleService.getPermissionsByRoleId(id));
             request.getRequestDispatcher(ViewPath.ROLE_UPDATE).forward(request, response);
         } catch (Exception e) {
             e.printStackTrace();
@@ -126,22 +126,22 @@ public class RoleController extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
     throws ServletException, IOException {
-        String name = request.getParameter("name");
-        String description = request.getParameter("description");
-        String[] permissionIds = request.getParameterValues("permissionIds");
-
-        model.Role r = new model.Role();
-        r.setName(name);
-        r.setDescription(description);
+        RoleRequest rReq = new RoleRequest();
+        rReq.setName(request.getParameter("name"));
+        rReq.setDescription(request.getParameter("description"));
+        
+        String[] pIds = request.getParameterValues("permissionIds");
+        if (pIds != null) {
+            rReq.setPermissionIds(java.util.Arrays.stream(pIds).map(Long::valueOf).toList());
+        }
 
         try {
-            if (roleDao.create(r)) {
-                if (permissionIds != null) {
-                    java.util.List<Long> pList = java.util.Arrays.stream(permissionIds).map(Long::valueOf).toList();
-                    roleDao.setRolePermissions(r.getRoleId(), pList);
-                }
-            }
+            roleService.create(rReq);
             response.sendRedirect(request.getContextPath() + "/admin/role");
+        } catch (util.ValidationException e) {
+            request.setAttribute("error", e.getMessage());
+            request.setAttribute("role", rReq);
+            viewCreate(request, response);
         } catch (SQLException e) {
             e.printStackTrace();
             viewList(request, response);
@@ -156,25 +156,24 @@ public class RoleController extends HttpServlet {
             
             String idRaw = request.getParameter("id");
             if (idRaw == null && params.containsKey("id")) idRaw = params.get("id")[0];
-
             Long id = Long.valueOf(idRaw);
-            String name = params.get("name")[0];
-            String description = params.get("description")[0];
-            String[] permissionIds = params.get("permissionIds");
 
-            model.Role r = new model.Role();
-            r.setRoleId(id);
-            r.setName(name);
-            r.setDescription(description);
-
-            if (roleDao.update(r)) {
-                java.util.List<Long> pList = permissionIds != null 
-                    ? java.util.Arrays.stream(permissionIds).map(Long::valueOf).toList() 
-                    : new java.util.ArrayList<>();
-                roleDao.setRolePermissions(id, pList);
-            }
+            RoleRequest rReq = new RoleRequest();
+            rReq.setName(params.get("name")[0]);
+            rReq.setDescription(params.get("description")[0]);
             
-            response.setHeader("HX-Location", request.getContextPath() + "/admin/role");
+            String[] permissionIds = params.get("permissionIds");
+            if (permissionIds != null) {
+                rReq.setPermissionIds(java.util.Arrays.stream(permissionIds).map(Long::valueOf).toList());
+            }
+
+            try {
+                roleService.update(id, rReq);
+                response.setHeader("HX-Location", request.getContextPath() + "/admin/role");
+            } catch (util.ValidationException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write(e.getMessage());
+            }
         } catch (Exception e) {
             e.printStackTrace();
             response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Cập nhật thất bại");
@@ -188,7 +187,7 @@ public class RoleController extends HttpServlet {
             String idRaw = request.getParameter("id");
             if (idRaw != null) {
                 Long id = Long.valueOf(idRaw);
-                roleDao.delete(id);
+                roleService.delete(id);
             }
             response.setHeader("HX-Location", request.getContextPath() + "/admin/role");
         } catch (NumberFormatException | SQLException e) {

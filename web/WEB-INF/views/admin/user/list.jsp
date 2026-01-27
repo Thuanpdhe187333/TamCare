@@ -17,7 +17,7 @@
     </jsp:attribute>
 
     <jsp:body>
-        <c:set var="columns" value='${["Index", "Username", "Full Name", "Email", "Phone", "Role(s)", "Status", "Action"]}' />
+        <c:set var="columns" value='${["Index", "Username", "Full Name", "Email", "Phone", "Role(s)", "Status", "Deleted", "Action"]}' />
         <t:table columns="${columns}">
             <jsp:attribute name="head">
                 <form
@@ -52,6 +52,16 @@
                         <option value="INACTIVE" ${status == 'INACTIVE' ? 'selected' : ''}>Inactive</option>
                     </select>
 
+                    <select
+                      name="isDeleted"
+                      class="form-select w-auto"
+                      aria-label="Filter by deleted status"
+                      >
+                        <option value="">All</option>
+                        <option value="0" ${isDeleted == '0' ? 'selected' : ''}>Not Deleted</option>
+                        <option value="1" ${isDeleted == '1' ? 'selected' : ''}>Deleted</option>
+                    </select>
+
                     <div class="input-group">
                         <input
                           name="search"
@@ -73,7 +83,7 @@
                   size="${size}"
                   total="${total}"
                   url="${pageContext.request.contextPath}/admin/user"
-                  include="[name='search'], [name='sort'], [name='roleId'], [name='status']"
+                  include="[name='search'], [name='sort'], [name='roleId'], [name='status'], [name='isDeleted']"
                   />
             </jsp:attribute>
 
@@ -102,6 +112,16 @@
                             </c:choose>
                         </td>
                         <td>
+                            <c:choose>
+                                <c:when test="${user.isDeleted}">
+                                    <span class="badge bg-danger">Deleted</span>
+                                </c:when>
+                                <c:otherwise>
+                                    <span class="badge bg-success">Active</span>
+                                </c:otherwise>
+                            </c:choose>
+                        </td>
+                        <td>
                             <a
                               href="${pageContext.request.contextPath}/admin/user/detail?id=${user.userId}"
                               class="btn btn-sm btn-circle btn-outline-info me-1"
@@ -118,37 +138,76 @@
                                 <i class="bi bi-pencil fab"></i>
                             </a>
 
-                            <button
-                              type="button"
-                              class="btn btn-sm btn-circle btn-outline-danger"
-                              data-bs-toggle="modal"
-                              data-bs-target="#deleteModal${user.userId}"
-                              title="Delete"
-                              >
-                                <i class="bi bi-trash fab"></i>
-                            </button>
-
-                            <t:alert id="deleteModal${user.userId}">
-                                <jsp:attribute name="title"> Confirm Delete </jsp:attribute>
-                                <jsp:attribute name="desciption">
-                                    Are you sure you want to delete user
-                                    <strong>${user.username}</strong>? This
-                                    will mark the user as deleted.
-                                </jsp:attribute>
-                                <jsp:attribute name="action">
+                            <c:choose>
+                                <c:when test="${user.isDeleted}">
+                                    <!-- Restore button for deleted users -->
                                     <button
                                       type="button"
-                                      class="btn btn-danger"
-                                      hx-delete="${pageContext.request.contextPath}/admin/user?id=${user.userId}"
-                                      hx-target="#wrapper"
-                                      hx-select="#wrapper"
-                                      hx-swap="outerHTML"
-                                      data-bs-dismiss="modal"
+                                      class="btn btn-sm btn-circle btn-outline-danger"
+                                      data-bs-toggle="modal"
+                                      data-bs-target="#restoreModal${user.userId}"
+                                      title="Restore"
                                       >
-                                        Delete
+                                        <i class="bi bi-arrow-counterclockwise fab"></i>
                                     </button>
-                                </jsp:attribute>
-                            </t:alert>
+
+                                    <t:alert id="restoreModal${user.userId}">
+                                        <jsp:attribute name="title"> Confirm Restore </jsp:attribute>
+                                        <jsp:attribute name="desciption">
+                                            Are you sure you want to restore user
+                                            <strong>${user.username}</strong>? This
+                                            will reactivate the user account.
+                                        </jsp:attribute>
+                                        <jsp:attribute name="action">
+                                            <button
+                                              type="button"
+                                              class="btn btn-success"
+                                              hx-get="${pageContext.request.contextPath}/admin/user/restore?id=${user.userId}"
+                                              hx-target="#wrapper"
+                                              hx-select="#wrapper"
+                                              hx-swap="outerHTML"
+                                              data-bs-dismiss="modal"
+                                              >
+                                                Restore
+                                            </button>
+                                        </jsp:attribute>
+                                    </t:alert>
+                                </c:when>
+                                <c:otherwise>
+                                    <!-- Delete button for active users -->
+                                    <button
+                                      type="button"
+                                      class="btn btn-sm btn-circle btn-outline-danger"
+                                      data-bs-toggle="modal"
+                                      data-bs-target="#deleteModal${user.userId}"
+                                      title="Delete"
+                                      >
+                                        <i class="bi bi-trash fab"></i>
+                                    </button>
+
+                                    <t:alert id="deleteModal${user.userId}">
+                                        <jsp:attribute name="title"> Confirm Delete </jsp:attribute>
+                                        <jsp:attribute name="desciption">
+                                            Are you sure you want to delete user
+                                            <strong>${user.username}</strong>? This
+                                            will mark the user as deleted.
+                                        </jsp:attribute>
+                                        <jsp:attribute name="action">
+                                            <button
+                                              type="button"
+                                              class="btn btn-danger"
+                                              hx-delete="${pageContext.request.contextPath}/admin/user?id=${user.userId}"
+                                              hx-target="#wrapper"
+                                              hx-select="#wrapper"
+                                              hx-swap="outerHTML"
+                                              data-bs-dismiss="modal"
+                                              >
+                                                Delete
+                                            </button>
+                                        </jsp:attribute>
+                                    </t:alert>
+                                </c:otherwise>
+                            </c:choose>
                         </td>
                     </tr>
                 </c:forEach>

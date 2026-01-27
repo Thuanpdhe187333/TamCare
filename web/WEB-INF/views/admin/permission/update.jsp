@@ -32,6 +32,23 @@
                                value="${permission.name}" placeholder="Example: View User, Create Product">
                     </div>
 
+                    <div class="mb-3">
+                        <label class="form-label">Roles</label>
+                        <div class="row">
+                            <c:forEach items="${roles}" var="role">
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="roleIds" value="${role.roleId}" id="role_${role.roleId}"
+                                               <c:if test="${currentRoleIds.contains(role.roleId)}">checked</c:if>>
+                                        <label class="form-check-label" for="role_${role.roleId}">
+                                            ${role.name}
+                                        </label>
+                                    </div>
+                                </div>
+                            </c:forEach>
+                        </div>
+                    </div>
+
                     <div class="d-flex justify-content-end gap-2">
                         <t:link url="${pageContext.request.contextPath}/admin/permission"
                                 icon="x-circle" color="dark" variant="split">
