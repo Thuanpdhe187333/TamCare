@@ -24,21 +24,24 @@
     <!-- Divider -->
     <hr class="sidebar-divider" />
 
-    <!-- INBOUND SECTION -->
-    <div class="sidebar-heading">Inbound</div>
+    <!-- Warehouse Operations Section -->
+    <div class="sidebar-heading">Warehouse Operations</div>
 
-    <!-- Nav Item - Purchase Orders -->
+    <!-- Nav Item - Inbound -->
     <li class="nav-item">
-        <a class="nav-link" href="${pageContext.request.contextPath}/purchase-orders">
-            <i class="fas fa-fw fa-shopping-cart"></i>
-            <span>Purchase Orders</span></a>
-    </li>
-
-    <!-- Nav Item - Goods Receipt -->
-    <li class="nav-item">
-        <a class="nav-link" href="${pageContext.request.contextPath}/goods-receipt">
-            <i class="fas fa-fw fa-truck-loading"></i>
-            <span>Goods Receipt</span></a>
+        <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseInbound"
+            aria-expanded="true" aria-controls="collapseInbound">
+            <i class="fas fa-fw fa-file-import"></i>
+            <span>Inbound</span>
+        </a>
+        <div id="collapseInbound" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
+            <div class="bg-white py-2 collapse-inner rounded">
+                <h6 class="collapse-header">Goods Receipt:</h6>
+                <a class="collapse-item" href="${pageContext.request.contextPath}/goods-receipt?action=list">GRN List</a>
+                <a class="collapse-item" href="${pageContext.request.contextPath}/goods-receipt?action=create">Create GRN</a>
+                <a class="collapse-item" href="${pageContext.request.contextPath}/purchase-orders">Purchase Orders</a>
+            </div>
+        </div>
     </li>
 
     <!-- Divider -->
@@ -48,68 +51,39 @@
     <c:if test="${fn:contains(sessionScope.USER.roleNames, 'ADMIN')}">
         <div class="sidebar-heading">Master Data</div>
 
-  <!-- Nav Item - Pages Collapse Menu -->
-  <li class="nav-item">
-    <a
-      class="nav-link collapsed"
-      href="#"
-      data-toggle="collapse"
-      data-target="#account"
-      aria-expanded="true"
-      aria-controls="account"
-    >
-      <i class="fas fa-fw fa-user"></i>
-      <span>Account</span>
-    </a>
-    <div
-      id="account"
-      class="collapse"
-      aria-labelledby="account"
-      data-parent="#accordionSidebar"
-    >
-      <div class="bg-white py-2 collapse-inner rounded">
-        <a class="collapse-item" href="/warehouse-management/admin/permission"
-          >Permission</a
-        >
-        <a class="collapse-item" href="/warehouse-management/admin/role"
-          >Role</a
-        >
-        <a class="collapse-item" href="/warehouse-management/admin/user"
-          >User</a
-        >
-      </div>
-    </div>
-  </li>
+        <!-- Nav Item - Account Menu -->
+        <li class="nav-item">
+            <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#account"
+                aria-expanded="true" aria-controls="account">
+                <i class="fas fa-fw fa-user"></i>
+                <span>Account</span>
+            </a>
+            <div id="account" class="collapse" aria-labelledby="account" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <a class="collapse-item" href="/warehouse-management/admin/permission">Permission</a>
+                    <a class="collapse-item" href="/warehouse-management/admin/role">Role</a>
+                    <a class="collapse-item" href="/warehouse-management/admin/user">User</a>
+                </div>
+            </div>
+        </li>
 
-  <!-- Nav Item - Pages Collapse Menu -->
-  <li class="nav-item">
-    <a
-      class="nav-link collapsed"
-      href="#"
-      data-toggle="collapse"
-      data-target="#product"
-      aria-expanded="true"
-      aria-controls="product"
-    >
-      <i class="fas fa-fw fa-box"></i>
-      <span>Product</span>
-    </a>
-    <div
-      id="product"
-      class="collapse"
-      aria-labelledby="product"
-      data-parent="#accordionSidebar"
-    >
-      <div class="bg-white py-2 collapse-inner rounded">
-        <a class="collapse-item" href="/warehouse-management/admin/supplier"
-          >Supplier</a
-        >
-      </div>
-    </div>
-  </li>
-
-  <!-- Divider -->
-  <hr class="sidebar-divider" />
+        <!-- Nav Item - Product/Supplier Menu -->
+        <li class="nav-item">
+            <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#product"
+                aria-expanded="true" aria-controls="product">
+                <i class="fas fa-fw fa-box"></i>
+                <span>Product</span>
+            </a>
+            <div id="product" class="collapse" aria-labelledby="product" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <a class="collapse-item" href="/warehouse-management/admin/supplier">Supplier</a>
+                </div>
+            </div>
+        </li>
+        
+        <!-- Divider -->
+        <hr class="sidebar-divider" />
+    </c:if>
 
     <!-- Sidebar Toggler (Sidebar) -->
     <div class="text-center d-none d-md-inline">

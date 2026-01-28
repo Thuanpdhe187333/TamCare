@@ -30,9 +30,9 @@ public class ViewPath {
     public static final String VIEW_VERIFY_OTP = "/WEB-INF/views/admin/user/verify_otp.jsp";
 
     // Goods Receipt
-    public static final String GRN_LIST = "/WEB-INF/views/inbound/GoodsReceiptList.jsp";
-    public static final String GRN_DETAIL = "/WEB-INF/views/inbound/GoodsReceiptDetail.jsp";
-    public static final String GRN_CREATE = "/WEB-INF/views/inbound/GoodsReceiptCreate.jsp";
+    public static final String GRN_LIST = "/WEB-INF/views/inbound/goods-receipt-list.jsp";
+    public static final String GRN_DETAIL = "/WEB-INF/views/inbound/goods-receipt-detail.jsp";
+    public static final String GRN_CREATE = "/WEB-INF/views/inbound/goods-receipt-create.jsp";
 
     // supplier
     public static final String SUPPLIER_LIST = "/WEB-INF/views/admin/supplier/list.jsp";

@@ -16,16 +16,16 @@ public class ProductVariantDAO extends DBContext {
         List<ProductVariantDTO> list = new ArrayList<>();
 
         String sql = """
-            SELECT 
-                pv.variant_id,
-                pv.variant_sku,
-                p.sku AS product_sku,
-                p.name AS product_name
-            FROM product_variant pv
-            JOIN product p ON p.product_id = pv.product_id
-            WHERE pv.status = 'ACTIVE'
-            ORDER BY pv.variant_id
-        """;
+                    SELECT
+                        pv.variant_id,
+                        pv.variant_sku,
+                        p.sku AS product_sku,
+                        p.name AS product_name
+                    FROM product_variant pv
+                    JOIN product p ON p.product_id = pv.product_id
+                    WHERE pv.status = 'ACTIVE'
+                    ORDER BY pv.variant_id
+                """;
 
         try (PreparedStatement ps = con.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
 

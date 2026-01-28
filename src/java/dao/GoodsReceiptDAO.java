@@ -3,6 +3,7 @@ package dao;
 import context.DBContext;
 import model.GoodsReceipt;
 import model.GoodsReceiptLine;
+import dto.ProductVariantDTO;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,7 +13,6 @@ public class GoodsReceiptDAO extends DBContext {
     public List<dto.GoodsReceiptListDTO> getFilteredGRNs(String grnNumber, Long supplierId, String status,
             String sortField,
             String sortOrder, int limit, int offset) throws SQLException {
-        Connection conn = getConnection();
         StringBuilder sql = new StringBuilder("""
                     SELECT gr.grn_id, gr.grn_number, gr.status, gr.created_at, gr.delivered_by,
                            s.name as supplier_name, u.full_name as creator_name
@@ -54,7 +54,8 @@ public class GoodsReceiptDAO extends DBContext {
         sql.append(" LIMIT ? OFFSET ?");
 
         List<dto.GoodsReceiptListDTO> list = new ArrayList<>();
-        try (PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql.toString())) {
             int paramIdx = 1;
             if (grnNumber != null && !grnNumber.isBlank()) {
                 ps.setString(paramIdx++, "%" + grnNumber + "%");
@@ -89,7 +90,6 @@ public class GoodsReceiptDAO extends DBContext {
     }
 
     public int countFilteredGRNs(String grnNumber, Long supplierId, String status) throws SQLException {
-        Connection conn = getConnection();
         StringBuilder sql = new StringBuilder("""
                     SELECT COUNT(*)
                     FROM goods_receipt gr
@@ -107,7 +107,8 @@ public class GoodsReceiptDAO extends DBContext {
             sql.append(" AND gr.status = ?");
         }
 
-        try (PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql.toString())) {
             int paramIdx = 1;
             if (grnNumber != null && !grnNumber.isBlank()) {
                 ps.setString(paramIdx++, "%" + grnNumber + "%");
@@ -129,17 +130,16 @@ public class GoodsReceiptDAO extends DBContext {
     }
 
     public long createGRN(GoodsReceipt grn, List<GoodsReceiptLine> lines) throws SQLException {
-        Connection conn = getConnection();
         String sqlGR = """
-                    INSERT INTO goods_receipt (grn_number, po_id, warehouse_id, status, created_by, created_at, delivered_by, note)
-                    VALUES (?, ?, ?, 'PENDING', ?, NOW(), ?, ?)
+                    INSERT INTO goods_receipt (grn_number, po_id, warehouse_id, status, created_by, created_at, note)
+                    VALUES (?, ?, ?, 'PENDING', ?, NOW(), ?)
                 """;
         String sqlLine = """
                     INSERT INTO goods_receipt_line (grn_id, po_line_id, variant_id, qty_expected, qty_received, qty_good, qty_missing, qty_damaged, qty_extra, note)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
-        try {
+        try (Connection conn = getConnection()) {
             conn.setAutoCommit(false);
             long grnId;
             try (PreparedStatement ps = conn.prepareStatement(sqlGR, Statement.RETURN_GENERATED_KEYS)) {
@@ -147,8 +147,7 @@ public class GoodsReceiptDAO extends DBContext {
                 ps.setLong(2, grn.getPoId());
                 ps.setLong(3, grn.getWarehouseId());
                 ps.setLong(4, grn.getCreatedBy());
-                ps.setString(5, grn.getDeliveredBy());
-                ps.setString(6, grn.getNote());
+                ps.setString(5, grn.getNote());
                 ps.executeUpdate();
 
                 try (ResultSet rs = ps.getGeneratedKeys()) {
@@ -180,17 +179,15 @@ public class GoodsReceiptDAO extends DBContext {
             conn.commit();
             return grnId;
         } catch (SQLException e) {
-            conn.rollback();
+            // Transaction rollback is handled if exception occurs
             throw e;
-        } finally {
-            conn.setAutoCommit(true);
         }
     }
 
     public GoodsReceipt getById(Long id) throws SQLException {
-        Connection conn = getConnection();
         String sql = "SELECT * FROM goods_receipt WHERE grn_id = ?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -202,10 +199,16 @@ public class GoodsReceiptDAO extends DBContext {
     }
 
     public List<GoodsReceiptLine> getLinesByGrnId(Long grnId) throws SQLException {
-        Connection conn = getConnection();
-        String sql = "SELECT * FROM goods_receipt_line WHERE grn_id = ?";
+        String sql = """
+                    SELECT gl.*, pv.variant_sku AS sku, p.name AS product_name
+                    FROM goods_receipt_line gl
+                    JOIN product_variant pv ON gl.variant_id = pv.variant_id
+                    JOIN product p ON pv.product_id = p.product_id
+                    WHERE gl.grn_id = ?
+                """;
         List<GoodsReceiptLine> list = new ArrayList<>();
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, grnId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -217,9 +220,9 @@ public class GoodsReceiptDAO extends DBContext {
     }
 
     public boolean updateStatus(Long grnId, String status, Long userId) throws SQLException {
-        Connection conn = getConnection();
         String sql = "UPDATE goods_receipt SET status = ?, approved_by = ?, approved_at = NOW() WHERE grn_id = ?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, status);
             ps.setLong(2, userId);
             ps.setLong(3, grnId);
@@ -256,6 +259,11 @@ public class GoodsReceiptDAO extends DBContext {
         l.setGrnId(rs.getLong("grn_id"));
         l.setPoLineId(rs.getObject("po_line_id") != null ? rs.getLong("po_line_id") : null);
         l.setVariantId(rs.getLong("variant_id"));
+        try {
+            l.setSku(rs.getString("sku"));
+            l.setProductName(rs.getString("product_name"));
+        } catch (Exception e) {
+        }
         l.setQtyExpected(rs.getBigDecimal("qty_expected"));
         l.setQtyReceived(rs.getBigDecimal("qty_received"));
         l.setQtyGood(rs.getBigDecimal("qty_good"));
@@ -264,5 +272,133 @@ public class GoodsReceiptDAO extends DBContext {
         l.setQtyExtra(rs.getBigDecimal("qty_extra"));
         l.setNote(rs.getString("note"));
         return l;
+    }
+
+    public List<ProductVariantDTO> getActiveVariants() throws Exception {
+        List<ProductVariantDTO> list = new ArrayList<>();
+
+        String sql = """
+                    SELECT
+                        pv.variant_id,
+                        pv.variant_sku,
+                        p.sku AS product_sku,
+                        p.name AS product_name
+                    FROM product_variant pv
+                    JOIN product p ON p.product_id = pv.product_id
+                    ORDER BY pv.variant_id
+                """;
+
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                ProductVariantDTO v = new ProductVariantDTO();
+                v.setVariantId(rs.getLong("variant_id"));
+                v.setVariantSku(rs.getString("variant_sku"));
+                v.setProductSku(rs.getString("product_sku"));
+                v.setProductName(rs.getString("product_name"));
+                list.add(v);
+            }
+        }
+        return list;
+    }
+
+    public List<dto.PurchaseOrderListDTO> getPurchaseOrdersForSelection() throws SQLException {
+        String sql = "SELECT po_id, po_number FROM purchase_order ORDER BY po_id DESC";
+        List<dto.PurchaseOrderListDTO> list = new ArrayList<>();
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                dto.PurchaseOrderListDTO dto = new dto.PurchaseOrderListDTO();
+                dto.setPoId(rs.getLong("po_id"));
+                dto.setPoNumber(rs.getString("po_number"));
+                list.add(dto);
+            }
+        }
+        return list;
+    }
+
+    public boolean isGrnNumberExists(String grnNumber, Long excludeId) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM goods_receipt WHERE grn_number = ? AND (? IS NULL OR grn_id != ?)";
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, grnNumber);
+            ps.setObject(2, excludeId);
+            ps.setObject(3, excludeId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+        }
+        return false;
+    }
+
+    public void deleteGRN(Long grnId) throws SQLException {
+        String sqlLines = "DELETE FROM goods_receipt_line WHERE grn_id = ?";
+        String sqlGR = "DELETE FROM goods_receipt WHERE grn_id = ?";
+        try (Connection conn = getConnection()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement psLines = conn.prepareStatement(sqlLines)) {
+                psLines.setLong(1, grnId);
+                psLines.executeUpdate();
+            }
+            try (PreparedStatement psGR = conn.prepareStatement(sqlGR)) {
+                psGR.setLong(1, grnId);
+                psGR.executeUpdate();
+            }
+            conn.commit();
+        } catch (SQLException e) {
+            throw e;
+        }
+    }
+
+    public void updateGRN(GoodsReceipt grn, List<GoodsReceiptLine> lines) throws SQLException {
+        String sqlUpdateGR = """
+                    UPDATE goods_receipt
+                    SET grn_number = ?, po_id = ?, warehouse_id = ?, note = ?
+                    WHERE grn_id = ?
+                """;
+        String sqlDeleteLines = "DELETE FROM goods_receipt_line WHERE grn_id = ?";
+        String sqlInsertLine = """
+                    INSERT INTO goods_receipt_line (grn_id, po_line_id, variant_id, qty_expected, qty_received, qty_good, qty_missing, qty_damaged, qty_extra, note)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """;
+
+        try (Connection conn = getConnection()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement ps = conn.prepareStatement(sqlUpdateGR)) {
+                ps.setString(1, grn.getGrnNumber());
+                ps.setLong(2, grn.getPoId());
+                ps.setLong(3, grn.getWarehouseId());
+                ps.setString(4, grn.getNote());
+                ps.setLong(5, grn.getGrnId());
+                ps.executeUpdate();
+            }
+            try (PreparedStatement ps = conn.prepareStatement(sqlDeleteLines)) {
+                ps.setLong(1, grn.getGrnId());
+                ps.executeUpdate();
+            }
+            try (PreparedStatement ps = conn.prepareStatement(sqlInsertLine)) {
+                for (GoodsReceiptLine line : lines) {
+                    ps.setLong(1, grn.getGrnId());
+                    ps.setObject(2, line.getPoLineId());
+                    ps.setLong(3, line.getVariantId());
+                    ps.setBigDecimal(4, line.getQtyExpected());
+                    ps.setBigDecimal(5, line.getQtyReceived());
+                    ps.setBigDecimal(6, line.getQtyGood());
+                    ps.setBigDecimal(7, line.getQtyMissing());
+                    ps.setBigDecimal(8, line.getQtyDamaged());
+                    ps.setBigDecimal(9, line.getQtyExtra());
+                    ps.setString(10, line.getNote());
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+            conn.commit();
+        } catch (SQLException e) {
+            throw e;
+        }
     }
 }
