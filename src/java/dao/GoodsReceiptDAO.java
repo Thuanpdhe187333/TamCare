@@ -322,7 +322,7 @@ public class GoodsReceiptDAO extends DBContext {
     }
 
     public List<dto.PurchaseOrderListDTO> getPurchaseOrdersForSelection() throws SQLException {
-        String sql = "SELECT po_id, po_number FROM purchase_order ORDER BY po_id DESC";
+        String sql = "SELECT po_id, po_number FROM purchase_order WHERE status != 'CLOSED' AND status != 'CANCELLED' ORDER BY po_id DESC";
         List<dto.PurchaseOrderListDTO> list = new ArrayList<>();
         try (Connection conn = getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql);
