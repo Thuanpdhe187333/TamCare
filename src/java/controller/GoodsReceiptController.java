@@ -399,6 +399,17 @@ public class GoodsReceiptController extends HttpServlet {
             resultGrnId = grnDao.createGRN(grn, validLines);
         }
 
+        // Cập nhật trạng thái PO sang CLOSED để ẩn đi
+        if (poId != null) {
+            try {
+                PurchaseOrderDAO poDao = new PurchaseOrderDAO();
+                poDao.updateStatus(poId, "CLOSED");
+            } catch (Exception e) {
+                // Log error but don't fail the whole GRN creation
+                System.err.println("Error updating PO status: " + e.getMessage());
+            }
+        }
+
         // Sau khi lưu thành công, chuyển đến màn hình Putaway
         response.sendRedirect(request.getContextPath() + "/goods-receipt?action=putaway&id=" + resultGrnId);
     }
