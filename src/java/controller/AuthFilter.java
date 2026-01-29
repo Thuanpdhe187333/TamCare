@@ -1,4 +1,4 @@
-/*package controller;
+package controller;
 
 import jakarta.servlet.*;
 import jakarta.servlet.annotation.WebFilter;
@@ -41,4 +41,3 @@ public class AuthFilter implements Filter {
         chain.doFilter(request, response);
     }
 }
-*/
