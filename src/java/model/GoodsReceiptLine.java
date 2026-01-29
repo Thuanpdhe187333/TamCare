@@ -19,5 +19,6 @@ public class GoodsReceiptLine {
     private BigDecimal qtyMissing;
     private BigDecimal qtyDamaged;
     private BigDecimal qtyExtra;
+    private BigDecimal unitPrice;
     private String note;
 }

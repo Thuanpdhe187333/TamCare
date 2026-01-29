@@ -38,7 +38,6 @@
             <div class="bg-white py-2 collapse-inner rounded">
                 <h6 class="collapse-header">Goods Receipt:</h6>
                 <a class="collapse-item" href="${pageContext.request.contextPath}/goods-receipt?action=list">GRN List</a>
-                <a class="collapse-item" href="${pageContext.request.contextPath}/goods-receipt?action=create">Create GRN</a>
                 <a class="collapse-item" href="${pageContext.request.contextPath}/purchase-orders">Purchase Orders</a>
             </div>
         </div>

@@ -16,6 +16,6 @@ public class GoodsReceiptListDTO {
     private String supplierName;
     private String status;
     private String creatorName;
-    private String deliveredBy;
+    private String poNumber;
     private LocalDateTime createdAt;
 }

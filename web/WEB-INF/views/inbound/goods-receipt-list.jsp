@@ -65,6 +65,7 @@
                                             class="fas fa-sort"></i></th>
                                     <th style="cursor: pointer;" onclick="toggleSort('grn_number')">GRN Number <i
                                             class="fas fa-sort"></i></th>
+                                    <th>Purchase Order</th>
                                     <th style="cursor: pointer;" onclick="toggleSort('supplier_name')">Supplier <i
                                             class="fas fa-sort"></i></th>
                                     <th style="cursor: pointer;" onclick="toggleSort('status')">Status <i
@@ -78,6 +79,7 @@
                                     <tr>
                                         <td class="text-center">${gr.grnId}</td>
                                         <td class="font-weight-bold text-primary">${gr.grnNumber}</td>
+                                        <td>${gr.poNumber}</td>
                                         <td>${gr.supplierName}</td>
                                         <td class="text-center">
                                             <span
