@@ -1,5 +1,6 @@
 package controller;
 
+import dao.ProductDAO;
 import dao.PurchaseOrderDAO;
 import dao.SupplierDAO;
 import dto.POLineCreateDTO;
@@ -16,19 +17,17 @@ import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.sql.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-@WebServlet(name = "PurchaseOrderController", urlPatterns = {"/purchase-orders"})
+@WebServlet(name = "PurchaseOrderController", urlPatterns = { "/purchase-orders" })
 public class PurchaseOrderController extends HttpServlet {
 
     private static final int DEFAULT_PAGE = 1;
     private static final int DEFAULT_SIZE = 5;
-    dao.SupplierDAO sDao = new dao.SupplierDAO();
-    dao.ProductDAO pDao = new dao.ProductDAO();
+    private final SupplierDAO sDao = new SupplierDAO();
+    private final ProductDAO pDao = new ProductDAO();
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -136,7 +135,7 @@ public class PurchaseOrderController extends HttpServlet {
         if (keyword != null) {
             keyword = keyword.trim();
         }
-        //status nếu rỗng thì đổi sang null để DAO hiểu là không filter theo status
+        // status nếu rỗng thì đổi sang null để DAO hiểu là không filter theo status
         if (status != null && status.isBlank()) {
             status = null;
         }
@@ -152,8 +151,8 @@ public class PurchaseOrderController extends HttpServlet {
             page = totalPages;
         }
         int offset = (page - 1) * size;
-        List<PurchaseOrderListDTO> pos
-                = dao.searchPurchaseOrders(keyword, status, expectedFrom, expectedTo, size, offset);
+        List<PurchaseOrderListDTO> pos = dao.searchPurchaseOrders(keyword, status, expectedFrom, expectedTo, size,
+                offset);
         // window pagination
         //luôn hiển thị 2 trang trước 2 trang sau
         int window = 2;
@@ -218,7 +217,7 @@ public class PurchaseOrderController extends HttpServlet {
         request.setCharacterEncoding("UTF-8");
         Map<String, String> fieldErrors = new HashMap<>();
         String poNumber = request.getParameter("poNumber");
-// SAFE parse supplier
+        // SAFE parse supplier
         String supplierStr = request.getParameter("supplierId");
         long supplierId = (supplierStr == null || supplierStr.isBlank()) ? 0L : Long.parseLong(supplierStr);
         String expected = request.getParameter("expectedDeliveryDate");
@@ -229,7 +228,7 @@ public class PurchaseOrderController extends HttpServlet {
             try {
                 expectedDate = Date.valueOf(expected); // yyyy-MM-dd
                 // không được hôm nay hoặc quá khứ => phải > today
-                //toLocateDate() bỏ giờ lấy ngày
+                // toLocateDate() bỏ giờ lấy ngày
                 if (!expectedDate.toLocalDate().isAfter(java.time.LocalDate.now())) {
                     fieldErrors.put("expectedDeliveryDate", "Expected Delivery Date must be after today");
                 }
@@ -240,10 +239,10 @@ public class PurchaseOrderController extends HttpServlet {
         String note = request.getParameter("note");
         Long userId = (Long) request.getSession().getAttribute("userId");
         if (userId == null) {
-            userId = 1L;//admin
+            userId = 1L;// admin
         }
         PurchaseOrderDAO dao = new PurchaseOrderDAO();
-// PO Number validate
+        // PO Number validate
         if (poNumber == null || poNumber.isBlank()) {
             fieldErrors.put("poNumber", "PO Number is required");
         } else if (poNumber.length() > 20) {
@@ -253,11 +252,11 @@ public class PurchaseOrderController extends HttpServlet {
                 fieldErrors.put("poNumber", "PO Number already exists");
             }
         }
-// Supplier validate
+        // Supplier validate
         if (supplierId <= 0) {
             fieldErrors.put("supplierId", "Supplier is required");
         }
-// Lines parse
+        // Lines parse
         List<POLineCreateDTO> lines = new ArrayList<>();
         for (int i = 0; i < 500; i++) {
             String vid = request.getParameter("lines[" + i + "].variantId");
@@ -303,8 +302,7 @@ public class PurchaseOrderController extends HttpServlet {
             String currency = request.getParameter("lines[" + i + "].currency");
 
             // nếu row hoàn toàn trống -> bỏ qua
-            boolean allBlank
-                    = (productId == null || productId.isBlank())
+            boolean allBlank = (productId == null || productId.isBlank())
                     && (variantId == null || variantId.isBlank())
                     && (qty == null || qty.isBlank())
                     && (unitPrice == null || unitPrice.isBlank())
@@ -326,7 +324,7 @@ public class PurchaseOrderController extends HttpServlet {
 
         request.setAttribute("oldLines", oldLines);
 
-// If errors -> forward (and remember to set suppliers again!)
+        // If errors -> forward (and remember to set suppliers again!)
         if (!fieldErrors.isEmpty()) {
             request.setAttribute("fieldErrors", fieldErrors);
             request.setAttribute("oldPoNumber", poNumber);

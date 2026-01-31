@@ -11,9 +11,32 @@ import java.util.ArrayList;
 import java.util.List;
 import model.Supplier;
 
-public class SupplierDAO extends DBContext {
+public class SupplierDAO extends DBContext implements Dao<Supplier> {
 
-    private final Connection CONNECTION = DBContext.getConnection();
+    public List<SupplierDTO> getActiveSuppliers() throws SQLException {
+        List<SupplierDTO> list = new ArrayList<>();
+        String sql = "SELECT supplier_id, code, name FROM supplier WHERE status = 'ACTIVE' ORDER BY name";
+        try (Connection con = DBContext.getConnection();
+                PreparedStatement ps = con.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                SupplierDTO s = new SupplierDTO();
+                s.setSupplierId(rs.getLong("supplier_id"));
+                s.setCode(rs.getString("code"));
+                s.setName(rs.getString("name"));
+                list.add(s);
+            }
+        }
+        return list;
+    }
+
+    @Override
+    public List<Supplier> getList(Object[] parameters) throws SQLException {
+        // This is from Dao interface, but our controller uses a custom signature.
+        // For consistency with PermissionDAO, we keep our custom signature and maybe
+        // implement this if needed.
+        return null;
+    }
 
     public List<SupplierDTO> getActiveSuppliers() throws Exception {
         List<SupplierDTO> list = new ArrayList<>();
@@ -54,35 +77,25 @@ public class SupplierDAO extends DBContext {
                     LIMIT ? OFFSET ?;
                 """;
 
-        PreparedStatement statement = CONNECTION.prepareStatement(query);
         var offset = (page - 1) * size;
 
-        // Search parameters
-        String searchPattern = "%" + search + "%"; // Assumes search is passed raw, if passed as %search% then just use
-                                                   // search
-        // Check how PermissionDAO handles it.
-        // In PermissionDAO: var search = searchRaw == null ? "%%" : "%" + searchRaw +
-        // "%";
-        // Here I will assume the caller passes the formatted pattern or handle it
-        // inside controller.
-        // Let's stick to receiving prepared pattern for consistency with PermissionDAO
-        // usage in Controller.
+        try (Connection con = DBContext.getConnection(); PreparedStatement statement = con.prepareStatement(query)) {
+            statement.setString(1, search);
+            statement.setString(2, search);
+            statement.setString(3, search);
+            statement.setString(4, search);
 
-        statement.setString(1, search);
-        statement.setString(2, search);
-        statement.setString(3, search);
-        statement.setString(4, search);
+            statement.setString(5, sort);
+            statement.setString(6, sort);
 
-        statement.setString(5, sort);
-        statement.setString(6, sort);
+            statement.setLong(7, size);
+            statement.setLong(8, offset);
 
-        statement.setLong(7, size);
-        statement.setLong(8, offset);
-
-        ResultSet result = statement.executeQuery();
-
-        while (result.next()) {
-            list.add(mapResultSetToSupplier(result));
+            try (ResultSet result = statement.executeQuery()) {
+                while (result.next()) {
+                    list.add(mapResultSetToSupplier(result));
+                }
+            }
         }
 
         return list;
@@ -94,23 +107,26 @@ public class SupplierDAO extends DBContext {
                     WHERE (name LIKE ? OR code LIKE ? OR email LIKE ? OR phone LIKE ?)
                 """;
 
-        PreparedStatement statement = CONNECTION.prepareStatement(query);
-        statement.setString(1, search);
-        statement.setString(2, search);
-        statement.setString(3, search);
-        statement.setString(4, search);
+        try (Connection con = DBContext.getConnection(); PreparedStatement statement = con.prepareStatement(query)) {
+            statement.setString(1, search);
+            statement.setString(2, search);
+            statement.setString(3, search);
+            statement.setString(4, search);
 
-        ResultSet result = statement.executeQuery();
-        if (result.next()) {
-            return result.getLong(1);
+            try (ResultSet result = statement.executeQuery()) {
+                if (result.next()) {
+                    return result.getLong(1);
+                }
+            }
         }
 
         return 0L;
     }
 
+    @Override
     public Supplier getDetail(Long id) throws SQLException {
         String query = "SELECT * FROM supplier WHERE supplier_id = ?";
-        try (PreparedStatement statement = CONNECTION.prepareStatement(query)) {
+        try (Connection con = DBContext.getConnection(); PreparedStatement statement = con.prepareStatement(query)) {
             statement.setLong(1, id);
             try (ResultSet result = statement.executeQuery()) {
                 if (result.next()) {
@@ -121,13 +137,15 @@ public class SupplierDAO extends DBContext {
         return null;
     }
 
+    @Override
     public boolean create(Supplier supplier) throws SQLException {
         String sql = """
                     INSERT INTO supplier (code, name, email, phone, address, status)
                     VALUES (?, ?, ?, ?, ?, ?)
                 """;
 
-        try (PreparedStatement ps = CONNECTION.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (Connection con = DBContext.getConnection();
+                PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, supplier.getCode());
             ps.setString(2, supplier.getName());
             ps.setString(3, supplier.getEmail());
@@ -148,6 +166,7 @@ public class SupplierDAO extends DBContext {
         return false;
     }
 
+    @Override
     public boolean update(Supplier supplier) throws SQLException {
         String sql = """
                     UPDATE supplier
@@ -155,7 +174,7 @@ public class SupplierDAO extends DBContext {
                     WHERE supplier_id = ?
                 """;
 
-        try (PreparedStatement ps = CONNECTION.prepareStatement(sql)) {
+        try (Connection con = DBContext.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, supplier.getCode());
             ps.setString(2, supplier.getName());
             ps.setString(3, supplier.getEmail());
@@ -168,14 +187,10 @@ public class SupplierDAO extends DBContext {
         }
     }
 
+    @Override
     public boolean delete(Long id) throws SQLException {
-        // Soft delete is usually preferred, but following PermissionDAO pattern which
-        // uses DELETE
-        // Note: Check foreign keys constraints (e.g. Purchase Orders). If constraint
-        // exists, should catch exception or soft delete.
-        // For now, mirroring standard CRUD.
         String sql = "DELETE FROM supplier WHERE supplier_id = ?";
-        try (PreparedStatement ps = CONNECTION.prepareStatement(sql)) {
+        try (Connection con = DBContext.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setLong(1, id);
             return ps.executeUpdate() > 0;
         }
@@ -183,7 +198,7 @@ public class SupplierDAO extends DBContext {
 
     public boolean codeExists(String code, Long excludeId) throws SQLException {
         String sql = "SELECT COUNT(*) FROM supplier WHERE code = ? AND (? IS NULL OR supplier_id != ?)";
-        try (PreparedStatement ps = CONNECTION.prepareStatement(sql)) {
+        try (Connection con = DBContext.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, code);
             ps.setObject(2, excludeId);
             ps.setObject(3, excludeId);
