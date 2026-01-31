@@ -30,13 +30,17 @@ public class ViewPath {
     public static final String VIEW_VERIFY_OTP = "/WEB-INF/views/admin/user/verify_otp.jsp";
 
     // Goods Receipt
-    public static final String GRN_LIST = "/WEB-INF/views/inbound/GoodsReceiptList.jsp";
-    public static final String GRN_DETAIL = "/WEB-INF/views/inbound/GoodsReceiptDetail.jsp";
-    public static final String GRN_CREATE = "/WEB-INF/views/inbound/GoodsReceiptCreate.jsp";
+    public static final String GRN_LIST = "/WEB-INF/views/inbound/goods-receipt-list.jsp";
+    public static final String GRN_DETAIL = "/WEB-INF/views/inbound/goods-receipt-detail.jsp";
+    public static final String GRN_CREATE = "/WEB-INF/views/inbound/goods-receipt-create.jsp";
+    public static final String GRN_PUTAWAY = "/WEB-INF/views/inbound/goods-receipt-putaway.jsp";
 
     // supplier
     public static final String SUPPLIER_LIST = "/WEB-INF/views/admin/supplier/list.jsp";
     public static final String SUPPLIER_CREATE = "/WEB-INF/views/admin/supplier/create.jsp";
     public static final String SUPPLIER_UPDATE = "/WEB-INF/views/admin/supplier/update.jsp";
     public static final String SUPPLIER_DETAIL = "/WEB-INF/views/admin/supplier/detail.jsp";
+
+    // profile
+    public static final String PROFILE_INDEX = "/WEB-INF/views/admin/profile/profile.jsp";
 }

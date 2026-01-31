@@ -3,45 +3,21 @@ package context;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-
 import util.CommonVariables;
 
 public class DBContext {
 
-    protected static Connection connection;
-
     // Get database connection
     public static Connection getConnection() {
+        Connection conn = null;
         try {
-            if (connection == null || connection.isClosed()) {
-                // Register JDBC driver
-                Class.forName("com.mysql.cj.jdbc.Driver");
-
-                // Create connection
-                connection = DriverManager.getConnection(CommonVariables.URL, CommonVariables.USERNAME, CommonVariables.PASSWORD);
-                System.out.println("Database connected successfully!");
-            }
-        } catch (ClassNotFoundException e) {
-            System.err.println("MySQL JDBC Driver not found.");
-            e.printStackTrace();
-        } catch (SQLException e) {
-            System.err.println("Connection failed! Check output console");
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            conn = DriverManager.getConnection(CommonVariables.URL, CommonVariables.USERNAME, CommonVariables.PASSWORD);
+            System.out.println("Database connected successfully!");
+        } catch (ClassNotFoundException | SQLException e) {
             e.printStackTrace();
         }
-        return connection;
-    }
-
-    // Close database connection
-    public static void closeConnection() {
-        try {
-            if (connection != null && !connection.isClosed()) {
-                connection.close();
-                System.out.println("Database connection closed.");
-            }
-        } catch (SQLException e) {
-            System.err.println("Error closing connection!");
-            e.printStackTrace();
-        }
+        return conn; // Trả về đối tượng kết nối mới
     }
 
     public static void main(String[] args) {

@@ -42,6 +42,7 @@ public class PurchaseOrderController extends HttpServlet {
                     handleGetVariants(request, response);
                     break;
                 case "edit":
+                    forwardEditForm(request, response);
                     break;
                 default:
                     forwardList(request, response);
@@ -70,6 +71,8 @@ public class PurchaseOrderController extends HttpServlet {
                     forwardCreateForm(request, response);
                 case "create" ->
                     handleCreate(request, response);
+                case "update" ->
+                    handleUpdate(request, response);
                 case "delete" ->
                     handleDelete(request, response);
                 default ->
@@ -79,7 +82,7 @@ public class PurchaseOrderController extends HttpServlet {
             throw new ServletException(e);
         }
     }
-
+    //AJAX load Variant
     private void handleGetVariants(HttpServletRequest request, HttpServletResponse response)
             throws Exception {
 
@@ -93,12 +96,14 @@ public class PurchaseOrderController extends HttpServlet {
         }
 
         dao.ProductVariantDAO vDao = new dao.ProductVariantDAO();
+        //lấy danh sách variant theo productid
         List<ProductVariantDTO> list = vDao.listByProductId(productId);
-
+        //khai báo json
         response.setContentType("application/json;charset=UTF-8");
         response.setCharacterEncoding("UTF-8");
 
         StringBuilder sb = new StringBuilder();
+        //tạo json thủ công
         sb.append("[");
         for (int i = 0; i < list.size(); i++) {
             dto.ProductVariantDTO v = list.get(i);
@@ -149,8 +154,11 @@ public class PurchaseOrderController extends HttpServlet {
         List<PurchaseOrderListDTO> pos = dao.searchPurchaseOrders(keyword, status, expectedFrom, expectedTo, size,
                 offset);
         // window pagination
+        //luôn hiển thị 2 trang trước 2 trang sau
         int window = 2;
+        //dòng 1
         int startPage = Math.max(1, page - window);
+        //không vượt quá total page
         int endPage = Math.min(totalPages, page + window);
         if (endPage - startPage < window * 2) {
             if (startPage == 1) {
@@ -335,6 +343,206 @@ public class PurchaseOrderController extends HttpServlet {
         dao.createManualPO(poNumber, supplierId, expectedDate, note, userId, lines);
         response.sendRedirect(request.getContextPath() + "/purchase-orders");
 
+    }
+
+    private void forwardEditForm(HttpServletRequest request, HttpServletResponse response)
+            throws Exception {
+        long poId = parseLong(request.getParameter("id"), -1L);
+        if (poId <= 0) {
+            response.sendRedirect(request.getContextPath() + "/purchase-orders");
+            return;
+        }
+        PurchaseOrderDAO dao = new PurchaseOrderDAO();
+        PurchaseOrderHeaderDTO po = dao.getPurchaseOrderHeader(poId);
+        if (po == null) {
+            response.sendRedirect(request.getContextPath() + "/purchase-orders?msg=notfound");
+            return;
+        }
+
+        List<PurchaseOrderLineDTO> lines = dao.getPurchaseOrderDetailLines(poId);
+
+        request.setAttribute("po", po);                 // JSP edit dùng "po"
+        request.setAttribute("lines", lines);           // JSP edit dùng "lines"
+        request.setAttribute("suppliers", sDao.getActiveSuppliers());
+        request.setAttribute("products", pDao.getProducts());
+
+        // Nếu bạn chưa muốn load variants sẵn (vì đã có AJAX /purchase-orders?action=variants)
+        // thì không cần set "variants"
+        request.getRequestDispatcher(ViewPath.PO_FORM_EDIT).forward(request, response);
+    }
+
+    private void handleUpdate(HttpServletRequest request, HttpServletResponse response)
+            throws Exception {
+
+        request.setCharacterEncoding("UTF-8");
+        Map<String, String> fieldErrors = new HashMap<>();
+
+        long poId = parseLong(request.getParameter("poId"), -1L);
+        if (poId <= 0) {
+            response.sendRedirect(request.getContextPath() + "/purchase-orders");
+            return;
+        }
+
+        PurchaseOrderDAO dao = new PurchaseOrderDAO();
+        PurchaseOrderHeaderDTO current = dao.getPurchaseOrderHeader(poId);
+        if (current == null) {
+            response.sendRedirect(request.getContextPath() + "/purchase-orders?msg=notfound");
+            return;
+        }
+
+        String poNumber = request.getParameter("poNumber");
+        String supplierStr = request.getParameter("supplierId");
+        long supplierId = (supplierStr == null || supplierStr.isBlank()) ? 0L : Long.parseLong(supplierStr);
+
+        String expected = request.getParameter("expectedDeliveryDate");
+        Date expectedDate = null;
+        if (expected == null || expected.isBlank()) {
+            fieldErrors.put("expectedDeliveryDate", "Expected Delivery Date is required");
+        } else {
+            try {
+                expectedDate = Date.valueOf(expected); // yyyy-MM-dd
+                // không được hôm nay hoặc quá khứ => phải > today
+                //toLocateDate() bỏ giờ lấy ngày
+                if (!expectedDate.toLocalDate().isAfter(java.time.LocalDate.now())) {
+                    fieldErrors.put("expectedDeliveryDate", "Expected Delivery Date must be after today");
+                }
+            } catch (Exception e) {
+                fieldErrors.put("expectedDeliveryDate", "Invalid date format");
+            }
+        }
+
+        String note = request.getParameter("note");
+
+        // --- Validate header ---
+        if (poNumber == null || poNumber.isBlank()) {
+            fieldErrors.put("poNumber", "PO Number is required");
+        } else if (poNumber.length() > 20) {
+            fieldErrors.put("poNumber", "PO Number must be at most 20 characters");
+        } else {
+            // chỉ check trùng khi user đổi poNumber
+            if (!poNumber.equalsIgnoreCase(current.getPoNumber())) {
+                if (dao.existsByPoNumber(poNumber)) {
+                    fieldErrors.put("poNumber", "PO Number already exists");
+                }
+            }
+        }
+
+        if (supplierId <= 0) {
+            fieldErrors.put("supplierId", "Supplier is required");
+        }
+
+        // --- Parse lines ---
+        List<PurchaseOrderLineDTO> lines = new ArrayList<>();
+
+        for (int i = 0; i < 500; i++) {
+            String vid = request.getParameter("lines[" + i + "].variantId");
+            String qtyStr = request.getParameter("lines[" + i + "].qty");         // giống create
+            String unitStr = request.getParameter("lines[" + i + "].unitPrice");
+
+            // row trống -> bỏ
+            if ((vid == null || vid.isBlank())
+                    && (qtyStr == null || qtyStr.isBlank())
+                    && (unitStr == null || unitStr.isBlank())) {
+                continue;
+            }
+
+            // thiếu bắt buộc
+            if (vid == null || vid.isBlank()) {
+                fieldErrors.put("lines", "Variant is required");
+                break;
+            }
+            if (qtyStr == null || qtyStr.isBlank()) {
+                fieldErrors.put("lines", "Quantity is required");
+                break;
+            }
+
+            try {
+                long variantId = Long.parseLong(vid);
+                BigDecimal qty = new BigDecimal(qtyStr);
+                if (qty.compareTo(BigDecimal.ZERO) <= 0) {
+                    fieldErrors.put("lines", "Quantity must be > 0");
+                    break;
+                }
+
+                BigDecimal unitPrice = (unitStr == null || unitStr.isBlank()) ? null : new BigDecimal(unitStr);
+                if (unitPrice != null && unitPrice.compareTo(BigDecimal.ZERO) <= 0) {
+                    fieldErrors.put("lines", "Unit Price must be > 0");
+                    break;
+                }
+
+                PurchaseOrderLineDTO l = new PurchaseOrderLineDTO();
+                l.setVariantId(variantId);
+                l.setOrderedQty(qty);       // DTO của bạn là orderedQty
+                l.setUnitPrice(unitPrice);
+                lines.add(l);
+
+            } catch (Exception ex) {
+                fieldErrors.put("lines", "Lines contains invalid numbers");
+                break;
+            }
+        }
+
+        if (lines.isEmpty()) {
+            fieldErrors.putIfAbsent("lines", "At least one line is required");
+        }
+
+        // --- Build oldLines để giữ form khi lỗi ---
+        List<Map<String, String>> oldLines = new ArrayList<>();
+        for (int i = 0; i < 500; i++) {
+            String productId = request.getParameter("lines[" + i + "].productId");
+            String variantId = request.getParameter("lines[" + i + "].variantId");
+            String qty = request.getParameter("lines[" + i + "].qty");
+            String unitPrice = request.getParameter("lines[" + i + "].unitPrice");
+
+            boolean allBlank
+                    = (productId == null || productId.isBlank())
+                    && (variantId == null || variantId.isBlank())
+                    && (qty == null || qty.isBlank())
+                    && (unitPrice == null || unitPrice.isBlank());
+
+            if (allBlank) {
+                continue;
+            }
+
+            Map<String, String> row = new HashMap<>();
+            row.put("productId", productId == null ? "" : productId);
+            row.put("variantId", variantId == null ? "" : variantId);
+            row.put("qty", qty == null ? "" : qty);
+            row.put("unitPrice", unitPrice == null ? "" : unitPrice);
+            oldLines.add(row);
+        }
+
+        // --- If errors -> forward edit form ---
+        if (!fieldErrors.isEmpty()) {
+            PurchaseOrderHeaderDTO po = new PurchaseOrderHeaderDTO();
+            po.setPoId(poId);
+            po.setPoNumber(poNumber);
+            po.setSupplierId(supplierId);
+            po.setExpectedDeliveryDate(expectedDate);
+            po.setNote(note);
+
+            request.setAttribute("fieldErrors", fieldErrors);
+            request.setAttribute("po", po);
+            request.setAttribute("lines", dao.getPurchaseOrderDetailLines(poId)); // hoặc bỏ nếu JSP dùng oldLines
+            request.setAttribute("oldLines", oldLines);
+            request.setAttribute("suppliers", sDao.getActiveSuppliers());
+            request.setAttribute("products", pDao.getProducts());
+
+            request.getRequestDispatcher(ViewPath.PO_FORM_EDIT).forward(request, response);
+            return;
+        }
+
+        // --- Call DAO update ---
+        PurchaseOrderHeaderDTO header = new PurchaseOrderHeaderDTO();
+        header.setPoId(poId);
+        header.setPoNumber(poNumber);
+        header.setSupplierId(supplierId);
+        header.setExpectedDeliveryDate(expectedDate);
+        header.setNote(note);
+
+        dao.updatePurchaseOrder(header, lines);
+
+        response.sendRedirect(request.getContextPath() + "/purchase-orders?action=detail&id=" + poId);
     }
 
     private void handleDelete(HttpServletRequest request, HttpServletResponse response)

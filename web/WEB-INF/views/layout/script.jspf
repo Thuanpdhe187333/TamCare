@@ -7,5 +7,19 @@
 <script src="${root}/assets/vendor/jquery-easing/jquery.easing.min.js"></script>
 <script src="${root}/assets/js/sb-admin-2.min.js"></script>
 <script src="${root}/assets/vendor/chart.js/Chart.min.js"></script>
-<script src="${root}/assets/js/demo/chart-area-demo.js"></script>
-<script src="${root}/assets/js/demo/chart-pie-demo.js"></script>
+<script>
+// Chỉ load chart demo scripts nếu có chart elements trên trang
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('myAreaChart') || document.getElementById('myPieChart')) {
+        var script1 = document.createElement('script');
+        script1.src = '${root}/assets/js/demo/chart-area-demo.js';
+        script1.onerror = function() { console.log('Chart area demo not found'); };
+        document.body.appendChild(script1);
+        
+        var script2 = document.createElement('script');
+        script2.src = '${root}/assets/js/demo/chart-pie-demo.js';
+        script2.onerror = function() { console.log('Chart pie demo not found'); };
+        document.body.appendChild(script2);
+    }
+});
+</script>

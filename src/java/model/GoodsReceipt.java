@@ -10,6 +10,8 @@ public class GoodsReceipt {
     private Long grnId;
     private String grnNumber;
     private Long poId;
+    private String poNumber;
+    private String supplierName;
     private Long warehouseId;
     private String status;
     private Long createdBy;

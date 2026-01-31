@@ -15,22 +15,22 @@ public class PurchaseOrderDAO extends DBContext {
 
     public List<PurchaseOrderListDTO> getPurchaseOrderList(int limit, int offset) throws SQLException {
         String sql = """
-            SELECT
-              po.po_id,              
-              po.po_number,
-              po.supplier_id,
-              s.name AS supplier_name,
-              po.expected_delivery_date,
-              po.status,
-              po.imported_by,
-              u.full_name AS imported_by_username,
-              po.imported_at
-            FROM purchase_order po
-            LEFT JOIN supplier s ON s.supplier_id = po.supplier_id
-            LEFT JOIN user u ON u.user_id = po.imported_by
-            ORDER BY po.po_id DESC
-            LIMIT ? OFFSET ?
-        """;
+                    SELECT
+                      po.po_id,
+                      po.po_number,
+                      po.supplier_id,
+                      s.name AS supplier_name,
+                      po.expected_delivery_date,
+                      po.status,
+                      po.imported_by,
+                      u.full_name AS imported_by_username,
+                      po.imported_at
+                    FROM purchase_order po
+                    LEFT JOIN supplier s ON s.supplier_id = po.supplier_id
+                    LEFT JOIN user u ON u.user_id = po.imported_by
+                    ORDER BY po.po_id DESC
+                    LIMIT ? OFFSET ?
+                """;
         List<PurchaseOrderListDTO> list = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, limit);
@@ -62,22 +62,22 @@ public class PurchaseOrderDAO extends DBContext {
 
     public PurchaseOrderHeaderDTO getPurchaseOrderHeader(long poId) throws Exception {
         String sql = """
-        SELECT
-            po.po_id AS poId,
-            po.po_number AS poNumber,
-            po.supplier_id AS supplierId,
-            s.code AS supplierCode,
-            s.name AS supplierName,
-            s.email AS supplierEmail,
-            s.phone AS supplierPhone,
-            s.address AS supplierAddress,
-            po.expected_delivery_date AS expectedDeliveryDate,
-            po.status,
-            po.note
-        FROM purchase_order po
-        JOIN supplier s ON s.supplier_id = po.supplier_id
-        WHERE po.po_id = ?
-    """;
+                    SELECT
+                        po.po_id AS poId,
+                        po.po_number AS poNumber,
+                        po.supplier_id AS supplierId,
+                        s.code AS supplierCode,
+                        s.name AS supplierName,
+                        s.email AS supplierEmail,
+                        s.phone AS supplierPhone,
+                        s.address AS supplierAddress,
+                        po.expected_delivery_date AS expectedDeliveryDate,
+                        po.status,
+                        po.note
+                    FROM purchase_order po
+                    JOIN supplier s ON s.supplier_id = po.supplier_id
+                    WHERE po.po_id = ?
+                """;
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, poId);
@@ -104,25 +104,25 @@ public class PurchaseOrderDAO extends DBContext {
 
     public List<PurchaseOrderLineDTO> getPurchaseOrderDetailLines(long poId) throws Exception {
         String sql = """
-                         SELECT
-                                  pl.po_line_id,
-                                  p.product_id,
-                                  p.name AS product_name,
-                                  pv.variant_id,
-                                  pv.variant_sku,
-                                  pv.color,
-                                  pv.size,
-                                  pv.barcode,
-                                  pv.status AS variant_status,
-                                  pl.qty_ordered AS ordered_qty,
-                                  pl.unit_price,
-                                  (pl.qty_ordered * pl.unit_price) AS line_amount
-                                FROM purchase_order_line pl
-                                JOIN product_variant pv ON pv.variant_id = pl.variant_id
-                                JOIN product p ON p.product_id = pv.product_id
-                                WHERE pl.po_id = ?
-                                ORDER BY pl.po_line_id
-                        """;
+                 SELECT
+                          pl.po_line_id,
+                          p.product_id,
+                          p.name AS product_name,
+                          pv.variant_id,
+                          pv.variant_sku,
+                          pv.color,
+                          pv.size,
+                          pv.barcode,
+                          pv.status AS variant_status,
+                          pl.qty_ordered AS ordered_qty,
+                          pl.unit_price,
+                          (pl.qty_ordered * pl.unit_price) AS line_amount
+                        FROM purchase_order_line pl
+                        JOIN product_variant pv ON pv.variant_id = pl.variant_id
+                        JOIN product p ON p.product_id = pv.product_id
+                        WHERE pl.po_id = ?
+                        ORDER BY pl.po_line_id
+                """;
         List<PurchaseOrderLineDTO> lines = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, poId);
@@ -154,21 +154,20 @@ public class PurchaseOrderDAO extends DBContext {
             Date expectedDate,
             String note,
             long userId,
-            List<POLineCreateDTO> lines
-    ) throws Exception {
+            List<POLineCreateDTO> lines) throws Exception {
 
         String sqlPO = """
-            INSERT INTO purchase_order
-                (po_number, supplier_id, expected_delivery_date, status,
-                 imported_by, imported_at, source_file_name, note)
-              VALUES (?, ?, ?, 'CREATED', ?, NOW(), 'manual_create', ?)
-        """;
+                    INSERT INTO purchase_order
+                        (po_number, supplier_id, expected_delivery_date, status,
+                         imported_by, imported_at, source_file_name, note)
+                      VALUES (?, ?, ?, 'CREATED', ?, NOW(), 'manual_create', ?)
+                """;
 
         String sqlLine = """
-            INSERT INTO purchase_order_line
-              (po_id, variant_id, qty_ordered, unit_price, currency)
-            VALUES (?, ?, ?, ?, ?)
-        """;
+                    INSERT INTO purchase_order_line
+                      (po_id, variant_id, qty_ordered, unit_price, currency)
+                    VALUES (?, ?, ?, ?, ?)
+                """;
         try (Connection con = DBContext.getConnection()) {
             con.setAutoCommit(false);
             try (PreparedStatement psPO = con.prepareStatement(sqlPO, Statement.RETURN_GENERATED_KEYS)) {
@@ -263,19 +262,19 @@ public class PurchaseOrderDAO extends DBContext {
             int offset) throws Exception {
 
         StringBuilder sql = new StringBuilder("""
-        SELECT
-            po.po_id,
-            po.po_number,
-            s.name AS supplier_name,
-            po.expected_delivery_date,
-            po.status,
-            u.username AS imported_by,
-            po.imported_at
-        FROM purchase_order po
-        JOIN supplier s ON po.supplier_id = s.supplier_id
-        LEFT JOIN user u ON po.imported_by = u.user_id
-        WHERE 1 = 1
-    """);
+                    SELECT
+                        po.po_id,
+                        po.po_number,
+                        s.name AS supplier_name,
+                        po.expected_delivery_date,
+                        po.status,
+                        u.username AS imported_by,
+                        po.imported_at
+                    FROM purchase_order po
+                    JOIN supplier s ON po.supplier_id = s.supplier_id
+                    LEFT JOIN user u ON po.imported_by = u.user_id
+                    WHERE 1 = 1
+                """);
 
         List<Object> params = new ArrayList<>();
 
@@ -343,11 +342,11 @@ public class PurchaseOrderDAO extends DBContext {
     public int countPurchaseOrders(String keyword, String status, Date expectedFrom, Date expectedTo) throws Exception {
 
         StringBuilder sql = new StringBuilder("""
-        SELECT COUNT(*)
-        FROM purchase_order po
-        JOIN supplier s ON po.supplier_id = s.supplier_id
-        WHERE 1 = 1
-    """);
+                    SELECT COUNT(*)
+                    FROM purchase_order po
+                    JOIN supplier s ON po.supplier_id = s.supplier_id
+                    WHERE 1 = 1
+                """);
 
         List<Object> params = new ArrayList<>();
 
@@ -389,6 +388,122 @@ public class PurchaseOrderDAO extends DBContext {
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next(); // có dòng => đã tồn tại
             }
+        }
+    }
+
+    public void updatePurchaseOrder(PurchaseOrderHeaderDTO header,
+            List<PurchaseOrderLineDTO> lines) throws Exception {
+
+        if (lines == null || lines.isEmpty()) {
+            throw new IllegalArgumentException("PO must have at least 1 line");
+        }
+
+        boolean oldAutoCommit = conn.getAutoCommit();
+        try {
+            conn.setAutoCommit(false);
+
+            // 1. Check status
+            String status = getPoStatusForUpdate(header.getPoId());
+            if (!"CREATED".equalsIgnoreCase(status)) {
+                throw new IllegalArgumentException(
+                        "PO cannot be updated when status = " + status);
+            }
+
+            // 2. Update header
+            updateHeader(header);
+
+            // 3. Delete old lines
+            deleteLinesByPoId(header.getPoId());
+
+            // 4. Insert new lines
+            insertLines(header.getPoId(), lines);
+
+            conn.commit();
+        } catch (Exception e) {
+            conn.rollback();
+            throw e;
+        } finally {
+            conn.setAutoCommit(oldAutoCommit);
+        }
+    }
+
+    private String getPoStatusForUpdate(long poId) throws Exception {
+        String sql = "SELECT status FROM purchase_order WHERE po_id=? FOR UPDATE";
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, poId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    throw new IllegalArgumentException("PO not found: " + poId);
+                }
+                return rs.getString("status");
+            }
+        }
+    }
+
+    private void updateHeader(PurchaseOrderHeaderDTO h) throws Exception {
+
+        String sql = """
+                    UPDATE purchase_order
+                    SET po_number = ?,
+                        supplier_id = ?,
+                        expected_delivery_date = ?,
+                        note = ?
+                    WHERE po_id = ?
+                """;
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, h.getPoNumber());
+            ps.setLong(2, h.getSupplierId());
+            ps.setDate(3, h.getExpectedDeliveryDate());
+            ps.setString(4, h.getNote());
+            ps.setLong(5, h.getPoId());
+            ps.executeUpdate();
+        }
+    }
+
+    private void deleteLinesByPoId(long poId) throws Exception {
+
+        String sql = "DELETE FROM purchase_order_line WHERE po_id=?";
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, poId);
+            ps.executeUpdate();
+        }
+    }
+
+    private void insertLines(long poId,
+            List<PurchaseOrderLineDTO> lines) throws Exception {
+
+        String sql = """
+                    INSERT INTO purchase_order_line
+                    (po_id, variant_id, qty_ordered, unit_price)
+                    VALUES (?,?,?,?)
+                """;
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            for (PurchaseOrderLineDTO l : lines) {
+
+                ps.setLong(1, poId);
+                ps.setLong(2, l.getVariantId());
+                ps.setBigDecimal(3, l.getOrderedQty());
+                ps.setBigDecimal(4, l.getUnitPrice());
+
+                ps.addBatch();
+            }
+
+            ps.executeBatch();
+        }
+    }
+
+    public boolean updateStatus(long poId, String status) throws SQLException {
+        String sql = "UPDATE purchase_order SET status = ? WHERE po_id = ?";
+        try (Connection con = DBContext.getConnection();
+                PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, status.trim().toUpperCase());
+            ps.setLong(2, poId);
+            return ps.executeUpdate() > 0;
         }
     }
 
