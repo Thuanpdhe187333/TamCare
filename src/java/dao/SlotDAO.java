@@ -370,4 +370,26 @@ public class SlotDAO extends DBContext {
         }
         return null;
     }
+    
+    public boolean updateMaxCapacity(Long slotId, BigDecimal maxCapacity) throws Exception {
+        String sql = """
+            UPDATE slot
+            SET max_capacity = ?
+            WHERE slot_id = ?
+        """;
+        
+        try (Connection con = DBContext.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            
+            if (maxCapacity != null) {
+                ps.setBigDecimal(1, maxCapacity);
+            } else {
+                ps.setNull(1, java.sql.Types.DECIMAL);
+            }
+            ps.setLong(2, slotId);
+            
+            int rowsAffected = ps.executeUpdate();
+            return rowsAffected > 0;
+        }
+    }
 }
