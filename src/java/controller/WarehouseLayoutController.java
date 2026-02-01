@@ -10,14 +10,17 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.math.BigDecimal;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import model.User;
 
 @WebServlet(name = "WarehouseLayoutController", urlPatterns = {"/warehouse-layout"})
 public class WarehouseLayoutController extends HttpServlet {
@@ -70,6 +73,10 @@ public class WarehouseLayoutController extends HttpServlet {
             handleAssignProduct(request, response);
             break;
             
+        case "update-max-capacity":
+            handleUpdateMaxCapacity(request, response);
+            break;
+            
         case "": // Tương đương với trường hợp action == null
         default:
             forwardLayoutForm(request, response);
@@ -89,8 +96,13 @@ public class WarehouseLayoutController extends HttpServlet {
     private void forwardLayoutForm(HttpServletRequest request, HttpServletResponse response)
             throws Exception {
         
-        WarehouseDAO warehouseDAO = new WarehouseDAO();
-        request.setAttribute("warehouses", warehouseDAO.getAll());
+        // Get default warehouse ID (from session or first warehouse)
+        Long warehouseId = getDefaultWarehouseId(request);
+        if (warehouseId == null) {
+            request.setAttribute("error", "No warehouse found. Please contact administrator.");
+            request.getRequestDispatcher("WEB-INF/views/warehouse/warehouse-layout.jsp").forward(request, response);
+            return;
+        }
         
         // Kiểm tra error từ URL parameter
         String errorParam = request.getParameter("error");
@@ -98,31 +110,60 @@ public class WarehouseLayoutController extends HttpServlet {
             request.setAttribute("error", java.net.URLDecoder.decode(errorParam, "UTF-8"));
         }
         
-        String warehouseIdParam = request.getParameter("warehouseId");
-        if (warehouseIdParam != null && !warehouseIdParam.isBlank()) {
-            Long warehouseId = Long.parseLong(warehouseIdParam);
-            request.setAttribute("selectedWarehouseId", warehouseId);
-            
-            ZoneDAO zoneDAO = new ZoneDAO();
-            List<model.Zone> zones = zoneDAO.getZonesByWarehouseId(warehouseId);
-            request.setAttribute("zones", zones);
-            
-            // Kiểm tra zone nào đã có slots
-            SlotDAO slotDAO = new SlotDAO();
-            Map<Long, Boolean> zoneHasSlots = new HashMap<>();
-            for (model.Zone zone : zones) {
-                zoneHasSlots.put(zone.getZoneId(), slotDAO.hasSlots(zone.getZoneId()));
-            }
-            request.setAttribute("zoneHasSlots", zoneHasSlots);
+        request.setAttribute("selectedWarehouseId", warehouseId);
+        
+        ZoneDAO zoneDAO = new ZoneDAO();
+        List<model.Zone> zones = zoneDAO.getZonesByWarehouseId(warehouseId);
+        request.setAttribute("zones", zones);
+        
+        // Kiểm tra zone nào đã có slots
+        SlotDAO slotDAO = new SlotDAO();
+        Map<Long, Boolean> zoneHasSlots = new HashMap<>();
+        for (model.Zone zone : zones) {
+            zoneHasSlots.put(zone.getZoneId(), slotDAO.hasSlots(zone.getZoneId()));
         }
+        request.setAttribute("zoneHasSlots", zoneHasSlots);
         
         request.getRequestDispatcher("WEB-INF/views/warehouse/warehouse-layout.jsp").forward(request, response);
+    }
+    
+    /**
+     * Get default warehouse ID from session user or first active warehouse
+     */
+    private Long getDefaultWarehouseId(HttpServletRequest request) throws SQLException {
+        // Try to get from session user
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            Object userObj = session.getAttribute("USER");
+            if (userObj instanceof User) {
+                User user = (User) userObj;
+                if (user.getWarehouseId() != null) {
+                    return user.getWarehouseId();
+                }
+            }
+        }
+        
+        // Fallback: get first active warehouse
+        WarehouseDAO warehouseDAO = new WarehouseDAO();
+        List<model.Warehouse> warehouses = warehouseDAO.getAll();
+        if (warehouses != null && !warehouses.isEmpty()) {
+            return warehouses.get(0).getWarehouseId();
+        }
+        
+        return null;
     }
 
     private void handleCreateZone(HttpServletRequest request, HttpServletResponse response)
             throws Exception {
         
-        Long warehouseId = Long.parseLong(request.getParameter("warehouseId"));
+        // Get default warehouse ID
+        Long warehouseId = getDefaultWarehouseId(request);
+        if (warehouseId == null) {
+            request.setAttribute("error", "No warehouse found. Please contact administrator.");
+            forwardLayoutForm(request, response);
+            return;
+        }
+        
         String code = request.getParameter("code");
         String name = request.getParameter("name");
         String zoneType = request.getParameter("zoneType");
@@ -149,7 +190,7 @@ public class WarehouseLayoutController extends HttpServlet {
         ZoneDAO zoneDAO = new ZoneDAO();
         try {
             zoneDAO.createZone(warehouseId, code, name, zoneType);
-            response.sendRedirect(request.getContextPath() + "/warehouse-layout?warehouseId=" + warehouseId);
+            response.sendRedirect(request.getContextPath() + "/warehouse-layout");
         } catch (Exception e) {
             // Hiển thị lỗi và quay lại form
             request.setAttribute("error", e.getMessage());
@@ -188,35 +229,10 @@ public class WarehouseLayoutController extends HttpServlet {
         try {
             slotDAO.createSlotsBatch(zoneId, rows, cols, codePrefix);
             
-            // Lấy warehouseId từ zone để redirect
-            ZoneDAO zoneDAO = new ZoneDAO();
-            model.Zone zone = zoneDAO.getZoneById(zoneId);
-            Long warehouseId = null;
-            if (zone != null) {
-                warehouseId = zone.getWarehouseId();
-            }
-            
-            if (warehouseId != null) {
-                response.sendRedirect(request.getContextPath() + "/warehouse-layout?warehouseId=" + warehouseId);
-            } else {
-                response.sendRedirect(request.getContextPath() + "/warehouse-layout");
-            }
+            response.sendRedirect(request.getContextPath() + "/warehouse-layout");
         } catch (Exception e) {
-            // Lấy warehouseId để hiển thị lại form với lỗi
-            ZoneDAO zoneDAO = new ZoneDAO();
-            model.Zone zone = zoneDAO.getZoneById(zoneId);
-            Long warehouseId = null;
-            if (zone != null) {
-                warehouseId = zone.getWarehouseId();
-            }
-            
             String errorMessage = e.getMessage();
-            if (warehouseId != null) {
-                response.sendRedirect(request.getContextPath() + "/warehouse-layout?warehouseId=" + warehouseId + "&error=" + java.net.URLEncoder.encode(errorMessage, "UTF-8"));
-            } else {
-                request.setAttribute("error", errorMessage);
-                forwardLayoutForm(request, response);
-            }
+            response.sendRedirect(request.getContextPath() + "/warehouse-layout?error=" + java.net.URLEncoder.encode(errorMessage, "UTF-8"));
         }
     }
 
@@ -224,9 +240,16 @@ public class WarehouseLayoutController extends HttpServlet {
             throws Exception {
         
         Long zoneId = parseLong(request.getParameter("zoneId"), -1);
-        Long warehouseId = parseLong(request.getParameter("warehouseId"), -1);
         
-        if (zoneId <= 0 || warehouseId <= 0) {
+        if (zoneId <= 0) {
+            forwardLayoutForm(request, response);
+            return;
+        }
+        
+        // Get default warehouse ID
+        Long warehouseId = getDefaultWarehouseId(request);
+        if (warehouseId == null) {
+            request.setAttribute("error", "No warehouse found. Please contact administrator.");
             forwardLayoutForm(request, response);
             return;
         }
@@ -255,12 +278,21 @@ public class WarehouseLayoutController extends HttpServlet {
         response.setContentType("application/json;charset=UTF-8");
         
         Long slotId = parseLong(request.getParameter("slotId"), -1);
-        Long warehouseId = parseLong(request.getParameter("warehouseId"), -1);
         
         if (slotId <= 0) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             try (PrintWriter out = response.getWriter()) {
                 out.write("{\"error\":\"Invalid slot ID\"}");
+            }
+            return;
+        }
+        
+        // Get default warehouse ID
+        Long warehouseId = getDefaultWarehouseId(request);
+        if (warehouseId == null) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            try (PrintWriter out = response.getWriter()) {
+                out.write("{\"error\":\"No warehouse found\"}");
             }
             return;
         }
@@ -315,7 +347,14 @@ public class WarehouseLayoutController extends HttpServlet {
     private void handleAssignProduct(HttpServletRequest request, HttpServletResponse response)
             throws Exception {
         
-        Long warehouseId = Long.parseLong(request.getParameter("warehouseId"));
+        // Get default warehouse ID
+        Long warehouseId = getDefaultWarehouseId(request);
+        if (warehouseId == null) {
+            request.setAttribute("error", "No warehouse found. Please contact administrator.");
+            forwardLayoutForm(request, response);
+            return;
+        }
+        
         Long slotId = Long.parseLong(request.getParameter("slotId"));
         Long variantId = Long.parseLong(request.getParameter("variantId"));
         String condition = request.getParameter("condition");
@@ -324,11 +363,88 @@ public class WarehouseLayoutController extends HttpServlet {
         }
         BigDecimal qty = new BigDecimal(request.getParameter("qty"));
         
+        // Validate capacity before assigning
         InventoryBalanceDAO invDAO = new InventoryBalanceDAO();
+        SlotDAO slotDAO = new SlotDAO();
+        
+        // Get current slot capacity info
+        dto.SlotDetailDTO slotDetail = slotDAO.getSlotDetail(slotId, warehouseId);
+        if (slotDetail != null && slotDetail.getMaxCapacity() != null) {
+            BigDecimal currentUsed = slotDetail.getUsedCapacity() != null ? slotDetail.getUsedCapacity() : BigDecimal.ZERO;
+            BigDecimal newTotal = currentUsed.add(qty);
+            
+            if (newTotal.compareTo(slotDetail.getMaxCapacity()) > 0) {
+                request.setAttribute("error", "Cannot assign product: Total quantity (" + newTotal + ") would exceed max capacity (" + slotDetail.getMaxCapacity() + ")");
+                forwardLayoutForm(request, response);
+                return;
+            }
+        }
+        
         invDAO.assignProductToSlot(warehouseId, slotId, variantId, condition, qty);
         
         response.sendRedirect(request.getContextPath() + "/warehouse-layout?action=view-zone&zoneId=" 
-            + request.getParameter("zoneId") + "&warehouseId=" + warehouseId);
+            + request.getParameter("zoneId"));
+    }
+    
+    private void handleUpdateMaxCapacity(HttpServletRequest request, HttpServletResponse response)
+            throws Exception {
+        
+        response.setContentType("application/json;charset=UTF-8");
+        
+        Long slotId = parseLong(request.getParameter("slotId"), -1);
+        if (slotId <= 0) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            try (PrintWriter out = response.getWriter()) {
+                out.write("{\"success\":false,\"error\":\"Invalid slot ID\"}");
+            }
+            return;
+        }
+        
+        String maxCapacityStr = request.getParameter("maxCapacity");
+        BigDecimal maxCapacity = null;
+        if (maxCapacityStr != null && !maxCapacityStr.isBlank()) {
+            try {
+                maxCapacity = new BigDecimal(maxCapacityStr);
+                if (maxCapacity.compareTo(BigDecimal.ZERO) < 0) {
+                    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                    try (PrintWriter out = response.getWriter()) {
+                        out.write("{\"success\":false,\"error\":\"Max capacity must be greater than or equal to 0\"}");
+                    }
+                    return;
+                }
+            } catch (NumberFormatException e) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                try (PrintWriter out = response.getWriter()) {
+                    out.write("{\"success\":false,\"error\":\"Invalid max capacity value\"}");
+                }
+                return;
+            }
+        }
+        
+        // Check if new capacity is less than used capacity
+        InventoryBalanceDAO invDAO = new InventoryBalanceDAO();
+        BigDecimal usedCapacity = invDAO.getTotalCapacityUsed(slotId);
+        if (maxCapacity != null && usedCapacity != null && usedCapacity.compareTo(maxCapacity) > 0) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            try (PrintWriter out = response.getWriter()) {
+                out.write("{\"success\":false,\"error\":\"Max capacity cannot be less than used capacity (" + usedCapacity + ")\"}");
+            }
+            return;
+        }
+        
+        SlotDAO slotDAO = new SlotDAO();
+        boolean success = slotDAO.updateMaxCapacity(slotId, maxCapacity);
+        
+        if (success) {
+            try (PrintWriter out = response.getWriter()) {
+                out.write("{\"success\":true,\"message\":\"Max capacity updated successfully\"}");
+            }
+        } else {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            try (PrintWriter out = response.getWriter()) {
+                out.write("{\"success\":false,\"error\":\"Failed to update max capacity\"}");
+            }
+        }
     }
 
     private long parseLong(String raw, long def) {
