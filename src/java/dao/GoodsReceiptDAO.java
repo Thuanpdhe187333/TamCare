@@ -396,6 +396,19 @@ public class GoodsReceiptDAO extends DBContext {
                 ps.setLong(5, grn.getGrnId());
                 ps.executeUpdate();
             }
+            // Fix 500 error: Delete existing putaway info first because putaway_line refers
+            // to grn_line_id
+            String sqlDeletePutAwayLines = "DELETE FROM putaway_line WHERE grn_line_id IN (SELECT grn_line_id FROM goods_receipt_line WHERE grn_id = ?)";
+            String sqlDeletePutAwayOrders = "DELETE FROM putaway_order WHERE grn_id = ?";
+            try (PreparedStatement ps = conn.prepareStatement(sqlDeletePutAwayLines)) {
+                ps.setLong(1, grn.getGrnId());
+                ps.executeUpdate();
+            }
+            try (PreparedStatement ps = conn.prepareStatement(sqlDeletePutAwayOrders)) {
+                ps.setLong(1, grn.getGrnId());
+                ps.executeUpdate();
+            }
+
             try (PreparedStatement ps = conn.prepareStatement(sqlDeleteLines)) {
                 ps.setLong(1, grn.getGrnId());
                 ps.executeUpdate();
