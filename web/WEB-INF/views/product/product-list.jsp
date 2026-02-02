@@ -1,11 +1,11 @@
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <%@page import="java.util.List"%>
-<%@page import="dto.ProductListDTO"%>
+<%@page import="dto.ProductInventoryListDTO"%>
 <%@taglib tagdir="/WEB-INF/tags/" prefix="t"%>
 <%@taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 
 <%
-    List<ProductListDTO> products = (List<ProductListDTO>) request.getAttribute("products");
+    List<ProductInventoryListDTO> products = (List<ProductInventoryListDTO>) request.getAttribute("products");
     Integer pageNum = (Integer) request.getAttribute("page");
     if (pageNum == null) pageNum = 1;
 %>
@@ -41,78 +41,258 @@
         }
     </style>
 
-    <!-- Filter Section -->
-    <div class="card mb-4 shadow-sm">
-        <div class="card-header">
-            <h6 class="mb-0">Filter</h6>
+    <!-- Filter Section - Synced with purchase-order-list.jsp -->
+    <form action="${pageContext.request.contextPath}/products"
+          method="get"
+          class="mb-3 p-3 border rounded bg-light">
+        <!-- ROW 1: Text filters -->
+        <div class="form-row mb-2">
+            <div class="col-md-3">
+                <label class="mb-1 font-weight-bold">SKU</label>
+                <input type="text"
+                       name="filterSku"
+                       class="form-control"
+                       placeholder="Enter SKU..."
+                       value="${param.filterSku}">
+            </div>
+            <div class="col-md-3">
+                <label class="mb-1 font-weight-bold">Product Name</label>
+                <input type="text"
+                       name="filterName"
+                       class="form-control"
+                       placeholder="Enter product name..."
+                       value="${param.filterName}">
+            </div>
+            <div class="col-md-3">
+                <label class="mb-1 font-weight-bold">Barcode</label>
+                <input type="text"
+                       name="filterBarcode"
+                       class="form-control"
+                       placeholder="Enter barcode..."
+                       value="${param.filterBarcode}">
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary mr-2">
+                    Search
+                </button>
+                <a href="${pageContext.request.contextPath}/products"
+                   class="btn btn-outline-secondary">
+                    Reset
+                </a>
+            </div>
         </div>
-        <div class="card-body">
-            <form method="get" action="${pageContext.request.contextPath}/products" id="filterForm">
-                <input type="hidden" name="page" value="1">
-                <div class="row g-3">
-                    <div class="col-md-3">
-                        <label for="filterSku" class="form-label">SKU</label>
-                        <input type="text" class="form-control" id="filterSku" name="filterSku" 
-                               value="${param.filterSku}" placeholder="Enter SKU...">
-                    </div>
-                    <div class="col-md-3">
-                        <label for="filterName" class="form-label">Product Name</label>
-                        <input type="text" class="form-control" id="filterName" name="filterName" 
-                               value="${param.filterName}" placeholder="Enter product name...">
-                    </div>
-                    <div class="col-md-3">
-                        <label for="filterBarcode" class="form-label">Barcode</label>
-                        <input type="text" class="form-control" id="filterBarcode" name="filterBarcode" 
-                               value="${param.filterBarcode}" placeholder="Enter barcode...">
-                    </div>
-                    <div class="col-md-3 d-flex align-items-end justify-content-end">
-                        <button type="submit" class="btn btn-primary" style="margin-right: 12px !important;">Search</button>
-                        <a href="${pageContext.request.contextPath}/products" class="btn btn-secondary">Clear Filter</a>
-                    </div>
-                </div>
-            </form>
+        <!-- ROW 2: Dropdown filters -->
+        <div class="form-row">
+            <div class="col-md-3">
+                <label class="mb-1 font-weight-bold">Zone</label>
+                <select name="filterZoneCode" class="form-control">
+                    <option value="">-- All Zones --</option>
+                    <c:forEach items="${zones}" var="zone">
+                        <option value="${zone.code}" ${param.filterZoneCode == zone.code ? 'selected' : ''}>
+                            ${zone.code} - ${zone.name}
+                        </option>
+                    </c:forEach>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="mb-1 font-weight-bold">Condition</label>
+                <select name="filterCondition" class="form-control">
+                    <option value="">-- All Conditions --</option>
+                    <option value="GOOD" ${param.filterCondition == 'GOOD' ? 'selected' : ''}>GOOD</option>
+                    <option value="DAMAGED" ${param.filterCondition == 'DAMAGED' ? 'selected' : ''}>DAMAGED</option>
+                    <option value="EXPIRED" ${param.filterCondition == 'EXPIRED' ? 'selected' : ''}>EXPIRED</option>
+                </select>
+            </div>
         </div>
-    </div>
+    </form>
 
-    <div class="table-responsive shadow-sm rounded">
-        <table class="table table-bordered table-hover table-striped align-middle mb-0 product-table">
-            <thead class="thead-dark">
-                <tr class="text-center">
-                    <th class="sortable-header" data-sort="product_id" data-current-sort="${param.sortBy == 'product_id' ? param.sortOrder : ''}">ID</th>
-                    <th class="sortable-header" data-sort="sku" data-current-sort="${param.sortBy == 'sku' ? param.sortOrder : ''}">SKU</th>
-                    <th class="sortable-header" data-sort="name" data-current-sort="${param.sortBy == 'name' ? param.sortOrder : ''}">Product Name</th>
-                    <th class="sortable-header" data-sort="barcode" data-current-sort="${param.sortBy == 'barcode' ? param.sortOrder : ''}">Barcode</th>
-                    <th class="sortable-header" data-sort="created_at" data-current-sort="${param.sortBy == 'created_at' ? param.sortOrder : ''}">Created Date</th>
-                    <th>Action</th>
+    <style>
+        .resizable-table {
+            table-layout: fixed;
+            width: 100%;
+        }
+        .product-detail-container {
+            padding: 10px;
+        }
+        .product-header h4 {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        .card-header {
+            font-weight: 600;
+        }
+        .table-borderless td {
+            padding: 0.5rem 0;
+        }
+        .resizable-table th,
+        .resizable-table td {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            position: relative;
+        }
+        .resizable-table th {
+            text-align: center;
+            user-select: none;
+            cursor: default;
+        }
+        .resizable-table th.resizable {
+            cursor: col-resize;
+        }
+        .resizable-table th .resizer {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 5px;
+            height: 100%;
+            cursor: col-resize;
+            user-select: none;
+            background: transparent;
+        }
+        .resizable-table th .resizer:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        .resizable-table th .resizer.active {
+            background: rgba(255, 255, 255, 0.5);
+        }
+    </style>
+    
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped align-middle resizable-table">
+            <thead class="table-dark">
+                <tr>
+                    <th class="sortable-header resizable" data-sort="sku" data-current-sort="${param.sortBy == 'sku' ? param.sortOrder : ''}" style="text-align: center;">
+                        SKU
+                        <div class="resizer"></div>
+                    </th>
+                    <th class="sortable-header resizable" data-sort="name" data-current-sort="${param.sortBy == 'name' ? param.sortOrder : ''}" style="text-align: center;">
+                        Product Name
+                        <div class="resizer"></div>
+                    </th>
+                    <th class="sortable-header resizable" data-sort="barcode" data-current-sort="${param.sortBy == 'barcode' ? param.sortOrder : ''}" style="text-align: center;">
+                        Barcode
+                        <div class="resizer"></div>
+                    </th>
+                    <th class="resizable" style="text-align: center;">
+                        Variant SKU
+                        <div class="resizer"></div>
+                    </th>
+                    <th class="resizable" style="text-align: center;">
+                        Quantity (On Hand)
+                        <div class="resizer"></div>
+                    </th>
+                    <th class="resizable" style="text-align: center;">
+                        Quantity (Available)
+                        <div class="resizer"></div>
+                    </th>
+                    <th class="sortable-header resizable" data-sort="slot_code" data-current-sort="${param.sortBy == 'slot_code' ? param.sortOrder : ''}" style="text-align: center;">
+                        Slot
+                        <div class="resizer"></div>
+                    </th>
+                    <th class="sortable-header resizable" data-sort="zone_code" data-current-sort="${param.sortBy == 'zone_code' ? param.sortOrder : ''}" style="text-align: center;">
+                        Zone
+                        <div class="resizer"></div>
+                    </th>
+                    <th class="sortable-header resizable" data-sort="condition" data-current-sort="${param.sortBy == 'condition' ? param.sortOrder : ''}" style="text-align: center;">
+                        Condition
+                        <div class="resizer"></div>
+                    </th>
+                    <th class="resizable" style="text-align: center;">
+                        Warehouse
+                        <div class="resizer"></div>
+                    </th>
+                    <th class="resizable" style="text-align: center;">
+                        Action
+                        <div class="resizer"></div>
+                    </th>
                 </tr>
             </thead>
             <tbody>
-                <c:forEach var="product" items="${products}">
-                    <tr>
-                        <td class="text-center">${product.productId}</td>
-                        <td class="font-weight-bold text-primary">${product.sku}</td>
-                        <td>${product.name}</td>
-                        <td>${product.barcode}</td>
-                        <td class="text-center">${product.createdAt}</td>
-                        <td class="text-center">
-                            <button type="button" 
-                                    class="btn btn-sm btn-info shadow-sm btn-view-detail"
-                                    data-product-id="${product.productId}">
-                                View Details
-                            </button>
-                        </td>
-                    </tr>
-                </c:forEach>
+                <c:if test="${not empty products}">
+                    <c:forEach var="product" items="${products}">
+                        <tr>
+                            <td class="font-weight-bold text-primary">${product.sku}</td>
+                            <td>${product.name}</td>
+                            <td>${product.barcode}</td>
+                            <td>${product.variantSku}</td>
+                            <td class="text-center">${product.totalQtyOnHand}</td>
+                            <td class="text-center">${product.totalQtyAvailable}</td>
+                            <td class="text-center">
+                                <span class="badge bg-info">${product.slotCode}</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">${product.zoneCode}</span>
+                                <small class="text-muted d-block">${product.zoneName}</small>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-${product.condition == 'GOOD' ? 'success' : product.condition == 'DAMAGED' ? 'danger' : 'warning'}">
+                                    ${product.condition}
+                                </span>
+                            </td>
+                            <td>
+                                <small>${product.warehouseCode}</small>
+                                <small class="text-muted d-block">${product.warehouseName}</small>
+                            </td>
+                            <td class="text-center">
+                                <button type="button" 
+                                        class="btn btn-sm btn-outline-primary btn-view-detail"
+                                        data-product-id="${product.productId}">
+                                    View Details
+                                </button>
+                            </td>
+                        </tr>
+                    </c:forEach>
+                </c:if>
                 <c:if test="${empty products}">
                     <tr>
-                        <td colspan="6" class="text-center py-4 text-muted">
-                            No products found
+                        <td colspan="11" class="text-center text-muted">
+                            No products found in inventory
                         </td>
                     </tr>
                 </c:if>
             </tbody>
         </table>
     </div>
+
+    <!-- Pagination - Synced with purchase-order-list.jsp -->
+    <nav aria-label="Product pagination" class="mt-3">
+        <ul class="pagination justify-content-center">
+            <c:set var="baseUrl" value="${baseUrl}" />
+            <c:set var="qs" value="${qs}" />
+
+            <li class="page-item ${page <= 1 ? 'disabled' : ''}">
+                <a class="page-link" href="${page <= 1 ? '#' : baseUrl.concat('?page=').concat(page-1).concat(qs)}">Previous</a>
+            </li>
+
+            <c:if test="${startPage > 1}">
+                <li class="page-item">
+                    <a class="page-link" href="${baseUrl}?page=1${qs}">1</a>
+                </li>
+                <c:if test="${startPage > 2}">
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                </c:if>
+            </c:if>
+
+            <c:forEach var="i" begin="${startPage}" end="${endPage}">
+                <li class="page-item ${i == page ? 'active' : ''}">
+                    <a class="page-link" href="${baseUrl}?page=${i}${qs}">${i}</a>
+                </li>
+            </c:forEach>
+
+            <c:if test="${endPage < totalPages}">
+                <c:if test="${endPage < totalPages - 1}">
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                </c:if>
+                <li class="page-item">
+                    <a class="page-link" href="${baseUrl}?page=${totalPages}${qs}">${totalPages}</a>
+                </li>
+            </c:if>
+
+            <li class="page-item ${page >= totalPages ? 'disabled' : ''}">
+                <a class="page-link" href="${page >= totalPages ? '#' : baseUrl.concat('?page=').concat(page+1).concat(qs)}">Next</a>
+            </li>
+        </ul>
+    </nav>
 
 <!-- Modal Popup cho chi tiết sản phẩm -->
 <div class="modal fade" id="productDetailModal" tabindex="-1" aria-labelledby="productDetailModalLabel" aria-hidden="true">
@@ -136,7 +316,68 @@
     <script>
     let productModal = null;
     
+    // Column resizing functionality
+    function initColumnResize() {
+        const table = document.querySelector('.resizable-table');
+        if (!table) return;
+        
+        const ths = table.querySelectorAll('th.resizable');
+        let currentTh = null;
+        let startX = 0;
+        let startWidth = 0;
+        
+        ths.forEach(th => {
+            const resizer = th.querySelector('.resizer');
+            if (!resizer) return;
+            
+            resizer.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                currentTh = th;
+                startX = e.pageX;
+                startWidth = th.offsetWidth;
+                
+                resizer.classList.add('active');
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+                
+                document.addEventListener('mousemove', handleResize);
+                document.addEventListener('mouseup', stopResize);
+            });
+        });
+        
+        function handleResize(e) {
+            if (!currentTh) return;
+            
+            const diff = e.pageX - startX;
+            const newWidth = Math.max(50, startWidth + diff); // Minimum width 50px
+            currentTh.style.width = newWidth + 'px';
+            
+            // Update table layout
+            table.style.tableLayout = 'fixed';
+        }
+        
+        function stopResize() {
+            if (currentTh) {
+                const resizer = currentTh.querySelector('.resizer');
+                if (resizer) {
+                    resizer.classList.remove('active');
+                }
+            }
+            
+            currentTh = null;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            
+            document.removeEventListener('mousemove', handleResize);
+            document.removeEventListener('mouseup', stopResize);
+        }
+    }
+    
     document.addEventListener('DOMContentLoaded', function() {
+        // Initialize column resizing
+        initColumnResize();
         const modalElement = document.getElementById('productDetailModal');
         if (modalElement) {
             productModal = new bootstrap.Modal(modalElement, {
@@ -209,44 +450,116 @@
         
         function displayProductDetail(product) {
             if (!modalContent) return;
-            let html = '<div class="row">';
-            html += '<div class="col-md-6"><h6>Product Information</h6>';
-            html += '<table class="table table-sm">';
-            html += '<tr><td><strong>ID:</strong></td><td>' + (product.productId || '') + '</td></tr>';
-            html += '<tr><td><strong>SKU:</strong></td><td>' + (product.sku || '') + '</td></tr>';
-            html += '<tr><td><strong>Name:</strong></td><td>' + (product.name || '') + '</td></tr>';
-            html += '<tr><td><strong>Category:</strong></td><td>' + (product.categoryName || 'N/A') + '</td></tr>';
-            html += '<tr><td><strong>Unit:</strong></td><td>' + (product.uomName || 'N/A') + '</td></tr>';
-            html += '<tr><td><strong>Barcode:</strong></td><td>' + (product.barcode || '') + '</td></tr>';
-            html += '<tr><td><strong>Weight:</strong></td><td>' + (product.weight || 'N/A') + '</td></tr>';
-            html += '<tr><td><strong>Dimensions:</strong></td><td>';
-            html += (product.length && product.width && product.height) 
-                ? product.length + ' x ' + product.width + ' x ' + product.height 
-                : 'N/A';
-            html += '</td></tr>';
-            html += '<tr><td><strong>Created Date:</strong></td><td>' + (product.createdAt || '') + '</td></tr>';
-            html += '</table></div>';
             
-            html += '<div class="col-md-6"><h6>Variants</h6>';
+            let html = '<div class="product-detail-container">';
+            
+            // Header Section
+            html += '<div class="product-header mb-4 pb-3 border-bottom">';
+            html += '<div class="d-flex justify-content-between align-items-start">';
+            html += '<div>';
+            html += '<h4 class="mb-2 text-primary">' + (product.name || 'N/A') + '</h4>';
+            html += '<p class="text-muted mb-0"><strong>SKU:</strong> ' + (product.sku || 'N/A') + '</p>';
+            html += '</div>';
+            html += '<div class="text-end">';
+            html += '<span class="badge bg-info fs-6">ID: ' + (product.productId || '') + '</span>';
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+            
+            // Main Information Cards
+            html += '<div class="row mb-4">';
+            
+            // Left Column - Basic Information
+            html += '<div class="col-md-6">';
+            html += '<div class="card h-100 shadow-sm">';
+            html += '<div class="card-header bg-primary text-white">';
+            html += '<h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Basic Information</h6>';
+            html += '</div>';
+            html += '<div class="card-body">';
+            html += '<table class="table table-borderless mb-0">';
+            html += '<tr><td class="text-muted" style="width: 40%;"><strong>Product Name:</strong></td><td>' + (product.name || 'N/A') + '</td></tr>';
+            html += '<tr><td class="text-muted"><strong>SKU:</strong></td><td><span class="badge bg-secondary">' + (product.sku || 'N/A') + '</span></td></tr>';
+            html += '<tr><td class="text-muted"><strong>Barcode:</strong></td><td>' + (product.barcode || 'N/A') + '</td></tr>';
+            html += '<tr><td class="text-muted"><strong>Category:</strong></td><td>' + (product.categoryName || 'N/A') + '</td></tr>';
+            html += '<tr><td class="text-muted"><strong>Unit of Measure:</strong></td><td>' + (product.uomName || 'N/A') + '</td></tr>';
+            html += '<tr><td class="text-muted"><strong>Created Date:</strong></td><td>' + (product.createdAt || 'N/A') + '</td></tr>';
+            html += '</table>';
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+            
+            // Right Column - Physical Properties
+            html += '<div class="col-md-6">';
+            html += '<div class="card h-100 shadow-sm">';
+            html += '<div class="card-header bg-success text-white">';
+            html += '<h6 class="mb-0"><i class="fas fa-ruler-combined me-2"></i>Physical Properties</h6>';
+            html += '</div>';
+            html += '<div class="card-body">';
+            html += '<table class="table table-borderless mb-0">';
+            html += '<tr><td class="text-muted" style="width: 40%;"><strong>Weight:</strong></td><td>' + (product.weight ? product.weight + ' kg' : 'N/A') + '</td></tr>';
+            html += '<tr><td class="text-muted"><strong>Dimensions:</strong></td><td>';
+            if (product.length && product.width && product.height) {
+                html += product.length + ' x ' + product.width + ' x ' + product.height + ' cm';
+            } else {
+                html += 'N/A';
+            }
+            html += '</td></tr>';
+            html += '</table>';
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+            
+            html += '</div>';
+            
+            // Variants Section
+            html += '<div class="card shadow-sm">';
+            html += '<div class="card-header bg-info text-white">';
+            html += '<h6 class="mb-0"><i class="fas fa-layer-group me-2"></i>Product Variants</h6>';
+            html += '</div>';
+            html += '<div class="card-body">';
             if (product.variants && product.variants.length > 0) {
-                html += '<div class="table-responsive"><table class="table table-sm table-bordered">';
-                html += '<thead class="table-light"><tr>';
-                html += '<th>Variant SKU</th><th>Color</th><th>Size</th><th>Barcode</th><th>Status</th>';
-                html += '</tr></thead><tbody>';
+                html += '<div class="table-responsive">';
+                html += '<table class="table table-hover table-bordered align-middle">';
+                html += '<thead class="table-light">';
+                html += '<tr class="text-center">';
+                html += '<th>Variant SKU</th>';
+                html += '<th>Color</th>';
+                html += '<th>Size</th>';
+                html += '<th>Barcode</th>';
+                html += '<th>Quantity (On Hand)</th>';
+                html += '<th>Quantity (Available)</th>';
+                html += '<th>Status</th>';
+                html += '</tr>';
+                html += '</thead>';
+                html += '<tbody>';
                 product.variants.forEach(variant => {
                     html += '<tr>';
-                    html += '<td>' + (variant.variantSku || '') + '</td>';
-                    html += '<td>' + (variant.color || 'N/A') + '</td>';
-                    html += '<td>' + (variant.size || 'N/A') + '</td>';
-                    html += '<td>' + (variant.barcode || '') + '</td>';
-                    html += '<td><span class="badge bg-' + (variant.status === 'ACTIVE' ? 'success' : 'secondary') + '">' + (variant.status || '') + '</span></td>';
+                    html += '<td><span class="badge bg-primary">' + (variant.variantSku || 'N/A') + '</span></td>';
+                    html += '<td class="text-center">' + (variant.color || 'N/A') + '</td>';
+                    html += '<td class="text-center">' + (variant.size || 'N/A') + '</td>';
+                    html += '<td>' + (variant.barcode || 'N/A') + '</td>';
+                    html += '<td class="text-center"><span class="badge bg-info">' + (variant.totalQtyOnHand || '0') + '</span></td>';
+                    html += '<td class="text-center"><span class="badge bg-success">' + (variant.totalQtyAvailable || '0') + '</span></td>';
+                    html += '<td class="text-center">';
+                    html += '<span class="badge bg-' + (variant.status === 'ACTIVE' ? 'success' : 'secondary') + '">';
+                    html += variant.status || 'N/A';
+                    html += '</span>';
+                    html += '</td>';
                     html += '</tr>';
                 });
-                html += '</tbody></table></div>';
+                html += '</tbody>';
+                html += '</table>';
+                html += '</div>';
             } else {
-                html += '<p class="text-muted">No variants</p>';
+                html += '<div class="text-center py-4">';
+                html += '<i class="fas fa-inbox fa-3x text-muted mb-3"></i>';
+                html += '<p class="text-muted mb-0">No variants available for this product</p>';
+                html += '</div>';
             }
-            html += '</div></div>';
+            html += '</div>';
+            html += '</div>';
+            
+            html += '</div>';
             
             modalContent.innerHTML = html;
         }

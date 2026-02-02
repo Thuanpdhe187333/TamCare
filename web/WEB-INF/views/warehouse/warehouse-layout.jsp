@@ -66,31 +66,6 @@
     </div>
     </c:if>
 
-    <!-- Form chọn kho -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">Select Warehouse</h5>
-        </div>
-        <div class="card-body">
-            <form method="get" action="${pageContext.request.contextPath}/warehouse-layout">
-                <div class="row">
-                    <div class="col-md-6">
-                        <label for="warehouseId" class="form-label">Warehouse</label>
-                        <select class="form-select" id="warehouseId" name="warehouseId" required onchange="this.form.submit()">
-                            <option value="">-- Select Warehouse --</option>
-                            <c:forEach items="${warehouses}" var="wh">
-                            <option value="${wh.warehouseId}" 
-                                    ${selectedWarehouseId != null && selectedWarehouseId == wh.warehouseId ? 'selected' : ''}>
-                                <c:out value="${wh.code}" /> - <c:out value="${wh.name}" />
-                            </option>
-                            </c:forEach>
-                        </select>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <c:if test="${selectedWarehouseId != null}">
 
     <!-- Form tạo Zone -->
@@ -156,7 +131,7 @@
                             </small>
                         </div>
                         <div class="d-flex align-items-center" style="gap: 12px;">
-                            <a href="${pageContext.request.contextPath}/warehouse-layout?action=view-zone&zoneId=${zone.zoneId}&warehouseId=${selectedWarehouseId}" 
+                            <a href="${pageContext.request.contextPath}/warehouse-layout?action=view-zone&zoneId=${zone.zoneId}" 
                                class="btn btn-sm btn-outline-primary" style="min-width: 110px; position: relative; z-index: 10; pointer-events: auto;">
                                 View Layout
                             </a>
@@ -188,7 +163,6 @@
                                 <form method="post" action="${pageContext.request.contextPath}/warehouse-layout" id="slotForm${zone.zoneId}">
                                     <input type="hidden" name="action" value="create-slots">
                                     <input type="hidden" name="zoneId" value="${zone.zoneId}">
-                                    <input type="hidden" name="warehouseId" value="${selectedWarehouseId}">
                                     <c:if test="${hasSlots}">
                                     <div class="alert alert-warning">
                                         <strong>Note:</strong> This zone already has slots. The system will only add new slots that do not exist.
@@ -240,11 +214,6 @@
     </div>
     </c:if>
 
-    </c:if>
-    <c:if test="${selectedWarehouseId == null}">
-    <div class="alert alert-warning">
-        Please select a warehouse to start creating layout.
-    </div>
     </c:if>
 
     <script>
