@@ -1,6 +1,7 @@
 package controller;
 
 import dao.ProductDAO;
+import dao.ProductVariantDAO;
 import dao.PurchaseOrderDAO;
 import dao.SupplierDAO;
 import dto.POLineCreateDTO;
@@ -82,7 +83,6 @@ public class PurchaseOrderController extends HttpServlet {
             throw new ServletException(e);
         }
     }
-    //AJAX load Variant
     private void handleGetVariants(HttpServletRequest request, HttpServletResponse response)
             throws Exception {
 
@@ -95,7 +95,7 @@ public class PurchaseOrderController extends HttpServlet {
             return;
         }
 
-        dao.ProductVariantDAO vDao = new dao.ProductVariantDAO();
+        ProductVariantDAO vDao = new ProductVariantDAO();
         //lấy danh sách variant theo productid
         List<ProductVariantDTO> list = vDao.listByProductId(productId);
         //khai báo json
@@ -124,6 +124,7 @@ public class PurchaseOrderController extends HttpServlet {
 
     private void forwardList(HttpServletRequest request, HttpServletResponse response) throws Exception {
         int page = parseInt(request.getParameter("page"), DEFAULT_PAGE);
+        //size = số dòng hiển thị mỗi trang
         int size = DEFAULT_SIZE;
         if (page < 1) {
             page = 1;
@@ -147,9 +148,11 @@ public class PurchaseOrderController extends HttpServlet {
         if (totalPages < 1) {
             totalPages = 1;
         }
+        //tránh user nhập tay
         if (page > totalPages) {
             page = totalPages;
         }
+        //offset = số lượng bản ghi cần bỏ qua trước khi lấy dữ liệu
         int offset = (page - 1) * size;
         List<PurchaseOrderListDTO> pos = dao.searchPurchaseOrders(keyword, status, expectedFrom, expectedTo, size,
                 offset);
@@ -160,6 +163,7 @@ public class PurchaseOrderController extends HttpServlet {
         int startPage = Math.max(1, page - window);
         //không vượt quá total page
         int endPage = Math.min(totalPages, page + window);
+        //Kiểm tra nếu số lượng trang hiển thị chưa đủ
         if (endPage - startPage < window * 2) {
             if (startPage == 1) {
                 endPage = Math.min(totalPages, startPage + window * 2);
@@ -178,12 +182,6 @@ public class PurchaseOrderController extends HttpServlet {
         request.setAttribute("endPage", endPage);
         request.setAttribute("baseUrl", baseUrl);
         request.setAttribute("qs", qs);
-        // (optional) nếu bạn muốn JSP xài ${keyword} thay vì ${param.keyword}
-        request.setAttribute("keyword", keyword);
-        request.setAttribute("status", status);
-        request.setAttribute("expectedFrom", expectedFromStr);
-        request.setAttribute("expectedTo", expectedToStr);
-
         request.getRequestDispatcher(ViewPath.PO_LIST).forward(request, response);
     }
 
@@ -470,11 +468,11 @@ public class PurchaseOrderController extends HttpServlet {
                     break;
                 }
 
-                PurchaseOrderLineDTO l = new PurchaseOrderLineDTO();
-                l.setVariantId(variantId);
-                l.setOrderedQty(qty);       // DTO của bạn là orderedQty
-                l.setUnitPrice(unitPrice);
-                lines.add(l);
+                PurchaseOrderLineDTO line = new PurchaseOrderLineDTO();
+                line.setVariantId(variantId);
+                line.setOrderedQty(qty);     
+                line.setUnitPrice(unitPrice);
+                lines.add(line);
 
             } catch (Exception ex) {
                 fieldErrors.put("lines", "Lines contains invalid numbers");
@@ -486,7 +484,7 @@ public class PurchaseOrderController extends HttpServlet {
             fieldErrors.putIfAbsent("lines", "At least one line is required");
         }
 
-        // --- Build oldLines để giữ form khi lỗi ---
+        // oldLines để giữ form khi lỗi 
         List<Map<String, String>> oldLines = new ArrayList<>();
         for (int i = 0; i < 500; i++) {
             String productId = request.getParameter("lines[" + i + "].productId");
@@ -532,7 +530,6 @@ public class PurchaseOrderController extends HttpServlet {
             return;
         }
 
-        // --- Call DAO update ---
         PurchaseOrderHeaderDTO header = new PurchaseOrderHeaderDTO();
         header.setPoId(poId);
         header.setPoNumber(poNumber);
@@ -588,7 +585,8 @@ public class PurchaseOrderController extends HttpServlet {
             return null;
         }
     }
-
+    //gom tất cả điều kiện tìm kiếm thành qs để gắn vào link phân trang,
+    //đảm bảo người dùng chuyển trang không mất bộ lọc
     private String buildQs(String keyword, String status, String expectedFrom, String expectedTo)
             throws UnsupportedEncodingException {
         StringBuilder sb = new StringBuilder();

@@ -117,7 +117,7 @@
                                     <input type="hidden" name="page" value="${page}">
                                     <button class="btn btn-sm btn-outline-danger">Delete</button>
                                 </form>
-                    
+
 
                                 <form action="${pageContext.request.contextPath}/purchase-orders"
                                       method="get"
@@ -183,8 +183,6 @@
             </li>
         </ul>
     </nav>
-
-
 </t:layout>
 
 

@@ -167,8 +167,8 @@
                         '    <option value="">-- Select product first --</option>' +
                         '  </select>' +
                         '</td>' +
-                        '<td><input class="form-control qty-input" type="number" step="0.0001" min="0.0001" name="lines[' + idx + '].qty"></td>' +
-                        '<td><input class="form-control unit-input" type="number" step="0.01" min="0" name="lines[' + idx + '].unitPrice"></td>' +
+                        '<td><input class="form-control qty-input" type="number" step="1" name="lines[' + idx + '].qty"></td>' +
+                        '<td><input class="form-control unit-input" type="number" step="1" name="lines[' + idx + '].unitPrice"></td>' +
                         '<td><input class="form-control currency-input" name="lines[' + idx + '].currency" value="VND"></td>' +
                         '<td class="text-center"><button type="button" class="btn btn-sm btn-danger btn-remove">X</button></td>';
                 tbody.appendChild(tr);
