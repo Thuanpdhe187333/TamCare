@@ -10,7 +10,7 @@ import java.util.Properties;
 
 /**
  *
- * @author DThuyy
+ * @author Chanh
  */
 public class SendEmail {
 
