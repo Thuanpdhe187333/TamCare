@@ -1,7 +1,7 @@
 <%@page contentType="text/html" pageEncoding="UTF-8" %>
     <%@taglib tagdir="/WEB-INF/tags/" prefix="t" %>
         <%@taglib uri="jakarta.tags.core" prefix="c" %>
-            <t:layout title="Create Goods Receipt Note">
+            <t:layout title="Goods Receipt Note">
                 <!-- SweetAlert2 -->
                 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
                 <div class="container-fluid py-4">

@@ -104,7 +104,7 @@ public class GoodsReceiptController extends HttpServlet {
         GoodsReceiptDAO grnDao = new GoodsReceiptDAO();
         request.setAttribute("suppliers", supplierDao.getActiveSuppliers());
         request.setAttribute("variants", grnDao.getActiveVariants());
-        request.setAttribute("purchaseOrders", grnDao.getPurchaseOrdersForSelection());
+        request.setAttribute("purchaseOrders", grnDao.getPurchaseOrdersForSelection(null));
         request.getRequestDispatcher(ViewPath.GRN_CREATE).forward(request, response);
     }
 
@@ -143,13 +143,18 @@ public class GoodsReceiptController extends HttpServlet {
 
         request.setAttribute("suppliers", supplierDao.getActiveSuppliers());
         request.setAttribute("variants", grnDao.getActiveVariants());
-        request.setAttribute("purchaseOrders", grnDao.getPurchaseOrdersForSelection());
+        request.setAttribute("purchaseOrders", grnDao.getPurchaseOrdersForSelection(grn.getPoId()));
 
         // Pre-fill fields for the CREATE form to reuse it
         request.setAttribute("grnId", grn.getGrnId());
         request.setAttribute("oldGrnNumber", grn.getGrnNumber());
         request.setAttribute("oldPoId", grn.getPoId());
-        request.setAttribute("oldSupplierId", null); // We don't save supplier directly on GRN
+
+        // Get supplier ID from PO for pre-filling
+        PurchaseOrderDAO poDao = new PurchaseOrderDAO();
+        dto.PurchaseOrderHeaderDTO poHeader = poDao.getPurchaseOrderHeader(grn.getPoId());
+        request.setAttribute("oldSupplierId", poHeader != null ? poHeader.getSupplierId() : null);
+
         request.setAttribute("oldNote", grn.getNote());
 
         List<Map<String, String>> lineMaps = lines.stream().map(l -> {
