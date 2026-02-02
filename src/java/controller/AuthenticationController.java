@@ -6,13 +6,13 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.Random;
 import model.User;
 import util.PasswordUtil;
 import util.SendEmail;
 import util.ViewPath;
-import java.util.Random;
 
-@WebServlet(name = "AuthenticationController", urlPatterns = { "/authen" })
+@WebServlet(name = "AuthenticationController", urlPatterns = {"/authen"})
 public class AuthenticationController extends HttpServlet {
 
     private String generateOTP() {
@@ -38,6 +38,7 @@ public class AuthenticationController extends HttpServlet {
             }
             response.sendRedirect(request.getContextPath() + ViewPath.VIEW_LOGIN);
             return;
+
         }
 
         // show forgot page
@@ -84,12 +85,12 @@ public class AuthenticationController extends HttpServlet {
             throws ServletException, IOException {
 
         // lấy input
-        String identity = trimOrEmpty(request.getParameter("username")); // username hoặc email
+        String identity = trimOrEmpty(request.getParameter("mail"));
         String password = trimOrEmpty(request.getParameter("password"));
 
         // validate basic
         if (identity.isEmpty() || password.isEmpty()) {
-            request.setAttribute("error", "Vui lòng nhập đầy đủ username/email và password");
+            request.setAttribute("error", "Vui lòng nhập đầy đủ email và password");
             request.getRequestDispatcher(ViewPath.VIEW_LOGIN).forward(request, response);
             return;
         }
@@ -99,7 +100,7 @@ public class AuthenticationController extends HttpServlet {
         User user = userDAO.login(identity, password);
 
         if (user == null) {
-            request.setAttribute("error", "Sai username/email hoặc password");
+            request.setAttribute("error", "Sai email hoặc password");
             request.getRequestDispatcher(ViewPath.VIEW_LOGIN).forward(request, response);
             return;
         }
@@ -301,7 +302,7 @@ public class AuthenticationController extends HttpServlet {
             // Get Email from session
             String email = (String) session.getAttribute("RESET_EMAIL");
             if (email == null) {
-                response.sendRedirect(request.getContextPath() + ViewPath.VIEW_LOGIN);
+                request.getRequestDispatcher(request.getContextPath() + ViewPath.VIEW_LOGIN).forward(request, response);
                 return;
             }
 
