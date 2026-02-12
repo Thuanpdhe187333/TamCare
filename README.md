@@ -1,2 +1,0 @@
-# TamCare
-EXE101
