@@ -6,7 +6,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Quản Trị Viên - TamCare</title>
-    <style>
+    <style>x
         body { font-family: 'Segoe UI', sans-serif; background-color: #f1f2f6; margin: 0; }
         
         .sidebar {
