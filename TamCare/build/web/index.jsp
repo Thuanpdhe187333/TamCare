@@ -116,7 +116,8 @@
             <header class="hero">
                 <div class="container hero-flex animate-up">
                     <div class="hero-text">
-                        <h1>Chăm sóc sức khỏe<br><span style="white-space: nowrap;">với trọn niềm yêu thương</span></h1>
+                        <h1>Chăm sóc sức khỏe<br><span style="white-space: nowrap;"></span>với trọn niềm yêu
+                            thương</span></h1>
                         <p>Nền tảng công nghệ dành riêng cho người cao tuổi, mang lại sự an tâm tuyệt đối cho con cháu
                             qua việc theo dõi và hỗ trợ y tế thông minh.</p>
                         <div class="btn-group">
