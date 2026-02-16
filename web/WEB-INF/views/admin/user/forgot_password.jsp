@@ -1,252 +1,285 @@
-<%-- 
-    Document   : forgot_password
-    Created on : Jan 24, 2026, 8:27:05 PM
-    Author     : chaua
---%>
-
+<%-- Document : forgot_password Created on : Jan 24, 2026, 8:27:05 PM Author : chaua --%>
     <%@page contentType="text/html" pageEncoding="UTF-8" %>
         <%@ taglib prefix="c" uri="jakarta.tags.core" %>
 
             <!DOCTYPE html>
-            <html>
+            <html lang="vi">
 
             <head>
-                <title>Forgot Password</title>
-                <!-- Link to existing Font Awesome -->
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Quên mật khẩu | Fashion WMS</title>
+
                 <link href="<%=request.getContextPath()%>/assets/vendor/fontawesome-free/css/all.min.css"
                     rel="stylesheet" type="text/css">
-                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+                <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap"
                     rel="stylesheet">
 
                 <style>
                     :root {
-                        --error-border: #f87171;
-                        --error-bg: #fef2f2;
-                        --error-text: #ef4444;
-                        --input-border: #d1d5db;
-                        --input-bg: #ffffff;
-                        --icon-color: #6b7280;
-                        --primary-color: #0d6efd;
+                        --primary: #4e73df;
+                        --primary-light: #7091f1;
+                        --secondary: #224abe;
+                        --accent: #36b9cc;
+                        --error: #e74a3b;
+                        --success: #1cc88a;
+                        --glass-bg: rgba(15, 23, 42, 0.7);
+                        --glass-border: rgba(255, 255, 255, 0.1);
+                        --text-main: #ffffff;
+                        --text-dim: rgba(255, 255, 255, 0.6);
+                    }
+
+                    * {
+                        margin: 0;
+                        padding: 0;
+                        box-sizing: border-box;
+                        font-family: 'Outfit', sans-serif;
                     }
 
                     body {
-                        font-family: 'Inter', Arial, sans-serif;
-                        background: #f5f7fb;
-                        margin: 0;
+                        height: 100vh;
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        min-height: 100vh;
+                        overflow: hidden;
+                        background: #0f172a;
+                        color: var(--text-main);
                     }
 
-                    .login-box {
+                    .background-container {
+                        position: fixed;
+                        top: 0;
+                        left: 0;
                         width: 100%;
-                        max-width: 420px;
-                        padding: 40px;
-                        border-radius: 20px;
-                        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
-                        background: #fff;
-                    }
-
-                    .login-box h2 {
-                        text-align: center;
-                        margin-bottom: 30px;
-                        font-weight: 600;
-                        color: #1f2937;
-                        font-size: 24px;
-                    }
-
-                    .input-container {
-                        margin-bottom: 20px;
-                        position: relative;
-                    }
-
-                    .input-wrapper {
-                        position: relative;
-                        display: flex;
-                        align-items: center;
-                        background: var(--input-bg);
-                        border: 1.5px solid var(--input-border);
-                        border-radius: 14px;
-                        transition: all 0.2s ease;
-                        padding: 4px 16px;
-                        height: 52px;
-                    }
-
-                    .input-wrapper i.field-icon {
-                        color: var(--icon-color);
-                        font-size: 18px;
-                        width: 24px;
-                        text-align: center;
-                        margin-right: 12px;
-                    }
-
-                    .input-wrapper input {
-                        flex: 1;
-                        border: none;
-                        background: transparent;
-                        outline: none;
-                        font-size: 15px;
-                        color: #374151;
                         height: 100%;
+                        z-index: -1;
                     }
 
-                    .input-wrapper input::placeholder {
-                        color: #9ca3af;
-                    }
-
-                    .input-wrapper:focus-within {
-                        border-color: var(--primary-color);
-                        box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
-                    }
-
-                    /* Error State Styling */
-                    .input-container.has-error .input-wrapper {
-                        border-color: var(--error-border);
-                        background: var(--error-bg);
-                    }
-
-                    .error-hint {
-                        display: none;
-                        color: var(--error-text);
-                        font-size: 13px;
-                        margin-top: 6px;
-                        align-items: center;
-                        font-weight: 500;
-                    }
-
-                    .input-container.has-error .error-hint {
-                        display: flex;
-                    }
-
-                    .error-hint i {
-                        margin-right: 6px;
-                        font-size: 12px;
-                    }
-
-                    .login-box button {
+                    .bg-image {
+                        position: absolute;
+                        top: 0;
+                        left: 0;
                         width: 100%;
-                        padding: 14px;
-                        background: var(--primary-color);
+                        height: 100%;
+                        object-fit: cover;
+                        filter: brightness(0.4) blur(4px);
+                        transform: scale(1.1);
+                        animation: moveBg 40s infinite alternate ease-in-out;
+                    }
+
+                    @keyframes moveBg {
+                        0% {
+                            transform: scale(1.1);
+                        }
+
+                        100% {
+                            transform: scale(1.15) translate(-1%, -1%);
+                        }
+                    }
+
+                    .bg-overlay {
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background: radial-gradient(circle, transparent, rgba(15, 23, 42, 0.8));
+                    }
+
+                    .login-container {
+                        width: 100%;
+                        max-width: 450px;
+                        padding: 20px;
+                        z-index: 10;
+                        animation: fadeIn 0.8s ease;
+                    }
+
+                    .login-card {
+                        background: var(--glass-bg);
+                        backdrop-filter: blur(25px);
+                        -webkit-backdrop-filter: blur(25px);
+                        border: 1px solid var(--glass-border);
+                        border-radius: 32px;
+                        padding: 50px 45px;
+                        box-shadow: 0 40px 100px rgba(0, 0, 0, 0.5);
+                    }
+
+                    .header {
+                        text-align: center;
+                        margin-bottom: 40px;
+                    }
+
+                    .header .logo-area {
+                        width: 60px;
+                        height: 60px;
+                        background: linear-gradient(135deg, var(--primary), var(--secondary));
+                        border-radius: 16px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        margin: 0 auto 20px;
+                    }
+
+                    .header h1 {
+                        font-size: 26px;
+                        font-weight: 700;
+                        color: #fff;
+                        margin-bottom: 8px;
+                    }
+
+                    .header p {
+                        color: var(--text-dim);
+                        font-size: 14px;
+                    }
+
+                    .form-group {
+                        margin-bottom: 24px;
+                        position: relative;
+                    }
+
+                    .input-field {
+                        display: flex;
+                        align-items: center;
+                        background: rgba(255, 255, 255, 0.04);
+                        border: 1.5px solid rgba(255, 255, 255, 0.1);
+                        border-radius: 16px;
+                        padding: 0 20px;
+                        height: 60px;
+                        transition: 0.3s;
+                    }
+
+                    .input-field:focus-within {
+                        border-color: var(--primary-light);
+                        background: rgba(255, 255, 255, 0.08);
+                    }
+
+                    .input-field i {
+                        color: var(--text-dim);
+                        margin-right: 15px;
+                        font-size: 18px;
+                    }
+
+                    .input-field input {
+                        flex: 1;
+                        background: transparent;
                         border: none;
-                        color: white;
-                        border-radius: 12px;
-                        cursor: pointer;
-                        margin-top: 10px;
+                        outline: none;
+                        color: #fff;
                         font-size: 16px;
+                    }
+
+                    .btn-action {
+                        width: 100%;
+                        height: 60px;
+                        background: linear-gradient(135deg, var(--primary), var(--secondary));
+                        border: none;
+                        border-radius: 16px;
+                        color: white;
+                        font-size: 17px;
                         font-weight: 600;
-                        transition: transform 0.1s, background 0.2s;
+                        cursor: pointer;
+                        transition: 0.3s;
+                        box-shadow: 0 10px 20px rgba(78, 115, 223, 0.3);
                     }
 
-                    .login-box button:hover {
-                        background: #0b5ed7;
+                    .btn-action:hover {
+                        transform: translateY(-3px);
+                        filter: brightness(1.1);
                     }
 
-                    .login-box button:active {
-                        transform: scale(0.98);
-                    }
-
-                    .links {
+                    .footer-links {
                         text-align: center;
-                        margin-top: 20px;
-                        font-size: 14px;
+                        margin-top: 30px;
                     }
 
-                    .links a {
-                        color: var(--primary-color);
+                    .footer-links a {
+                        color: var(--text-dim);
                         text-decoration: none;
-                        font-weight: 500;
-                    }
-
-                    .links a:hover {
-                        text-decoration: underline;
-                    }
-
-                    .system-message {
-                        margin-top: 20px;
-                        padding: 12px;
-                        border-radius: 10px;
-                        text-align: center;
                         font-size: 14px;
+                        transition: 0.3s;
                     }
 
-                    .error-msg {
-                        background: #fee2e2;
-                        color: #dc2626;
-                        border: 1px solid #fecaca;
+                    .footer-links a:hover {
+                        color: var(--primary-light);
                     }
 
-                    .success-msg {
-                        background: #f0fdf4;
-                        color: #16a34a;
-                        border: 1px solid #bbf7d0;
+                    .alert {
+                        padding: 16px;
+                        border-radius: 16px;
+                        margin-bottom: 24px;
+                        font-size: 14px;
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                    }
+
+                    .alert-error {
+                        background: rgba(255, 118, 117, 0.15);
+                        border: 1px solid rgba(255, 118, 117, 0.2);
+                        color: #ffb8b8;
+                    }
+
+                    .alert-success {
+                        background: rgba(85, 239, 196, 0.15);
+                        border: 1px solid rgba(85, 239, 196, 0.2);
+                        color: #b8fff4;
+                    }
+
+                    @keyframes fadeIn {
+                        from {
+                            opacity: 0;
+                            transform: translateY(20px);
+                        }
+
+                        to {
+                            opacity: 1;
+                            transform: translateY(0);
+                        }
                     }
                 </style>
             </head>
 
             <body>
-
-                <div class="login-box">
-                    <h2>Quên mật khẩu</h2>
-
-                    <form id="forgotForm" action="<%=request.getContextPath()%>/authen" method="post" novalidate>
-                        <input type="hidden" name="action" value="forgot" />
-
-                        <!-- Email Field -->
-                        <div class="input-container" id="emailContainer">
-                            <div class="input-wrapper">
-                                <i class="fas fa-envelope field-icon"></i>
-                                <input type="email" name="email" id="email" placeholder="Nhập email của bạn" required>
-                            </div>
-                            <div class="error-hint">
-                                <i class="fas fa-exclamation-triangle"></i>
-                                Vui lòng nhập email hợp lệ
-                            </div>
-                        </div>
-
-                        <button type="submit">Gửi mã OTP</button>
-                    </form>
-
-                    <c:if test="${not empty message}">
-                        <div class="system-message success-msg">${message}</div>
-                    </c:if>
-
-                    <c:if test="${not empty error}">
-                        <div class="system-message error-msg">${error}</div>
-                    </c:if>
-
-                    <div class="links">
-                        <a href="<%=request.getContextPath()%>/authen">← Quay về đăng nhập</a>
-                    </div>
+                <div class="background-container">
+                    <img src="<%=request.getContextPath()%>/assets/img/clothing-bg.png" alt="Background"
+                        class="bg-image">
+                    <div class="bg-overlay"></div>
                 </div>
 
-                <script>
-                    const form = document.getElementById('forgotForm');
-                    const emailInput = document.getElementById('email');
-                    const emailContainer = document.getElementById('emailContainer');
+                <div class="login-container">
+                    <div class="login-card">
+                        <div class="header">
+                            <div class="logo-area"><i class="fas fa-lock-open" style="color:white; font-size:24px;"></i>
+                            </div>
+                            <h1>Quên mật khẩu?</h1>
+                            <p>Nhập email để khôi phục quyền truy cập</p>
+                        </div>
 
-                    form.addEventListener('submit', function (event) {
-                        let isValid = true;
-                        const emailValue = emailInput.value.trim();
-                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                        <c:if test="${not empty error}">
+                            <div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> ${error}</div>
+                        </c:if>
+                        <c:if test="${not empty message}">
+                            <div class="alert alert-success"><i class="fas fa-check-circle"></i> ${message}</div>
+                        </c:if>
 
-                        if (!emailValue || !emailRegex.test(emailValue)) {
-                            emailContainer.classList.add('has-error');
-                            isValid = false;
-                        } else {
-                            emailContainer.classList.remove('has-error');
-                        }
+                        <form action="<%=request.getContextPath()%>/authen" method="post" novalidate>
+                            <input type="hidden" name="action" value="forgot" />
+                            <div class="form-group">
+                                <div class="input-field">
+                                    <i class="fas fa-envelope"></i>
+                                    <input type="email" name="email" id="email" placeholder="Nhập địa chỉ email đăng ký"
+                                        required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-action">Nhận mã OTP</button>
+                        </form>
 
-                        if (!isValid) {
-                            event.preventDefault();
-                        }
-                    });
-
-                    emailInput.addEventListener('input', () => {
-                        if (emailInput.value.trim()) emailContainer.classList.remove('has-error');
-                    });
-                </script>
-
+                        <div class="footer-links">
+                            <a href="<%=request.getContextPath()%>/authen"><i class="fas fa-chevron-left"
+                                    style="font-size:12px; margin-right:5px;"></i> Quay về Đăng nhập</a>
+                        </div>
+                    </div>
+                </div>
             </body>
 
             </html>

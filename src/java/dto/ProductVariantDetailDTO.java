@@ -1,5 +1,6 @@
 package dto;
 
+import java.math.BigDecimal;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -12,4 +13,6 @@ public class ProductVariantDetailDTO {
     private String size;
     private String barcode;
     private String status;
+    private BigDecimal totalQtyOnHand;
+    private BigDecimal totalQtyAvailable;
 }
