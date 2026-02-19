@@ -6,7 +6,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import model.User;
 import java.util.ArrayList; // <-- THÊM DÒNG NÀY
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;      // <-- THÊM DÒNG NÀY
+import java.util.Map;
 
 public class UserDAO extends DBContext {
 
@@ -112,6 +115,31 @@ public class UserDAO extends DBContext {
         } catch (SQLException e) {
             System.out.println(e);
         }
+    }
+    public Map<String, Integer> countUserByRole() {
+        Map<String, Integer> data = new HashMap<>();
+        String sql = "SELECT Role, COUNT(*) as Total FROM Users GROUP BY Role";
+        try (Connection conn = getConnection(); PreparedStatement st = conn.prepareStatement(sql)) {
+            ResultSet rs = st.executeQuery();
+            while (rs.next()) {
+                data.put(rs.getString("Role"), rs.getInt("Total"));
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return data;
+    }
+
+    // 2. Thống kê người dùng mới theo tháng (Dùng cho Biểu đồ đường/chuỗi)
+    public Map<String, Integer> getUserGrowth() {
+        Map<String, Integer> data = new LinkedHashMap<>(); // Giữ đúng thứ tự tháng
+        String sql = "SELECT FORMAT(DateCreated, 'MM/yyyy') as Month, COUNT(*) as Total " +
+                     "FROM Users GROUP BY FORMAT(DateCreated, 'MM/yyyy') ORDER BY Month ASC";
+        try (Connection conn = getConnection(); PreparedStatement st = conn.prepareStatement(sql)) {
+            ResultSet rs = st.executeQuery();
+            while (rs.next()) {
+                data.put(rs.getString("Month"), rs.getInt("Total"));
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return data;
     }
 
 }
