@@ -159,8 +159,8 @@
                         <i class="fa-solid fa-hand-holding-heart"></i> TamCare
                     </a>
                     <nav class="sidebar-menu">
-                        <a href="#" class="menu-link active"><i class="fa-solid fa-chart-pie"></i> Tổng quan</a>
-                        <a href="#" class="menu-link"><i class="fa-solid fa-users"></i> Người thân của tôi</a>
+                        <a href="home" class="menu-link"><i class="fa-solid fa-chart-pie"></i> Tổng quan</a>
+                        <a href="view-elderly-list" class="menu-link active"><i class="fa-solid fa-users"></i> Người thân của tôi</a>
                         <a href="#" class="menu-link"><i class="fa-solid fa-capsules"></i> Lịch uống thuốc</a>
                         <a href="#" class="menu-link"><i class="fa-solid fa-bell"></i> Cảnh báo khẩn</a>
                         <a href="#" class="menu-link"><i class="fa-solid fa-calendar-alt"></i> Lịch hẹn thăm</a>

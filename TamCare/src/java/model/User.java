@@ -10,6 +10,7 @@ public class User {
     private String phoneNumber;
     private String role;
     private Date dateCreated;
+    private String linkKey;
 
     public User() {
     }
@@ -21,7 +22,13 @@ public class User {
         this.phoneNumber = phoneNumber;
         this.role = role;
     }
+    public String getLinkKey() {
+        return linkKey;
+    }
 
+    public void setLinkKey(String linkKey) {
+        this.linkKey = linkKey;
+    }
     // Getters và Setters
     public int getUserID() { return userID; }
     public void setUserID(int userID) { this.userID = userID; }
