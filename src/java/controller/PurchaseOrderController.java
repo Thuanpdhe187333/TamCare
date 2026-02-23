@@ -1,9 +1,9 @@
 package controller;
 
-import dao.ProductDAO;
-import dao.ProductVariantDAO;
-import dao.PurchaseOrderDAO;
-import dao.SupplierDAO;
+import service.ProductService;
+import service.ProductVariantService;
+import service.PurchaseOrderService;
+import service.SupplierService;
 import dto.POLineCreateDTO;
 import dto.ProductVariantDTO;
 import dto.PurchaseOrderHeaderDTO;
@@ -21,15 +21,17 @@ import java.util.List;
 import java.sql.Date;
 import java.util.HashMap;
 import java.util.Map;
-
+import jakarta.servlet.annotation.MultipartConfig;
+import java.io.InputStream;
+@MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 10485760, maxRequestSize = 20971520)
 @WebServlet(name = "PurchaseOrderController", urlPatterns = { "/purchase-orders" })
 public class PurchaseOrderController extends HttpServlet {
 
     private static final int DEFAULT_PAGE = 1;
     private static final int DEFAULT_SIZE = 5;
-    private final SupplierDAO sDao = new SupplierDAO();
-    private final ProductDAO pDao = new ProductDAO();
-
+    private final SupplierService sService = new SupplierService();
+    private final ProductService pService = new ProductService();
+    private final PurchaseOrderService poService = new PurchaseOrderService();
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -41,6 +43,9 @@ public class PurchaseOrderController extends HttpServlet {
             switch (action) {
                 case "variants":
                     handleGetVariants(request, response);
+                    break;
+                case "import":
+                    forwardImportForm(request, response);
                     break;
                 case "edit":
                     forwardEditForm(request, response);
@@ -70,6 +75,8 @@ public class PurchaseOrderController extends HttpServlet {
                     forwardDetail(request, response);
                 case "new" ->
                     forwardCreateForm(request, response);
+                case "processImport" ->
+                    handleProcessImport(request, response);
                 case "create" ->
                     handleCreate(request, response);
                 case "update" ->
@@ -95,9 +102,9 @@ public class PurchaseOrderController extends HttpServlet {
             return;
         }
 
-        ProductVariantDAO vDao = new ProductVariantDAO();
+        ProductVariantService vService = new ProductVariantService();
         //lấy danh sách variant theo productid
-        List<ProductVariantDTO> list = vDao.listByProductId(productId);
+        List<ProductVariantDTO> list = vService.listByProductId(productId);
         //khai báo json
         response.setContentType("application/json;charset=UTF-8");
         response.setCharacterEncoding("UTF-8");
@@ -125,7 +132,7 @@ public class PurchaseOrderController extends HttpServlet {
     private void forwardList(HttpServletRequest request, HttpServletResponse response) throws Exception {
         int page = parseInt(request.getParameter("page"), DEFAULT_PAGE);
         //size = số dòng hiển thị mỗi trang
-        int size = DEFAULT_SIZE;
+        int size = parseInt(request.getParameter("size"), DEFAULT_SIZE);
         if (page < 1) {
             page = 1;
         }
@@ -142,8 +149,7 @@ public class PurchaseOrderController extends HttpServlet {
         }
         Date expectedFrom = parseSqlDate(expectedFromStr);
         Date expectedTo = parseSqlDate(expectedToStr);
-        PurchaseOrderDAO dao = new PurchaseOrderDAO();
-        int totalRecords = dao.countPurchaseOrders(keyword, status, expectedFrom, expectedTo);
+        int totalRecords = poService.countPurchaseOrders(keyword, status, expectedFrom, expectedTo);
         int totalPages = (int) Math.ceil((double) totalRecords / size);
         if (totalPages < 1) {
             totalPages = 1;
@@ -154,7 +160,7 @@ public class PurchaseOrderController extends HttpServlet {
         }
         //offset = số lượng bản ghi cần bỏ qua trước khi lấy dữ liệu
         int offset = (page - 1) * size;
-        List<PurchaseOrderListDTO> pos = dao.searchPurchaseOrders(keyword, status, expectedFrom, expectedTo, size,
+        List<PurchaseOrderListDTO> pos = poService.searchPurchaseOrders(keyword, status, expectedFrom, expectedTo, size,
                 offset);
         // window pagination
         //luôn hiển thị 2 trang trước 2 trang sau
@@ -182,6 +188,8 @@ public class PurchaseOrderController extends HttpServlet {
         request.setAttribute("endPage", endPage);
         request.setAttribute("baseUrl", baseUrl);
         request.setAttribute("qs", qs);
+        request.setAttribute("size", size);
+        request.setAttribute("total", totalRecords);
         request.getRequestDispatcher(ViewPath.PO_LIST).forward(request, response);
     }
 
@@ -194,19 +202,164 @@ public class PurchaseOrderController extends HttpServlet {
             forwardList(request, response);
             return;
         }
-        PurchaseOrderDAO dao = new PurchaseOrderDAO();
-        PurchaseOrderHeaderDTO POheader = dao.getPurchaseOrderHeader(poId);
-        List<PurchaseOrderLineDTO> lines = dao.getPurchaseOrderDetailLines(poId);
+        PurchaseOrderHeaderDTO POheader = poService.getPurchaseOrderHeader(poId);
+        List<PurchaseOrderLineDTO> lines = poService.getPurchaseOrderDetailLines(poId);
         request.setAttribute("poId", poId);
         request.setAttribute("POheader", POheader);
         request.setAttribute("lines", lines);
         request.getRequestDispatcher(ViewPath.PO_DETAIL).forward(request, response);
     }
 
+    private void forwardImportForm(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        request.getRequestDispatcher(ViewPath.PO_FORM_IMPORT).forward(request, response);
+    }
+
+    private void handleProcessImport(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        try {
+            Part filePart = request.getPart("file");
+            if (filePart == null || filePart.getSize() == 0) {
+                request.setAttribute("errorMsg", "Please select a file to upload.");
+                forwardImportForm(request, response);
+                return;
+            }
+
+            try (InputStream is = filePart.getInputStream();
+                 org.apache.poi.ss.usermodel.Workbook workbook = org.apache.poi.ss.usermodel.WorkbookFactory.create(is)) {
+                 
+                org.apache.poi.ss.usermodel.Sheet sheet = workbook.getSheetAt(0);
+                
+                String poNumber = null;
+                long supplierId = 0;
+                Date expectedDate = null;
+                String note = "";
+                
+                List<dto.POLineCreateDTO> lines = new ArrayList<>();
+                Map<String, String> fieldErrors = new HashMap<>();
+
+                int rowCount = sheet.getPhysicalNumberOfRows();
+                if (rowCount <= 1) {
+                    fieldErrors.put("file", "Excel file is empty or missing data rows.");
+                }
+
+                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                    org.apache.poi.ss.usermodel.Row row = sheet.getRow(i);
+                    if (row == null) continue;
+
+                    if (i == 1) {
+                        poNumber = getCellValueAsString(row.getCell(0));
+                        String suppIdStr = getCellValueAsString(row.getCell(1));
+                        if (!suppIdStr.isEmpty()) {
+                            try {
+                                supplierId = (long) Double.parseDouble(suppIdStr);
+                            } catch (Exception e) {}
+                        }
+                        
+                        org.apache.poi.ss.usermodel.Cell dateCell = row.getCell(2);
+                        if (dateCell != null) {
+                            if (dateCell.getCellType() == org.apache.poi.ss.usermodel.CellType.NUMERIC && org.apache.poi.ss.usermodel.DateUtil.isCellDateFormatted(dateCell)) {
+                                java.util.Date utilDate = dateCell.getDateCellValue();
+                                expectedDate = new Date(utilDate.getTime());
+                            } else {
+                                String dStr = getCellValueAsString(dateCell);
+                                try {
+                                    expectedDate = Date.valueOf(dStr);
+                                } catch (Exception e) {}
+                            }
+                        }
+
+                        note = getCellValueAsString(row.getCell(3));
+                    }
+
+                    String varIdStr = getCellValueAsString(row.getCell(4));
+                    String qtyStr = getCellValueAsString(row.getCell(5));
+                    String priceStr = getCellValueAsString(row.getCell(6));
+
+                    if (varIdStr.isEmpty() && qtyStr.isEmpty() && priceStr.isEmpty()) {
+                        continue;
+                    }
+
+                    try {
+                        long variantId = (long) Double.parseDouble(varIdStr);
+                        BigDecimal qty = new BigDecimal(qtyStr);
+                        BigDecimal price = new BigDecimal(priceStr);
+                        lines.add(new dto.POLineCreateDTO(variantId, qty, price, "VND"));
+                    } catch (Exception ex) {
+                        fieldErrors.put("lines", "Invalid number format in lines at row " + (i + 1));
+                    }
+                }
+
+                if (poNumber == null || poNumber.isBlank()) {
+                    fieldErrors.put("poNumber", "PO Number is required");
+                } else if (poNumber.length() > 20) {
+                    fieldErrors.put("poNumber", "PO Number must be at most 20 characters");
+                } else if (poService.existsByPoNumber(poNumber)) {
+                    fieldErrors.put("poNumber", "PO Number already exists");
+                }
+
+                if (supplierId <= 0) {
+                    fieldErrors.put("supplierId", "Supplier ID is invalid or missing");
+                }
+
+                if (expectedDate == null) {
+                    fieldErrors.put("expectedDeliveryDate", "Expected Delivery Date is invalid or missing");
+                } else if (!expectedDate.toLocalDate().isAfter(java.time.LocalDate.now())) {
+                    fieldErrors.put("expectedDeliveryDate", "Expected Delivery Date must be after today");
+                }
+
+                if (lines.isEmpty()) {
+                    fieldErrors.putIfAbsent("lines", "At least one valid line is required");
+                }
+
+                if (!fieldErrors.isEmpty()) {
+                    StringBuilder errMsg = new StringBuilder("Import failed due to the following errors: <ul>");
+                    for (String err : fieldErrors.values()) {
+                        errMsg.append("<li>").append(err).append("</li>");
+                    }
+                    errMsg.append("</ul>");
+                    request.setAttribute("errorMsg", errMsg.toString());
+                    forwardImportForm(request, response);
+                    return;
+                }
+
+                Long userId = (Long) request.getSession().getAttribute("userId");
+                if (userId == null) {
+                    userId = 1L;
+                }
+
+                poService.createManualPO(poNumber, supplierId, expectedDate, note, userId, lines);
+                request.setAttribute("successMsg", "Successfully imported Purchase Order: " + poNumber);
+                forwardImportForm(request, response);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            request.setAttribute("errorMsg", "Error processing Excel file: " + e.getMessage());
+            forwardImportForm(request, response);
+        }
+    }
+
+    private String getCellValueAsString(org.apache.poi.ss.usermodel.Cell cell) {
+        if (cell == null) return "";
+        switch (cell.getCellType()) {
+            case STRING:
+                return cell.getStringCellValue().trim();
+            case NUMERIC:
+                if (org.apache.poi.ss.usermodel.DateUtil.isCellDateFormatted(cell)) {
+                    return cell.getDateCellValue().toString();
+                }
+                return String.valueOf(cell.getNumericCellValue());
+            case BOOLEAN:
+                return String.valueOf(cell.getBooleanCellValue());
+            case FORMULA:
+                return cell.getCellFormula();
+            default:
+                return "";
+        }
+    }
+
     private void forwardCreateForm(HttpServletRequest request, HttpServletResponse response)
             throws Exception {
-        request.setAttribute("suppliers", sDao.getActiveSuppliers());
-        request.setAttribute("products", pDao.getProducts());
+        request.setAttribute("suppliers", sService.getActiveSuppliers());
+        request.setAttribute("products", pService.getProducts());
         request.getRequestDispatcher(ViewPath.PO_FORM_CREATE).forward(request, response);
     }
 
@@ -239,14 +392,13 @@ public class PurchaseOrderController extends HttpServlet {
         if (userId == null) {
             userId = 1L;// admin
         }
-        PurchaseOrderDAO dao = new PurchaseOrderDAO();
         // PO Number validate
         if (poNumber == null || poNumber.isBlank()) {
             fieldErrors.put("poNumber", "PO Number is required");
         } else if (poNumber.length() > 20) {
             fieldErrors.put("poNumber", "PO Number must be at most 20 characters");
         } else {
-            if (dao.existsByPoNumber(poNumber)) {
+            if (poService.existsByPoNumber(poNumber)) {
                 fieldErrors.put("poNumber", "PO Number already exists");
             }
         }
@@ -330,15 +482,15 @@ public class PurchaseOrderController extends HttpServlet {
             request.setAttribute("oldExpected", expected);
             request.setAttribute("oldNote", note);
             request.setAttribute("oldLines", oldLines);
-            request.setAttribute("suppliers", sDao.getActiveSuppliers());
-            request.setAttribute("products", pDao.getProducts());
+            request.setAttribute("suppliers", sService.getActiveSuppliers());
+            request.setAttribute("products", pService.getProducts());
             // IMPORTANT: reload suppliers before forward if JSP needs it
             // request.setAttribute("suppliers", supplierDao.getAllSuppliers());
             request.getRequestDispatcher(ViewPath.PO_FORM_CREATE).forward(request, response);
             return;
         }
 
-        dao.createManualPO(poNumber, supplierId, expectedDate, note, userId, lines);
+        poService.createManualPO(poNumber, supplierId, expectedDate, note, userId, lines);
         response.sendRedirect(request.getContextPath() + "/purchase-orders");
 
     }
@@ -350,21 +502,20 @@ public class PurchaseOrderController extends HttpServlet {
             response.sendRedirect(request.getContextPath() + "/purchase-orders");
             return;
         }
-        PurchaseOrderDAO dao = new PurchaseOrderDAO();
-        PurchaseOrderHeaderDTO po = dao.getPurchaseOrderHeader(poId);
+        PurchaseOrderHeaderDTO po = poService.getPurchaseOrderHeader(poId);
         if (po == null) {
             response.sendRedirect(request.getContextPath() + "/purchase-orders?msg=notfound");
             return;
         }
 
-        List<PurchaseOrderLineDTO> lines = dao.getPurchaseOrderDetailLines(poId);
+        List<PurchaseOrderLineDTO> lines = poService.getPurchaseOrderDetailLines(poId);
 
         request.setAttribute("po", po);                 // JSP edit dùng "po"
         request.setAttribute("lines", lines);           // JSP edit dùng "lines"
-        request.setAttribute("suppliers", sDao.getActiveSuppliers());
-        request.setAttribute("products", pDao.getProducts());
+        request.setAttribute("suppliers", sService.getActiveSuppliers());
+        request.setAttribute("products", pService.getProducts());
 
-        // Nếu bạn chưa muốn load variants sẵn (vì đã có AJAX /purchase-orders?action=variants)
+        // Nếu chưa muốn load variants sẵn (vì đã có AJAX /purchase-orders?action=variants)
         // thì không cần set "variants"
         request.getRequestDispatcher(ViewPath.PO_FORM_EDIT).forward(request, response);
     }
@@ -381,8 +532,7 @@ public class PurchaseOrderController extends HttpServlet {
             return;
         }
 
-        PurchaseOrderDAO dao = new PurchaseOrderDAO();
-        PurchaseOrderHeaderDTO current = dao.getPurchaseOrderHeader(poId);
+        PurchaseOrderHeaderDTO current = poService.getPurchaseOrderHeader(poId);
         if (current == null) {
             response.sendRedirect(request.getContextPath() + "/purchase-orders?msg=notfound");
             return;
@@ -419,7 +569,7 @@ public class PurchaseOrderController extends HttpServlet {
         } else {
             // chỉ check trùng khi user đổi poNumber
             if (!poNumber.equalsIgnoreCase(current.getPoNumber())) {
-                if (dao.existsByPoNumber(poNumber)) {
+                if (poService.existsByPoNumber(poNumber)) {
                     fieldErrors.put("poNumber", "PO Number already exists");
                 }
             }
@@ -521,10 +671,10 @@ public class PurchaseOrderController extends HttpServlet {
 
             request.setAttribute("fieldErrors", fieldErrors);
             request.setAttribute("po", po);
-            request.setAttribute("lines", dao.getPurchaseOrderDetailLines(poId)); // hoặc bỏ nếu JSP dùng oldLines
+            request.setAttribute("lines", poService.getPurchaseOrderDetailLines(poId)); // hoặc bỏ nếu JSP dùng oldLines
             request.setAttribute("oldLines", oldLines);
-            request.setAttribute("suppliers", sDao.getActiveSuppliers());
-            request.setAttribute("products", pDao.getProducts());
+            request.setAttribute("suppliers", sService.getActiveSuppliers());
+            request.setAttribute("products", pService.getProducts());
 
             request.getRequestDispatcher(ViewPath.PO_FORM_EDIT).forward(request, response);
             return;
@@ -537,8 +687,7 @@ public class PurchaseOrderController extends HttpServlet {
         header.setExpectedDeliveryDate(expectedDate);
         header.setNote(note);
 
-        dao.updatePurchaseOrder(header, lines);
-
+        poService.updatePurchaseOrder(header, lines);
         response.sendRedirect(request.getContextPath() + "/purchase-orders?action=detail&id=" + poId);
     }
 
@@ -546,8 +695,7 @@ public class PurchaseOrderController extends HttpServlet {
             throws Exception {
 
         long poId = Long.parseLong(request.getParameter("id"));
-        PurchaseOrderDAO dao = new PurchaseOrderDAO();
-        boolean ok = dao.deletePurchaseOrder(poId);
+        boolean ok = poService.deletePurchaseOrder(poId);
         String msg = ok ? "deleted" : "notfound";
         String page = request.getParameter("page");
         String redirectUrl = request.getContextPath() + "/purchase-orders";
