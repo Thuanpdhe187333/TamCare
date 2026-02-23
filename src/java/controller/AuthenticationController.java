@@ -88,7 +88,7 @@ public class AuthenticationController extends HttpServlet {
         String identity = trimOrEmpty(request.getParameter("mail"));
         String password = trimOrEmpty(request.getParameter("password"));
 
-        // validate basic
+        // validate khong de trong
         if (identity.isEmpty() || password.isEmpty()) {
             request.setAttribute("error", "Vui lòng nhập đầy đủ email và password");
             request.getRequestDispatcher(ViewPath.VIEW_LOGIN).forward(request, response);
@@ -117,6 +117,8 @@ public class AuthenticationController extends HttpServlet {
             request.setAttribute("devOtp", otp);
 
             HttpSession session = request.getSession(true);
+            session.setAttribute("USER", user);    // session keep login lau hon
+            session.setMaxInactiveInterval(60 * 60 * 4);
             session.setAttribute("AUTH_TYPE", "LOGIN");
             session.setAttribute("PRE_LOGIN_USER_ID", user.getUserId());
             session.setAttribute("RESET_EMAIL", user.getEmail());
@@ -252,7 +254,7 @@ public class AuthenticationController extends HttpServlet {
                     session.removeAttribute("RESET_EMAIL");
                     session.removeAttribute("OTP_CREATION_TIME");
 
-                    response.sendRedirect(request.getContextPath() + "/purchase-orders");
+                    response.sendRedirect(request.getContextPath() + "/admin/dashboard");
                     return;
                 }
             } catch (SQLException e) {
