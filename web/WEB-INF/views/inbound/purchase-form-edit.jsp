@@ -117,37 +117,39 @@
         </template>
 
         <script>
-            // Prepare data for lines (either from error persistence or from database)
             window.existingLines = [];
+
             <c:choose>
-                <%-- Case 1: Validation errors, use oldLines preserved by controller --%>
+
                 <c:when test="${not empty oldLines}">
                     <c:forEach var="l" items="${oldLines}">
-                        window.existingLines.push({
-                            poLineId: "${l.poLineId}", // Might be empty if new line added before error
-                            productId: "${l.productId}",
-                            variantId: "${l.variantId}",
-                            qty: "${l.qty}",
-                            unitPrice: "${l.unitPrice}",
-                            currency: "${l.currency}"
-                        });
+            window.existingLines.push({
+                poLineId: "<c:out value='${l["poLineId"]}'/>",
+                productId: "<c:out value='${l["productId"]}'/>",
+                variantId: "<c:out value='${l["variantId"]}'/>",
+                qty: "<c:out value='${l["qty"]}'/>",
+                unitPrice: "<c:out value='${l["unitPrice"]}'/>",
+                currency: "<c:out value='${l["currency"]}'/>"
+            });
                     </c:forEach>
                 </c:when>
-                <%-- Case 2: Initial load from DB --%>
+
                 <c:otherwise>
                     <c:forEach var="l" items="${lines}">
-                        window.existingLines.push({
-                            poLineId: "${l.poLineId}",
-                            productId: "${l.productId}",
-                            variantId: "${l.variantId}",
-                            qty: "${l.orderedQty}", // Note mapping: orderedQty -> qty
-                            unitPrice: "${l.unitPrice}",
-                            currency: "VND" // Default or implied
-                        });
+            window.existingLines.push({
+                poLineId: "${l.poLineId}",
+                productId: "${l.productId}",
+                variantId: "${l.variantId}",
+                qty: "${l.orderedQty}",
+                unitPrice: "${l.unitPrice}",
+                currency: "VND"
+            });
                     </c:forEach>
                 </c:otherwise>
+
             </c:choose>
         </script>
+
 
         <script>
             let idx = 0;
@@ -167,7 +169,7 @@
                         '    <option value="">-- Select product first --</option>' +
                         '  </select>' +
                         '</td>' +
-                        '<td><input class="form-control qty-input" type="number" step="1" min="1" name="lines[' + idx + '].qty"></td>' +
+                        '<td><input class="form-control qty-input" type="number" step="0.0001" min="0.0001" name="lines[' + idx + '].qty"></td>' +
                         '<td><input class="form-control unit-input" type="number" step="0.01" min="0" name="lines[' + idx + '].unitPrice"></td>' +
                         '<td><input class="form-control currency-input" name="lines[' + idx + '].currency" value="VND"></td>' +
                         '<td class="text-center"><button type="button" class="btn btn-sm btn-danger btn-remove">X</button></td>';
@@ -185,12 +187,14 @@
                 // reset variant
                 variantSelect.disabled = true;
                 variantSelect.innerHTML = '<option value="">-- Select product first --</option>';
-                if (!productId) return;
+                if (!productId)
+                    return;
                 variantSelect.innerHTML = '<option value="">Loading...</option>';
                 try {
                     const url = '${pageContext.request.contextPath}/purchase-orders?action=variants&productId=' + encodeURIComponent(productId);
                     const res = await fetch(url, {headers: {"Accept": "application/json"}});
-                    if (!res.ok) throw new Error("HTTP " + res.status);
+                    if (!res.ok)
+                        throw new Error("HTTP " + res.status);
                     const data = await res.json();
                     if (!data || data.length === 0) {
                         variantSelect.innerHTML = '<option value="">(No variants)</option>';
@@ -227,7 +231,8 @@
             async function loadVariantsForRow(productSelect, variantSelect, productId, variantId) {
                 const url = '${pageContext.request.contextPath}/purchase-orders?action=variants&productId=' + encodeURIComponent(productId);
                 const res = await fetch(url, {headers: {"Accept": "application/json"}});
-                if (!res.ok) throw new Error("HTTP " + res.status);
+                if (!res.ok)
+                    throw new Error("HTTP " + res.status);
                 const data = await res.json();
                 variantSelect.innerHTML = '<option value="">-- Select variant --</option>';
                 if (!data || data.length === 0) {
@@ -246,12 +251,12 @@
                 });
                 variantSelect.disabled = false;
                 if (variantId) {
-                   variantSelect.value = variantId;
+                    variantSelect.value = variantId;
                 }
             }
             function addLineWithData(line) {
                 // Add plain line first
-                const tr = addLine(); 
+                const tr = addLine();
                 const productSel = tr.querySelector(".product-select");
                 const variantSel = tr.querySelector(".variant-select");
                 const qtyEl = tr.querySelector(".qty-input");
@@ -259,10 +264,14 @@
                 const currencyEl = tr.querySelector(".currency-input");
                 const poLineIdEl = tr.querySelector(".po-line-id");
                 // set values
-                if (line.poLineId) poLineIdEl.value = line.poLineId;
-                if (line.qty != null) qtyEl.value = line.qty;
-                if (line.unitPrice != null) unitEl.value = line.unitPrice;
-                if (line.currency) currencyEl.value = line.currency;
+                if (line.poLineId)
+                    poLineIdEl.value = line.poLineId;
+                if (line.qty != null)
+                    qtyEl.value = line.qty;
+                if (line.unitPrice != null)
+                    unitEl.value = line.unitPrice;
+                if (line.currency)
+                    currencyEl.value = line.currency;
                 // set product + load variants + set variant
                 if (line.productId) {
                     productSel.value = line.productId;
