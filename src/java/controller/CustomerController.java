@@ -1,6 +1,6 @@
 package controller;
 
-import dao.SupplierDAO;
+import dao.CustomerDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -12,16 +12,16 @@ import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
-import model.Supplier;
+import model.Customer;
 import util.ViewPath;
 
-@WebServlet(name = "SupplierController", urlPatterns = {"/admin/supplier", "/admin/supplier/*"})
-public class SupplierController extends HttpServlet {
+@WebServlet(name = "CustomerController", urlPatterns = { "/admin/customer", "/admin/customer/*" })
+public class CustomerController extends HttpServlet {
 
     private static final Long DEFAULT_PAGE = 1L;
     private static final Long DEFAULT_SIZE = 10L;
 
-    private final SupplierDAO supplierDao = new SupplierDAO();
+    private final CustomerDAO customerDao = new CustomerDAO();
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -59,9 +59,9 @@ public class SupplierController extends HttpServlet {
             String searchRaw = request.getParameter("search");
             String search = searchRaw == null ? "%%" : "%" + searchRaw + "%";
 
-            Long total = supplierDao.getPageCount(search);
+            Long total = customerDao.getPageCount(search);
             Long pages = (total + size - 1) / size;
-            var suppliers = supplierDao.getList(search, sort, page, size);
+            var customers = customerDao.getList(search, sort, page, size);
 
             request.setAttribute("page", page);
             request.setAttribute("size", size);
@@ -69,18 +69,18 @@ public class SupplierController extends HttpServlet {
             request.setAttribute("search", searchRaw);
             request.setAttribute("pages", pages);
             request.setAttribute("total", total);
-            request.setAttribute("suppliers", suppliers);
+            request.setAttribute("customers", customers);
 
-            request.getRequestDispatcher(ViewPath.SUPPLIER_LIST).forward(request, response);
+            request.getRequestDispatcher(ViewPath.CUSTOMER_LIST).forward(request, response);
         } catch (SQLException e) {
             e.printStackTrace();
-            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error loading suppliers");
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error loading customers");
         }
     }
 
     private void viewCreate(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        request.getRequestDispatcher(ViewPath.SUPPLIER_CREATE).forward(request, response);
+        request.getRequestDispatcher(ViewPath.CUSTOMER_CREATE).forward(request, response);
     }
 
     private void viewDetail(HttpServletRequest request, HttpServletResponse response)
@@ -88,20 +88,20 @@ public class SupplierController extends HttpServlet {
         try {
             String idRaw = request.getParameter("id");
             if (idRaw == null) {
-                response.sendRedirect(request.getContextPath() + "/admin/supplier");
+                response.sendRedirect(request.getContextPath() + "/admin/customer");
                 return;
             }
             Long id = Long.valueOf(idRaw);
-            Supplier supplier = supplierDao.getDetail(id);
-            if (supplier == null) {
-                response.sendError(HttpServletResponse.SC_NOT_FOUND, "Supplier not found");
+            Customer customer = customerDao.getDetail(id);
+            if (customer == null) {
+                response.sendError(HttpServletResponse.SC_NOT_FOUND, "Customer not found");
                 return;
             }
-            request.setAttribute("supplier", supplier);
-            request.getRequestDispatcher(ViewPath.SUPPLIER_DETAIL).forward(request, response);
+            request.setAttribute("customer", customer);
+            request.getRequestDispatcher(ViewPath.CUSTOMER_DETAIL).forward(request, response);
         } catch (Exception e) {
             e.printStackTrace();
-            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error loading supplier detail");
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error loading customer detail");
         }
     }
 
@@ -110,20 +110,20 @@ public class SupplierController extends HttpServlet {
         try {
             String idRaw = request.getParameter("id");
             if (idRaw == null) {
-                response.sendRedirect(request.getContextPath() + "/admin/supplier");
+                response.sendRedirect(request.getContextPath() + "/admin/customer");
                 return;
             }
             Long id = Long.valueOf(idRaw);
-            Supplier supplier = supplierDao.getDetail(id);
-            if (supplier == null) {
-                response.sendRedirect(request.getContextPath() + "/admin/supplier");
+            Customer customer = customerDao.getDetail(id);
+            if (customer == null) {
+                response.sendRedirect(request.getContextPath() + "/admin/customer");
                 return;
             }
-            request.setAttribute("supplier", supplier);
-            request.getRequestDispatcher(ViewPath.SUPPLIER_UPDATE).forward(request, response);
+            request.setAttribute("customer", customer);
+            request.getRequestDispatcher(ViewPath.CUSTOMER_UPDATE).forward(request, response);
         } catch (Exception e) {
             e.printStackTrace();
-            response.sendRedirect(request.getContextPath() + "/admin/supplier");
+            response.sendRedirect(request.getContextPath() + "/admin/customer");
         }
     }
 
@@ -136,28 +136,28 @@ public class SupplierController extends HttpServlet {
         String phone = request.getParameter("phone");
         String address = request.getParameter("address");
 
-        Supplier s = new Supplier();
-        s.setCode(code);
-        s.setName(name);
-        s.setEmail(email);
-        s.setPhone(phone);
-        s.setAddress(address);
-        s.setStatus("ACTIVE");
+        Customer c = new Customer();
+        c.setCode(code);
+        c.setName(name);
+        c.setEmail(email);
+        c.setPhone(phone);
+        c.setAddress(address);
+        c.setStatus("ACTIVE");
 
         try {
-            if (supplierDao.codeExists(code, null)) {
-                request.setAttribute("error", "Supplier Code already exists");
-                request.setAttribute("supplier", s); // keep input
-                request.getRequestDispatcher(ViewPath.SUPPLIER_CREATE).forward(request, response);
+            if (customerDao.codeExists(code, null)) {
+                request.setAttribute("error", "Customer Code already exists");
+                request.setAttribute("customer", c); // keep input
+                request.getRequestDispatcher(ViewPath.CUSTOMER_CREATE).forward(request, response);
                 return;
             }
 
-            supplierDao.create(s);
-            response.sendRedirect(request.getContextPath() + "/admin/supplier");
+            customerDao.create(c);
+            response.sendRedirect(request.getContextPath() + "/admin/customer");
         } catch (SQLException e) {
             e.printStackTrace();
             request.setAttribute("error", "Database error: " + e.getMessage());
-            request.getRequestDispatcher(ViewPath.SUPPLIER_CREATE).forward(request, response);
+            request.getRequestDispatcher(ViewPath.CUSTOMER_CREATE).forward(request, response);
         }
     }
 
@@ -180,22 +180,22 @@ public class SupplierController extends HttpServlet {
             String address = params.get("address");
             String status = params.get("status");
 
-            Supplier s = new Supplier();
-            s.setSupplierId(id);
-            s.setCode(code);
-            s.setName(name);
-            s.setEmail(email);
-            s.setPhone(phone);
-            s.setAddress(address);
-            s.setStatus(status);
+            Customer c = new Customer();
+            c.setCustomerId(id);
+            c.setCode(code);
+            c.setName(name);
+            c.setEmail(email);
+            c.setPhone(phone);
+            c.setAddress(address);
+            c.setStatus(status);
 
-            if (supplierDao.codeExists(code, id)) {
-                response.sendError(HttpServletResponse.SC_CONFLICT, "Supplier Code already exists");
+            if (customerDao.codeExists(code, id)) {
+                response.sendError(HttpServletResponse.SC_CONFLICT, "Customer Code already exists");
                 return;
             }
 
-            supplierDao.update(s);
-            response.setHeader("HX-Location", request.getContextPath() + "/admin/supplier");
+            customerDao.update(c);
+            response.setHeader("HX-Location", request.getContextPath() + "/admin/customer");
         } catch (Exception e) {
             e.printStackTrace();
             response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Update failed");
@@ -208,10 +208,10 @@ public class SupplierController extends HttpServlet {
         try {
             String idRaw = request.getParameter("id");
             if (idRaw != null) {
-                Long id = Long.valueOf(idRaw); // kieu dl cua id
-                supplierDao.delete(id);
+                Long id = Long.valueOf(idRaw);
+                customerDao.delete(id);
             }
-            response.setHeader("HX-Location", request.getContextPath() + "/admin/supplier");
+            response.setHeader("HX-Location", request.getContextPath() + "/admin/customer");
         } catch (Exception e) {
             e.printStackTrace();
             response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Delete failed");
