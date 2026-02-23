@@ -2,9 +2,9 @@
     <%@taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
         <%@taglib prefix="t" tagdir="/WEB-INF/tags/" %>
 
-            <t:layout title="Update Supplier">
+            <t:layout title="Create Customer">
                 <jsp:attribute name="actions">
-                    <t:link url="${pageContext.request.contextPath}/admin/supplier" variant="split" color="dark"
+                    <t:link url="${pageContext.request.contextPath}/admin/customer" variant="split" color="dark"
                         icon="chevron-left">
                         Go back
                     </t:link>
@@ -13,9 +13,12 @@
                 <jsp:body>
                     <div class="card shadow-sm">
                         <div class="card-body">
-                            <form hx-put="${pageContext.request.contextPath}/admin/supplier" hx-swap="none" class="m-0">
+                            <form method="POST" action="${pageContext.request.contextPath}/admin/customer/create"
+                                class="m-0">
 
-                                <input type="hidden" name="id" value="${supplier.supplierId}">
+                                <c:if test="${not empty error}">
+                                    <div class="alert alert-danger">${error}</div>
+                                </c:if>
 
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
@@ -23,7 +26,7 @@
                                             Code <span class="text-danger">*</span>
                                         </label>
                                         <input type="text" class="form-control" id="code" name="code" required
-                                            value="${supplier.code}" placeholder="Example: SUP001">
+                                            value="${customer.code}" placeholder="Example: CUS001">
                                     </div>
 
                                     <div class="col-md-6 mb-3">
@@ -31,7 +34,7 @@
                                             Name <span class="text-danger">*</span>
                                         </label>
                                         <input type="text" class="form-control" id="name" name="name" required
-                                            value="${supplier.name}" placeholder="Supplier Name">
+                                            value="${customer.name}" placeholder="Customer Name">
                                     </div>
                                 </div>
 
@@ -39,42 +42,30 @@
                                     <div class="col-md-6 mb-3">
                                         <label for="email" class="form-label">Email</label>
                                         <input type="email" class="form-control" id="email" name="email"
-                                            value="${supplier.email}" placeholder="contact@supplier.com">
+                                            value="${customer.email}" placeholder="contact@customer.com">
                                     </div>
 
                                     <div class="col-md-6 mb-3">
                                         <label for="phone" class="form-label">Phone</label>
                                         <input type="tel" class="form-control" id="phone" name="phone"
-                                            value="${supplier.phone}" placeholder="0123456789" pattern="0[0-9]{9}"
+                                            value="${customer.phone}" placeholder="0123456789" pattern="0[0-9]{9}"
                                             title="Số điện thoại phải bắt đầu bằng số 0 và có độ dài 10 chữ số">
-                                    </div>
-                                </div>
-
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="status" class="form-label">Status</label>
-                                        <select class="form-select" id="status" name="status">
-                                            <option value="ACTIVE" ${supplier.status=='ACTIVE' ? 'selected' : '' }>
-                                                Active</option>
-                                            <option value="INACTIVE" ${supplier.status=='INACTIVE' ? 'selected' : '' }>
-                                                Inactive</option>
-                                        </select>
                                     </div>
                                 </div>
 
                                 <div class="mb-4">
                                     <label for="address" class="form-label">Address</label>
                                     <textarea class="form-control" id="address" name="address" rows="2"
-                                        placeholder="Supplier Address">${supplier.address}</textarea>
+                                        placeholder="Customer Address">${customer.address}</textarea>
                                 </div>
 
                                 <div class="d-flex justify-content-end gap-2">
-                                    <t:link url="${pageContext.request.contextPath}/admin/supplier" icon="x-circle"
+                                    <t:link url="${pageContext.request.contextPath}/admin/customer" icon="x-circle"
                                         color="dark" variant="split">
                                         Cancel
                                     </t:link>
                                     <t:button type="submit" variant="split" icon="check-circle" color="primary">
-                                        Save Changes
+                                        Save
                                     </t:button>
                                 </div>
                             </form>

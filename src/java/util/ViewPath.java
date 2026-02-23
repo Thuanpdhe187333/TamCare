@@ -42,6 +42,12 @@ public class ViewPath {
     public static final String SUPPLIER_UPDATE = "/WEB-INF/views/admin/supplier/update.jsp";
     public static final String SUPPLIER_DETAIL = "/WEB-INF/views/admin/supplier/detail.jsp";
 
+    // customer
+    public static final String CUSTOMER_LIST = "/WEB-INF/views/admin/customer/list.jsp";
+    public static final String CUSTOMER_CREATE = "/WEB-INF/views/admin/customer/create.jsp";
+    public static final String CUSTOMER_UPDATE = "/WEB-INF/views/admin/customer/update.jsp";
+    public static final String CUSTOMER_DETAIL = "/WEB-INF/views/admin/customer/detail.jsp";
+
     // profile
     public static final String PROFILE_INDEX = "/WEB-INF/views/admin/profile/profile.jsp";
 }

@@ -321,17 +321,19 @@ public class GoodsReceiptDAO extends DBContext {
         return list;
     }
 
-    public List<dto.PurchaseOrderListDTO> getPurchaseOrdersForSelection() throws SQLException {
-        String sql = "SELECT po_id, po_number FROM purchase_order WHERE status != 'CLOSED' AND status != 'CANCELLED' ORDER BY po_id DESC";
+    public List<dto.PurchaseOrderListDTO> getPurchaseOrdersForSelection(Long includePoId) throws SQLException {
+        String sql = "SELECT po_id, po_number FROM purchase_order WHERE (status != 'CLOSED' AND status != 'CANCELLED') OR po_id = ? ORDER BY po_id DESC";
         List<dto.PurchaseOrderListDTO> list = new ArrayList<>();
         try (Connection conn = getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql);
-                ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                dto.PurchaseOrderListDTO dto = new dto.PurchaseOrderListDTO();
-                dto.setPoId(rs.getLong("po_id"));
-                dto.setPoNumber(rs.getString("po_number"));
-                list.add(dto);
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setObject(1, includePoId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    dto.PurchaseOrderListDTO dto = new dto.PurchaseOrderListDTO();
+                    dto.setPoId(rs.getLong("po_id"));
+                    dto.setPoNumber(rs.getString("po_number"));
+                    list.add(dto);
+                }
             }
         }
         return list;
