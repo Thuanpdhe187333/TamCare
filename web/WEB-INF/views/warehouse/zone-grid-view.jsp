@@ -313,7 +313,7 @@
                                             ${fn:length(slot.products)} SP<br>
                                             <c:choose>
                                                 <c:when test="${slot.usedCapacity != null}">
-                                                    <fmt:formatNumber value="${slot.usedCapacity}" minFractionDigits="0" maxFractionDigits="2" />
+                                                    <fmt:formatNumber value="${slot.usedCapacity}" maxFractionDigits="0" />
                                                 </c:when>
                                                 <c:otherwise>0</c:otherwise>
                                             </c:choose>
@@ -424,11 +424,11 @@ function displaySlotDetail(slot, slotId) {
     
     let html = '';
     
-    // First row: Slot Information and Add Product Form (2 columns)
+    // First row: Slot Information (full width)
     html += '<div class="row mb-3">';
     
-    // Left column: Slot Information (including Capacity and Edit Capacity)
-    html += '<div class="col-md-6">';
+    // Slot Information (including Capacity and Edit Capacity) - Full width
+    html += '<div class="col-12">';
     html += '<div class="card">';
     html += '<div class="card-header bg-primary text-white"><h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Slot Information</h6></div>';
     html += '<div class="card-body">';
@@ -453,7 +453,7 @@ function displaySlotDetail(slot, slotId) {
     html += '<div class="mb-2">';
     html += '<div class="d-flex justify-content-between mb-1">';
     html += '<span class="small">Used Capacity:</span>';
-    html += '<span class="fw-bold">' + usedCap.toFixed(2) + '</span>';
+    html += '<span class="fw-bold">' + Math.floor(usedCap) + '</span>';
     html += '</div>';
     if (maxCap !== null) {
         html += '<div class="progress" style="height: 20px;">';
@@ -465,13 +465,13 @@ function displaySlotDetail(slot, slotId) {
     html += '<div class="mb-2">';
     html += '<div class="d-flex justify-content-between mb-1">';
     html += '<span class="small">Available Capacity:</span>';
-    html += '<span class="fw-bold text-success">' + availableCap.toFixed(2) + '</span>';
+    html += '<span class="fw-bold text-success">' + Math.floor(availableCap) + '</span>';
     html += '</div>';
     html += '</div>';
     html += '<div class="mb-2">';
     html += '<div class="d-flex justify-content-between mb-1">';
     html += '<span class="small">Max Capacity:</span>';
-    html += '<span class="fw-bold">' + (maxCap !== null ? maxCap.toFixed(2) : 'Unlimited') + '</span>';
+    html += '<span class="fw-bold">' + (maxCap !== null ? Math.floor(maxCap) : 'Unlimited') + '</span>';
     html += '</div>';
     html += '</div>';
     html += '</div>';
@@ -484,58 +484,16 @@ function displaySlotDetail(slot, slotId) {
     html += '<h6 class="text-muted mb-3"><i class="fas fa-edit me-2"></i>Edit Max Capacity</h6>';
     html += '<form id="updateCapacityForm" onsubmit="updateMaxCapacity(event, ' + slotId + ')">';
     html += '<div class="input-group mb-2">';
-    html += '<input type="number" id="maxCapacityInput" class="form-control" step="0.01" min="0" placeholder="Enter max capacity" value="' + (maxCap !== null ? maxCap : '') + '">';
+    html += '<input type="number" id="maxCapacityInput" class="form-control" step="1" min="0" placeholder="Enter max capacity" value="' + (maxCap !== null ? Math.floor(maxCap) : '') + '">';
     html += '<button class="btn btn-primary" type="submit"><i class="fas fa-save me-1"></i>Update</button>';
     html += '</div>';
-    html += '<small class="text-muted">Leave empty for unlimited capacity. Must be >= used capacity (' + usedCap.toFixed(2) + ')</small>';
+    html += '<small class="text-muted">Leave empty for unlimited capacity. Must be >= used capacity (' + Math.floor(usedCap) + ')</small>';
     html += '<div id="capacityUpdateMessage" class="mt-2"></div>';
     html += '</form>';
     html += '</div>';
     
     html += '</div></div>'; // End card body and card
-    html += '</div>'; // End left column
-    
-    // Right column: Add Product Form
-    html += '<div class="col-md-6">';
-    html += '<div class="card">';
-    html += '<div class="card-header bg-warning text-dark"><h6 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Add Product to Slot</h6></div>';
-    html += '<div class="card-body">';
-    html += '<form method="post" action="${pageContext.request.contextPath}/warehouse-layout" id="assignProductForm">';
-    html += '<input type="hidden" name="action" value="assign-product">';
-    html += '<input type="hidden" name="slotId" value="' + slotId + '">';
-    html += '<input type="hidden" name="zoneId" value="' + zoneId + '">';
-    
-    html += '<div class="mb-2">';
-    html += '<label class="form-label small">Product (Variant)</label>';
-    html += '<select name="variantId" class="form-select form-select-sm" required>';
-    html += '<option value="">-- Select Product --</option>';
-    variants.forEach(v => {
-        html += '<option value="' + v.variantId + '">' + v.variantSku + ' - ' + v.productName + '</option>';
-    });
-    html += '</select></div>';
-    
-    html += '<div class="row g-2 mb-2">';
-    html += '<div class="col-6">';
-    html += '<label class="form-label small">Quantity</label>';
-    html += '<input type="number" name="qty" class="form-control form-control-sm" min="1" step="1" required max="' + (availableCap > 0 ? Math.floor(availableCap) : '') + '">';
-    html += '</div>';
-    html += '<div class="col-6">';
-    html += '<label class="form-label small">Condition</label>';
-    html += '<select name="condition" class="form-select form-select-sm">';
-    html += '<option value="GOOD">GOOD</option>';
-    html += '<option value="DAMAGED">DAMAGED</option>';
-    html += '<option value="EXPIRED">EXPIRED</option>';
-    html += '</select></div></div>';
-    
-    if (maxCap !== null && availableCap <= 0) {
-        html += '<div class="alert alert-warning small mb-2"><i class="fas fa-exclamation-triangle me-1"></i>Slot is at full capacity</div>';
-    }
-    
-    html += '<button type="submit" class="btn btn-primary btn-sm w-100" ' + (maxCap !== null && availableCap <= 0 ? 'disabled' : '') + '>';
-    html += '<i class="fas fa-plus me-1"></i>Add Product';
-    html += '</button>';
-    html += '</form></div></div>';
-    html += '</div>'; // End right column
+    html += '</div>'; // End column
     html += '</div>'; // End first row
     
     // Second row: Products in Slot (Full width, below)
@@ -555,8 +513,8 @@ function displaySlotDetail(slot, slotId) {
             html += '<td><span class="badge bg-' + 
                 (p.condition === 'GOOD' ? 'success' : p.condition === 'DAMAGED' ? 'danger' : 'warning') + '">' + 
                 (p.condition || '') + '</span></td>';
-            html += '<td><strong>' + (p.qtyOnHand || '0') + '</strong></td>';
-            html += '<td><strong class="text-success">' + (p.qtyAvailable || '0') + '</strong></td>';
+            html += '<td><strong>' + (p.qtyOnHand ? Math.floor(parseFloat(p.qtyOnHand)) : '0') + '</strong></td>';
+            html += '<td><strong class="text-success">' + (p.qtyAvailable ? Math.floor(parseFloat(p.qtyAvailable)) : '0') + '</strong></td>';
             html += '</tr>';
         });
         html += '</tbody></table></div>';

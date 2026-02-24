@@ -3,6 +3,7 @@
 <%@page import="dto.ProductInventoryListDTO"%>
 <%@taglib tagdir="/WEB-INF/tags/" prefix="t"%>
 <%@taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt"%>
 
 <%
     List<ProductInventoryListDTO> products = (List<ProductInventoryListDTO>) request.getAttribute("products");
@@ -215,8 +216,8 @@
                             <td>${product.name}</td>
                             <td>${product.barcode}</td>
                             <td>${product.variantSku}</td>
-                            <td class="text-center">${product.totalQtyOnHand}</td>
-                            <td class="text-center">${product.totalQtyAvailable}</td>
+                            <td class="text-center"><fmt:formatNumber value="${product.totalQtyOnHand}" maxFractionDigits="0" /></td>
+                            <td class="text-center"><fmt:formatNumber value="${product.totalQtyAvailable}" maxFractionDigits="0" /></td>
                             <td class="text-center">
                                 <span class="badge bg-info">${product.slotCode}</span>
                             </td>
@@ -538,8 +539,8 @@
                     html += '<td class="text-center">' + (variant.color || 'N/A') + '</td>';
                     html += '<td class="text-center">' + (variant.size || 'N/A') + '</td>';
                     html += '<td>' + (variant.barcode || 'N/A') + '</td>';
-                    html += '<td class="text-center"><span class="badge bg-info">' + (variant.totalQtyOnHand || '0') + '</span></td>';
-                    html += '<td class="text-center"><span class="badge bg-success">' + (variant.totalQtyAvailable || '0') + '</span></td>';
+                    html += '<td class="text-center"><span class="badge bg-info">' + (variant.totalQtyOnHand ? Math.floor(parseFloat(variant.totalQtyOnHand)) : '0') + '</span></td>';
+                    html += '<td class="text-center"><span class="badge bg-success">' + (variant.totalQtyAvailable ? Math.floor(parseFloat(variant.totalQtyAvailable)) : '0') + '</span></td>';
                     html += '<td class="text-center">';
                     html += '<span class="badge bg-' + (variant.status === 'ACTIVE' ? 'success' : 'secondary') + '">';
                     html += variant.status || 'N/A';

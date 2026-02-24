@@ -152,6 +152,61 @@ public class SaleOrderDAO extends DBContext {
         }
     }
 
+    /**
+     * Get SO by SO number (for GDN creation)
+     */
+    public SaleOrderHeaderDTO getSaleOrderByNumber(String soNumber) throws Exception {
+        String sql = """
+            SELECT
+                so.so_id AS soId,
+                so.so_number AS soNumber,
+                so.customer_id AS customerId,
+                c.code AS customerCode,
+                c.name AS customerName,
+                c.email AS customerEmail,
+                c.address AS customerAddress,
+                c.phone AS customerPhone,
+                so.ship_to_address AS shipToAddress,
+                so.requested_ship_date AS requestedShipDate,
+                so.status AS status,
+                so.imported_by AS importedBy,
+                u.username AS importedByUsername,
+                so.imported_at AS importedAt
+            FROM sales_order so
+            JOIN customer c ON c.customer_id = so.customer_id
+            LEFT JOIN user u ON u.user_id = so.imported_by
+            WHERE so.so_number = ?
+        """;
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, soNumber);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    SaleOrderHeaderDTO dto = new SaleOrderHeaderDTO();
+                    dto.setSoId(rs.getLong("soId"));
+                    dto.setSoNumber(rs.getString("soNumber"));
+                    dto.setCustomerId(rs.getLong("customerId"));
+                    dto.setCustomerCode(rs.getString("customerCode"));
+                    dto.setCustomerName(rs.getString("customerName"));
+                    dto.setCustomerEmail(rs.getString("customerEmail"));
+                    dto.setCustomerAddress(rs.getString("customerAddress"));
+                    dto.setCustomerPhone(rs.getString("customerPhone"));
+                    dto.setShipToAddress(rs.getString("shipToAddress"));
+                    Date shipDate = rs.getDate("requestedShipDate");
+                    dto.setRequestedShipDate(shipDate != null ? shipDate.toLocalDate() : null);
+                    dto.setStatus(rs.getString("status"));
+                    long importedBy = rs.getLong("importedBy");
+                    dto.setImportedBy(rs.wasNull() ? null : importedBy);
+                    dto.setImportedByUsername(rs.getString("importedByUsername"));
+                    Timestamp importedAt = rs.getTimestamp("importedAt");
+                    dto.setImportedAt(importedAt != null ? importedAt.toLocalDateTime() : null);
+                    return dto;
+                }
+            }
+        }
+        return null;
+    }
+
     public SaleOrderHeaderDTO getSaleOrderHeader(long soId) throws Exception {
         String sql = """
             SELECT
@@ -313,6 +368,9 @@ public class SaleOrderDAO extends DBContext {
                 }
 
                 psSO.setLong(5, userId);
+                
+                // Parameter 6 for note (can be null)
+                psSO.setNull(6, Types.VARCHAR);
 
                 psSO.executeUpdate();
 

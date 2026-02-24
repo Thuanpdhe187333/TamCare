@@ -45,19 +45,20 @@
                     </div>
                 </div>
             </li>
-             <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseInbound"
-                    aria-expanded="true" aria-controls="collapseInbound">
-                    <i class="fas fa-fw fa-file-import"></i>
+
+            <!-- Nav Item - Outbound -->
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseOutbound"
+                    aria-expanded="true" aria-controls="collapseOutbound">
+                    <i class="fas fa-fw fa-file-export"></i>
                     <span>Outbound</span>
                 </a>
-                <div id="collapseInbound" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
+                <div id="collapseOutbound" class="collapse" aria-labelledby="headingThree" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <!--<h6 class="collapse-header">Goods Receipt:</h6>-->
-                        <a class="collapse-item" href="${pageContext.request.contextPath}/goods-receipt?action=list">GRN
-                            List</a>
-                        <a class="collapse-item" href="${pageContext.request.contextPath}/sales-orders">Sale
-                            Order</a>
+                        <h6 class="collapse-header">Goods Delivery Note:</h6>
+                        <a class="collapse-item" href="${pageContext.request.contextPath}/goods-delivery-note?action=list">GDN List</a>
+                        <a class="collapse-item" href="${pageContext.request.contextPath}/sales-orders">Sales Orders</a>
+                        <a class="collapse-item" href="${pageContext.request.contextPath}/pick-task?action=myTasks">My Tasks</a>
                     </div>
                 </div>
             </li>
