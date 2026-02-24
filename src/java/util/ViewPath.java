@@ -1,7 +1,7 @@
 package util;
 
 public class ViewPath {
-
+    //purchase order
     public static final String PO_LIST = "/WEB-INF/views/inbound/purchase-order-list.jsp";
     public static final String PO_DETAIL = "/WEB-INF/views/inbound/purchase-order-detail.jsp";
     public static final String PO_FORM_CREATE = "/WEB-INF/views/inbound/purchase-form-create.jsp";
@@ -50,4 +50,10 @@ public class ViewPath {
 
     // profile
     public static final String PROFILE_INDEX = "/WEB-INF/views/admin/profile/profile.jsp";
+    
+    //sale-order
+    public static final String SO_LIST = "/WEB-INF/views/outbound/sale-order-list.jsp";
+    public static final String SO_DETAIL = "/WEB-INF/views/outbound/sale-order-detail.jsp";
+    public static final String SO_FORM_CREATE = "/WEB-INF/views/outbound/sale-order-form-create.jsp";
+    public static final String SO_FORM_EDIT = "/WEB-INF/views/outbound/sale-order-form-edit.jsp";
 }
