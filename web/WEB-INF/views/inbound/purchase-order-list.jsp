@@ -25,7 +25,7 @@
     </jsp:attribute>
 
     <jsp:body>
-        <c:set var="columns" value='${["ID", "PO Number", "Supplier", "Expected Date", "Status", "Imported By", "Imported At", "Action"]}' />
+        <c:set var="columns" value='${["STT", "PO Number", "Supplier", "Expected Date", "Status", "Imported By", "Imported At", "Action"]}' />
         <t:table id="poTable" columns="${columns}">
             <jsp:attribute name="head">
                 <form hx-get="${pageContext.request.contextPath}/purchase-orders" hx-target="#wrapper" hx-select="#wrapper" hx-swap="outerHTML" hx-push-url="true" class="m-0">
