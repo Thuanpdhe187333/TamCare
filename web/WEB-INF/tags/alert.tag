@@ -16,7 +16,7 @@
                 <h5 class="modal-title" id="${id}Label">
                     <jsp:invoke fragment="title" />
                 </h5>
-                <button type="button" class="btn-close" data-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <jsp:invoke fragment="desciption" />

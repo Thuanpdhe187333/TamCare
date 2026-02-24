@@ -408,7 +408,7 @@ public class PurchaseOrderDAO extends DBContext {
                 throw new IllegalArgumentException(
                         "PO cannot be updated when status = " + status);
             }
-
+            
             // 2. Update header
             updateHeader(header);
 
@@ -439,8 +439,9 @@ public class PurchaseOrderDAO extends DBContext {
                 return rs.getString("status");
             }
         }
-    }
 
+
+    }
     private void updateHeader(PurchaseOrderHeaderDTO h) throws Exception {
 
         String sql = """

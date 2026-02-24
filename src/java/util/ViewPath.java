@@ -6,6 +6,7 @@ public class ViewPath {
     public static final String PO_DETAIL = "/WEB-INF/views/inbound/purchase-order-detail.jsp";
     public static final String PO_FORM_CREATE = "/WEB-INF/views/inbound/purchase-form-create.jsp";
     public static final String PO_FORM_EDIT = "/WEB-INF/views/inbound/purchase-form-edit.jsp";
+    public static final String PO_FORM_IMPORT = "/WEB-INF/views/inbound/purchase-order-import.jsp";
 
     public static final String ROLE_LIST = "/WEB-INF/views/admin/role/list.jsp";
     public static final String ROLE_CREATE = "/WEB-INF/views/admin/role/create.jsp";
@@ -40,6 +41,12 @@ public class ViewPath {
     public static final String SUPPLIER_CREATE = "/WEB-INF/views/admin/supplier/create.jsp";
     public static final String SUPPLIER_UPDATE = "/WEB-INF/views/admin/supplier/update.jsp";
     public static final String SUPPLIER_DETAIL = "/WEB-INF/views/admin/supplier/detail.jsp";
+
+    // customer
+    public static final String CUSTOMER_LIST = "/WEB-INF/views/admin/customer/list.jsp";
+    public static final String CUSTOMER_CREATE = "/WEB-INF/views/admin/customer/create.jsp";
+    public static final String CUSTOMER_UPDATE = "/WEB-INF/views/admin/customer/update.jsp";
+    public static final String CUSTOMER_DETAIL = "/WEB-INF/views/admin/customer/detail.jsp";
 
     // profile
     public static final String PROFILE_INDEX = "/WEB-INF/views/admin/profile/profile.jsp";
