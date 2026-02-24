@@ -37,7 +37,7 @@
                 </a>
                 <div id="collapseInbound" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <h6 class="collapse-header">Goods Receipt:</h6>
+                        <!--<h6 class="collapse-header">Goods Receipt:</h6>-->
                         <a class="collapse-item" href="${pageContext.request.contextPath}/goods-receipt?action=list">GRN
                             List</a>
                         <a class="collapse-item" href="${pageContext.request.contextPath}/purchase-orders">Purchase
@@ -45,7 +45,22 @@
                     </div>
                 </div>
             </li>
-
+             <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseInbound"
+                    aria-expanded="true" aria-controls="collapseInbound">
+                    <i class="fas fa-fw fa-file-import"></i>
+                    <span>Outbound</span>
+                </a>
+                <div id="collapseInbound" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <!--<h6 class="collapse-header">Goods Receipt:</h6>-->
+                        <a class="collapse-item" href="${pageContext.request.contextPath}/goods-receipt?action=list">GRN
+                            List</a>
+                        <a class="collapse-item" href="${pageContext.request.contextPath}/sales-orders">Sale
+                            Order</a>
+                    </div>
+                </div>
+            </li>
             <!-- Divider -->
             <hr class="sidebar-divider" />
 
