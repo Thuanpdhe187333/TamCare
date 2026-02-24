@@ -66,7 +66,7 @@
             <hr class="sidebar-divider" />
 
             <!-- ADMIN ONLY SECTION -->
-            <c:if test="${fn:contains(sessionScope.USER.roleNames, 'ADMIN')}">
+            <c:if test="${sessionScope.USER != null && fn:contains(sessionScope.USER.roleNames, 'ADMIN')}">
                 <div class="sidebar-heading">Master Data</div>
 
                 <!-- Nav Item - Account Menu -->
