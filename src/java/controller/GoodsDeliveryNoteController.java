@@ -129,10 +129,10 @@ public class GoodsDeliveryNoteController extends HttpServlet {
         }
 
         GDNDetailDTO gdn = gdnDao.getGDNDetailById(gdnId);
-        if (gdn == null || !("PENDING".equals(gdn.getStatus()) || "DRAFT".equals(gdn.getStatus()) || "ONGOING".equals(gdn.getStatus()))) {
-            response.sendRedirect(request.getContextPath() + "/goods-delivery-note?action=detail&id=" + gdnId);
-            return;
-        }
+//        if (gdn == null || !("PENDING".equals(gdn.getStatus()) || "DRAFT".equals(gdn.getStatus()) || "ONGOING".equals(gdn.getStatus()))) {
+//            response.sendRedirect(request.getContextPath() + "/goods-delivery-note?action=detail&id=" + gdnId);
+//            return;
+//        }
 
         request.setAttribute("gdn", gdn);
         request.getRequestDispatcher("WEB-INF/views/outbound/goods-delivery-note-edit.jsp")

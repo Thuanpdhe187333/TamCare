@@ -30,6 +30,10 @@ public class SaleOrderService {
         return soDao.countSalesOrders(keyword, status, shipFrom, shipTo);
     }
 
+    public boolean existsBySoNumber(String soNumber) throws Exception {
+        return soDao.existsBySoNumber(soNumber);
+    }
+
     public SaleOrderHeaderDTO getSaleOrderHeader(long soId) throws Exception {
         return soDao.getSaleOrderHeader(soId);
     }

@@ -152,6 +152,16 @@ public class SaleOrderDAO extends DBContext {
         }
     }
 
+    public boolean existsBySoNumber(String soNumber) throws Exception {
+        String sql = "SELECT 1 FROM sales_order WHERE so_number = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, soNumber);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
     /**
      * Get SO by SO number (for GDN creation)
      */
