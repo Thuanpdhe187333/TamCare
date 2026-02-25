@@ -98,10 +98,10 @@ public class PickTaskController extends HttpServlet {
         }
 
         // Get warehouse staff users
-        List<model.User> warehouseStaff = userDao.getUsersByRole("WAREHOUSE_STAFF");
+//        List<model.User> warehouseStaff = userDao.getUsersByRole("WAREHOUSE_STAFF");
 
         request.setAttribute("gdn", gdn);
-        request.setAttribute("warehouseStaff", warehouseStaff);
+//        request.setAttribute("warehouseStaff", warehouseStaff);
 
         request.getRequestDispatcher("WEB-INF/views/outbound/pick-task-assign.jsp")
                .forward(request, response);
