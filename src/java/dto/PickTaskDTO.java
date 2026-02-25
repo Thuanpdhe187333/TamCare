@@ -9,6 +9,7 @@ import lombok.Setter;
 @Setter
 public class PickTaskDTO {
     private Long pickTaskId;
+    private Long waveId;
     private Long gdnId;
     private String gdnNumber;
     private String soNumber;

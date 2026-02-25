@@ -17,6 +17,7 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.sql.Date;
@@ -24,6 +25,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import model.User;
 
 @WebServlet(name = "SaleOrderController", urlPatterns = {"/sales-orders"})
 public class SaleOrderController extends HttpServlet {
@@ -190,10 +192,13 @@ public class SaleOrderController extends HttpServlet {
                 fieldErrors.put("requestedShipDate", "Invalid date format");
             }
         }
-        Long userId = (Long) request.getSession().getAttribute("userId");
-        if (userId == null) {
-            userId = 1L;
+        HttpSession session = request.getSession(false);
+        User sessionUser = (session != null) ? (User) session.getAttribute("USER") : null;
+        if (sessionUser == null) {
+            response.sendRedirect(request.getContextPath() + "/authen");
+            return;
         }
+        long userId = sessionUser.getUserId();
 
         if (soNumber == null || soNumber.isBlank()) {
             fieldErrors.put("soNumber", "SO Number is required");

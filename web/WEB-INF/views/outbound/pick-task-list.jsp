@@ -6,7 +6,7 @@
     <div class="container-fluid">
         <div class="card mb-4 shadow-sm">
             <div class="card-body">
-                <form action="${pageContext.request.contextPath}/pick-task" method="get" class="row g-3">
+                <form hx-get="${pageContext.request.contextPath}/pick-task" hx-target="#wrapper" hx-select="#wrapper" hx-swap="outerHTML" hx-push-url="true" method="get" class="row g-3">
                     <input type="hidden" name="action" value="myTasks">
                     <div class="col-md-3">
                         <label class="form-label font-weight-bold">Status</label>
@@ -55,11 +55,11 @@
                                 </span>
                             </td>
                             <td class="text-center">
-                                <fmt:formatDate value="${task.assignedAt}" pattern="yyyy-MM-dd HH:mm" />
+                                <c:out value="${task.assignedAt}" />
                             </td>
                             <td class="text-center">
                                 <c:if test="${not empty task.completedAt}">
-                                    <fmt:formatDate value="${task.completedAt}" pattern="yyyy-MM-dd HH:mm" />
+                                    <c:out value="${task.completedAt}" />
                                 </c:if>
                             </td>
                             <td class="text-center">

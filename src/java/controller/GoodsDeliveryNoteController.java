@@ -1,6 +1,7 @@
 package controller;
 
 import dao.GoodsDeliveryNoteDAO;
+import dao.PickWaveDAO;
 import dao.SaleOrderDAO;
 import dao.WarehouseDAO;
 import dao.UserDAO;
@@ -111,7 +112,9 @@ public class GoodsDeliveryNoteController extends HttpServlet {
             return;
         }
 
+        PickWaveDAO waveDao = new PickWaveDAO();
         request.setAttribute("gdn", gdn);
+        request.setAttribute("wave", waveDao.getWaveByGdnId(gdnId));
         request.getRequestDispatcher("WEB-INF/views/outbound/goods-delivery-note-detail.jsp")
                .forward(request, response);
     }
