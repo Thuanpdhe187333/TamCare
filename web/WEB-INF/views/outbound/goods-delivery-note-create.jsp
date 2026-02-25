@@ -34,16 +34,7 @@
                                         </select>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fw-bold">Status</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-light"><i class="fas fa-info-circle"></i></span>
-                                        <select class="form-control" name="status" required>
-                                            <option value="DRAFT">DRAFT</option>
-                                            <option value="ONGOING">ONGOING</option>
-                                        </select>
-                                    </div>
-                                </div>
+                                <!-- Status set to PENDING when created (same as GRN) -->
                             </div>
                         </div>
                     </div>

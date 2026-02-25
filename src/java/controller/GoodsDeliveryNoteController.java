@@ -41,7 +41,7 @@ public class GoodsDeliveryNoteController extends HttpServlet {
                 case "list" -> handleList(request, response);
                 case "create" -> handleCreateForm(request, response);
                 case "detail" -> handleDetail(request, response);
-                case "edit" -> handleEditForm(request, response);
+                case "edit" -> response.sendRedirect(request.getContextPath() + "/goods-delivery-note?action=detail&id=" + request.getParameter("id"));
                 case "getSoDetails" -> handleGetSoDetails(request, response);
                 default -> response.sendRedirect(request.getContextPath() + "/goods-delivery-note?action=list");
             }
@@ -126,7 +126,7 @@ public class GoodsDeliveryNoteController extends HttpServlet {
         }
 
         GDNDetailDTO gdn = gdnDao.getGDNDetailById(gdnId);
-        if (gdn == null || !("DRAFT".equals(gdn.getStatus()) || "ONGOING".equals(gdn.getStatus()))) {
+        if (gdn == null || !("PENDING".equals(gdn.getStatus()) || "DRAFT".equals(gdn.getStatus()) || "ONGOING".equals(gdn.getStatus()))) {
             response.sendRedirect(request.getContextPath() + "/goods-delivery-note?action=detail&id=" + gdnId);
             return;
         }
@@ -211,7 +211,6 @@ public class GoodsDeliveryNoteController extends HttpServlet {
         SaleOrderDAO soDao = new SaleOrderDAO();
         
         String soNumber = request.getParameter("soNumber");
-        String status = request.getParameter("status");
         Long warehouseId = getWarehouseId(request);
         
         if (warehouseId == null) {
@@ -237,7 +236,7 @@ public class GoodsDeliveryNoteController extends HttpServlet {
         User user = (User) request.getSession().getAttribute("USER");
         Long createdBy = user != null ? user.getUserId() : null;
 
-        Long gdnId = gdnDao.createGDNFromSO(so.getSoId(), warehouseId, status, createdBy);
+        Long gdnId = gdnDao.createGDNFromSO(so.getSoId(), warehouseId, createdBy);
         
         response.sendRedirect(request.getContextPath() + "/goods-delivery-note?action=detail&id=" + gdnId);
     }
@@ -246,7 +245,7 @@ public class GoodsDeliveryNoteController extends HttpServlet {
         GoodsDeliveryNoteDAO gdnDao = new GoodsDeliveryNoteDAO();
         Long gdnId = parseLong(request.getParameter("gdnId"), -1);
         String status = request.getParameter("status");
-        
+
         if (gdnId <= 0) {
             response.sendRedirect(request.getContextPath() + "/goods-delivery-note?action=list");
             return;
@@ -256,7 +255,32 @@ public class GoodsDeliveryNoteController extends HttpServlet {
             gdnDao.updateGDNStatus(gdnId, status);
         }
 
+        // Update line quantities: lineIds[], qtyPicked[], qtyPacked[]
+        String[] lineIds = request.getParameterValues("lineIds");
+        String[] qtyPickedStrs = request.getParameterValues("qtyPicked");
+        String[] qtyPackedStrs = request.getParameterValues("qtyPacked");
+        if (lineIds != null && qtyPickedStrs != null && qtyPackedStrs != null
+                && lineIds.length == qtyPickedStrs.length && lineIds.length == qtyPackedStrs.length) {
+            for (int i = 0; i < lineIds.length; i++) {
+                Long lineId = parseLong(lineIds[i], -1);
+                if (lineId > 0) {
+                    java.math.BigDecimal qtyPicked = parseBigDecimal(qtyPickedStrs[i], java.math.BigDecimal.ZERO);
+                    java.math.BigDecimal qtyPacked = parseBigDecimal(qtyPackedStrs[i], java.math.BigDecimal.ZERO);
+                    gdnDao.updateGDNLineQuantities(lineId, qtyPicked, qtyPacked);
+                }
+            }
+        }
+
         response.sendRedirect(request.getContextPath() + "/goods-delivery-note?action=detail&id=" + gdnId);
+    }
+
+    private java.math.BigDecimal parseBigDecimal(String raw, java.math.BigDecimal def) {
+        if (raw == null || raw.isBlank()) return def;
+        try {
+            return new java.math.BigDecimal(raw.trim());
+        } catch (NumberFormatException e) {
+            return def;
+        }
     }
 
     private void handleAssign(HttpServletRequest request, HttpServletResponse response) throws Exception {

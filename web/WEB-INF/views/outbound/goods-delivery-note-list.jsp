@@ -25,6 +25,7 @@
                         <label class="form-label font-weight-bold">Status</label>
                         <select class="form-control" name="status">
                             <option value="">-- All --</option>
+                            <option value="PENDING" ${param.status=='PENDING' ? 'selected' : '' }>PENDING</option>
                             <option value="DRAFT" ${param.status=='DRAFT' ? 'selected' : '' }>DRAFT</option>
                             <option value="ONGOING" ${param.status=='ONGOING' ? 'selected' : '' }>ONGOING</option>
                             <option value="CONFIRMED" ${param.status=='CONFIRMED' ? 'selected' : '' }>CONFIRMED</option>
@@ -72,13 +73,13 @@
                             <td>${gdn.soNumber}</td>
                             <td>${gdn.customerName}</td>
                             <td class="text-center">
-                                <span class="badge badge-pill ${gdn.status == 'DRAFT' ? 'badge-secondary' : (gdn.status == 'ONGOING' ? 'badge-warning' : 'badge-success')}">
+                                <span class="badge badge-pill ${(gdn.status == 'PENDING' || gdn.status == 'DRAFT') ? 'badge-secondary' : (gdn.status == 'ONGOING' ? 'badge-warning' : 'badge-success')}">
                                     ${gdn.status}
                                 </span>
                             </td>
                             <td>${gdn.creatorName}</td>
                             <td class="text-center">
-                                <fmt:formatDate value="${gdn.createdAt}" pattern="yyyy-MM-dd HH:mm" />
+                                ${gdn.createdAtDisplay}
                             </td>
                             <td class="text-center">
                                 <div class="d-flex justify-content-center align-items-center gap-2">
@@ -87,7 +88,7 @@
                                         style="width: 85px; height: 32px;" title="View Details">
                                         <i class="fas fa-eye me-1"></i> View
                                     </a>
-                                    <c:if test="${gdn.status == 'DRAFT' || gdn.status == 'ONGOING'}">
+                                    <c:if test="${gdn.status == 'PENDING' || gdn.status == 'DRAFT' || gdn.status == 'ONGOING'}">
                                         <a href="${pageContext.request.contextPath}/goods-delivery-note?action=edit&id=${gdn.gdnId}"
                                             class="btn btn-sm btn-warning shadow-sm d-flex align-items-center justify-content-center"
                                             style="width: 85px; height: 32px;" title="Edit">
