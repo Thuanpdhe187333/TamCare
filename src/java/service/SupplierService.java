@@ -14,4 +14,9 @@ public class SupplierService {
     public List<SupplierDTO> getActiveSuppliers() throws Exception {
         return supplierDao.getActiveSuppliers();
     }
+
+    /** Returns supplier_id for the given code, or null if not found. */
+    public Long findIdByCode(String code) throws Exception {
+        return supplierDao.findIdByCode(code);
+    }
 }
