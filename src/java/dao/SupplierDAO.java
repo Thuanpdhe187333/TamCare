@@ -167,6 +167,22 @@ public class SupplierDAO extends DBContext implements Dao<Supplier> {
         }
     }
 
+    public Long findIdByCode(String code) throws SQLException {
+        if (code == null || code.isBlank()) {
+            return null;
+        }
+        String sql = "SELECT supplier_id FROM supplier WHERE code = ?";
+        try (Connection con = DBContext.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, code.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getLong("supplier_id");
+                }
+            }
+        }
+        return null;
+    }
+
     public boolean codeExists(String code, Long excludeId) throws SQLException {
         String sql = "SELECT COUNT(*) FROM supplier WHERE code = ? AND (? IS NULL OR supplier_id != ?)";
         try (Connection con = DBContext.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {

@@ -2,6 +2,7 @@ package controller;
 
 import service.ProductService;
 import service.ProductVariantService;
+import service.PurchaseOrderImportService;
 import service.PurchaseOrderService;
 import service.SupplierService;
 import dto.POLineCreateDTO;
@@ -13,6 +14,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 import util.ViewPath;
+import util.RequestUtil;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
@@ -32,6 +34,7 @@ public class PurchaseOrderController extends HttpServlet {
     private final SupplierService sService = new SupplierService();
     private final ProductService pService = new ProductService();
     private final PurchaseOrderService poService = new PurchaseOrderService();
+    private final PurchaseOrderImportService poImportService = new PurchaseOrderImportService();
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -130,9 +133,9 @@ public class PurchaseOrderController extends HttpServlet {
     }
 
     private void forwardList(HttpServletRequest request, HttpServletResponse response) throws Exception {
-        int page = parseInt(request.getParameter("page"), DEFAULT_PAGE);
+        int page = RequestUtil.parseInt(request.getParameter("page"), DEFAULT_PAGE);
         //size = số dòng hiển thị mỗi trang
-        int size = parseInt(request.getParameter("size"), DEFAULT_SIZE);
+        int size = RequestUtil.parseInt(request.getParameter("size"), DEFAULT_SIZE);
         if (page < 1) {
             page = 1;
         }
@@ -147,8 +150,8 @@ public class PurchaseOrderController extends HttpServlet {
         if (status != null && status.isBlank()) {
             status = null;
         }
-        Date expectedFrom = parseSqlDate(expectedFromStr);
-        Date expectedTo = parseSqlDate(expectedToStr);
+        Date expectedFrom = RequestUtil.parseSqlDate(expectedFromStr);
+        Date expectedTo = RequestUtil.parseSqlDate(expectedToStr);
         int totalRecords = poService.countPurchaseOrders(keyword, status, expectedFrom, expectedTo);
         int totalPages = (int) Math.ceil((double) totalRecords / size);
         if (totalPages < 1) {
@@ -180,7 +183,9 @@ public class PurchaseOrderController extends HttpServlet {
         }
         // build baseUrl + queryString (để giữ filter khi bấm page)
         String baseUrl = request.getContextPath() + "/purchase-orders";
-        String qs = buildQs(keyword, status, expectedFromStr, expectedToStr); // bắt đầu bằng &
+        String qs = RequestUtil.buildQueryString(
+                keyword, status, expectedFromStr, expectedToStr,
+                "expectedFrom", "expectedTo"); // bắt đầu bằng &
         request.setAttribute("pos", pos);
         request.setAttribute("page", page);
         request.setAttribute("totalPages", totalPages);
@@ -222,137 +227,29 @@ public class PurchaseOrderController extends HttpServlet {
                 forwardImportForm(request, response);
                 return;
             }
-
-            try (InputStream is = filePart.getInputStream();
-                 org.apache.poi.ss.usermodel.Workbook workbook = org.apache.poi.ss.usermodel.WorkbookFactory.create(is)) {
-                 
-                org.apache.poi.ss.usermodel.Sheet sheet = workbook.getSheetAt(0);
-                
-                String poNumber = null;
-                long supplierId = 0;
-                Date expectedDate = null;
-                String note = "";
-                
-                List<dto.POLineCreateDTO> lines = new ArrayList<>();
-                Map<String, String> fieldErrors = new HashMap<>();
-
-                int rowCount = sheet.getPhysicalNumberOfRows();
-                if (rowCount <= 1) {
-                    fieldErrors.put("file", "Excel file is empty or missing data rows.");
-                }
-
-                for (int i = 1; i <= sheet.getLastRowNum(); i++) {
-                    org.apache.poi.ss.usermodel.Row row = sheet.getRow(i);
-                    if (row == null) continue;
-
-                    if (i == 1) {
-                        poNumber = getCellValueAsString(row.getCell(0));
-                        String suppIdStr = getCellValueAsString(row.getCell(1));
-                        if (!suppIdStr.isEmpty()) {
-                            try {
-                                supplierId = (long) Double.parseDouble(suppIdStr);
-                            } catch (Exception e) {}
-                        }
-                        
-                        org.apache.poi.ss.usermodel.Cell dateCell = row.getCell(2);
-                        if (dateCell != null) {
-                            if (dateCell.getCellType() == org.apache.poi.ss.usermodel.CellType.NUMERIC && org.apache.poi.ss.usermodel.DateUtil.isCellDateFormatted(dateCell)) {
-                                java.util.Date utilDate = dateCell.getDateCellValue();
-                                expectedDate = new Date(utilDate.getTime());
-                            } else {
-                                String dStr = getCellValueAsString(dateCell);
-                                try {
-                                    expectedDate = Date.valueOf(dStr);
-                                } catch (Exception e) {}
-                            }
-                        }
-
-                        note = getCellValueAsString(row.getCell(3));
-                    }
-
-                    String varIdStr = getCellValueAsString(row.getCell(4));
-                    String qtyStr = getCellValueAsString(row.getCell(5));
-                    String priceStr = getCellValueAsString(row.getCell(6));
-
-                    if (varIdStr.isEmpty() && qtyStr.isEmpty() && priceStr.isEmpty()) {
-                        continue;
-                    }
-
-                    try {
-                        long variantId = (long) Double.parseDouble(varIdStr);
-                        BigDecimal qty = new BigDecimal(qtyStr);
-                        BigDecimal price = new BigDecimal(priceStr);
-                        lines.add(new dto.POLineCreateDTO(variantId, qty, price, "VND"));
-                    } catch (Exception ex) {
-                        fieldErrors.put("lines", "Invalid number format in lines at row " + (i + 1));
-                    }
-                }
-
-                if (poNumber == null || poNumber.isBlank()) {
-                    fieldErrors.put("poNumber", "PO Number is required");
-                } else if (poNumber.length() > 20) {
-                    fieldErrors.put("poNumber", "PO Number must be at most 20 characters");
-                } else if (poService.existsByPoNumber(poNumber)) {
-                    fieldErrors.put("poNumber", "PO Number already exists");
-                }
-
-                if (supplierId <= 0) {
-                    fieldErrors.put("supplierId", "Supplier ID is invalid or missing");
-                }
-
-                if (expectedDate == null) {
-                    fieldErrors.put("expectedDeliveryDate", "Expected Delivery Date is invalid or missing");
-                } else if (!expectedDate.toLocalDate().isAfter(java.time.LocalDate.now())) {
-                    fieldErrors.put("expectedDeliveryDate", "Expected Delivery Date must be after today");
-                }
-
-                if (lines.isEmpty()) {
-                    fieldErrors.putIfAbsent("lines", "At least one valid line is required");
-                }
-
-                if (!fieldErrors.isEmpty()) {
-                    StringBuilder errMsg = new StringBuilder("Import failed due to the following errors: <ul>");
-                    for (String err : fieldErrors.values()) {
-                        errMsg.append("<li>").append(err).append("</li>");
-                    }
-                    errMsg.append("</ul>");
-                    request.setAttribute("errorMsg", errMsg.toString());
-                    forwardImportForm(request, response);
-                    return;
-                }
-
-                Long userId = (Long) request.getSession().getAttribute("userId");
-                if (userId == null) {
-                    userId = 1L;
-                }
-
-                poService.createManualPO(poNumber, supplierId, expectedDate, note, userId, lines);
-                request.setAttribute("successMsg", "Successfully imported Purchase Order: " + poNumber);
-                forwardImportForm(request, response);
+            Long userId = (Long) request.getSession().getAttribute("userId");
+            if (userId == null) {
+                userId = 1L;
             }
+            PurchaseOrderImportService.ImportResult result =
+                    poImportService.importFromExcel(filePart, userId);
+
+            if (result.hasErrors()) {
+                StringBuilder errMsg = new StringBuilder("Import failed due to the following errors: <ul>");
+                for (String err : result.getFieldErrors().values()) {
+                    errMsg.append("<li>").append(err).append("</li>");
+                }
+                errMsg.append("</ul>");
+                request.setAttribute("errorMsg", errMsg.toString());
+            } else {
+                request.setAttribute("successMsg",
+                        "Successfully imported Purchase Order: " + result.getPoNumber());
+            }
+            forwardImportForm(request, response);
         } catch (Exception e) {
             e.printStackTrace();
             request.setAttribute("errorMsg", "Error processing Excel file: " + e.getMessage());
             forwardImportForm(request, response);
-        }
-    }
-
-    private String getCellValueAsString(org.apache.poi.ss.usermodel.Cell cell) {
-        if (cell == null) return "";
-        switch (cell.getCellType()) {
-            case STRING:
-                return cell.getStringCellValue().trim();
-            case NUMERIC:
-                if (org.apache.poi.ss.usermodel.DateUtil.isCellDateFormatted(cell)) {
-                    return cell.getDateCellValue().toString();
-                }
-                return String.valueOf(cell.getNumericCellValue());
-            case BOOLEAN:
-                return String.valueOf(cell.getBooleanCellValue());
-            case FORMULA:
-                return cell.getCellFormula();
-            default:
-                return "";
         }
     }
 
@@ -497,7 +394,7 @@ public class PurchaseOrderController extends HttpServlet {
 
     private void forwardEditForm(HttpServletRequest request, HttpServletResponse response)
             throws Exception {
-        long poId = parseLong(request.getParameter("id"), -1L);
+        long poId = RequestUtil.parseLong(request.getParameter("id"), -1L);
         if (poId <= 0) {
             response.sendRedirect(request.getContextPath() + "/purchase-orders");
             return;
@@ -526,7 +423,7 @@ public class PurchaseOrderController extends HttpServlet {
         request.setCharacterEncoding("UTF-8");
         Map<String, String> fieldErrors = new HashMap<>();
 
-        long poId = parseLong(request.getParameter("poId"), -1L);
+        long poId = RequestUtil.parseLong(request.getParameter("poId"), -1L);
         if (poId <= 0) {
             response.sendRedirect(request.getContextPath() + "/purchase-orders");
             return;
@@ -705,52 +602,6 @@ public class PurchaseOrderController extends HttpServlet {
             redirectUrl += "?msg=" + msg;
         }
         response.sendRedirect(redirectUrl);
-    }
-
-    private int parseInt(String raw, int def) {
-        try {
-            return (raw == null || raw.isBlank()) ? def : Integer.parseInt(raw);
-        } catch (Exception e) {
-            return def;
-        }
-    }
-
-    private long parseLong(String raw, long def) {
-        try {
-            return (raw == null || raw.isBlank()) ? def : Long.parseLong(raw);
-        } catch (Exception e) {
-            return def;
-        }
-    }
-
-    private Date parseSqlDate(String s) {
-        try {
-            if (s == null || s.isBlank()) {
-                return null;
-            }
-            return Date.valueOf(s); // yyyy-MM-dd
-        } catch (Exception e) {
-            return null;
-        }
-    }
-    //gom tất cả điều kiện tìm kiếm thành qs để gắn vào link phân trang,
-    //đảm bảo người dùng chuyển trang không mất bộ lọc
-    private String buildQs(String keyword, String status, String expectedFrom, String expectedTo)
-            throws UnsupportedEncodingException {
-        StringBuilder sb = new StringBuilder();
-        if (keyword != null && !keyword.isBlank()) {
-            sb.append("&keyword=").append(java.net.URLEncoder.encode(keyword, "UTF-8"));
-        }
-        if (status != null && !status.isBlank()) {
-            sb.append("&status=").append(java.net.URLEncoder.encode(status, "UTF-8"));
-        }
-        if (expectedFrom != null && !expectedFrom.isBlank()) {
-            sb.append("&expectedFrom=").append(java.net.URLEncoder.encode(expectedFrom, "UTF-8"));
-        }
-        if (expectedTo != null && !expectedTo.isBlank()) {
-            sb.append("&expectedTo=").append(java.net.URLEncoder.encode(expectedTo, "UTF-8"));
-        }
-        return sb.toString();
     }
 
     private String esc(String s) {
