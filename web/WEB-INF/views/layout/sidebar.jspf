@@ -37,7 +37,7 @@
                 </a>
                 <div id="collapseInbound" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
                     <div class="bg-white py-2 collapse-inner rounded">
-                        <h6 class="collapse-header">Goods Receipt:</h6>
+                        <!--<h6 class="collapse-header">Goods Receipt:</h6>-->
                         <a class="collapse-item" href="${pageContext.request.contextPath}/goods-receipt?action=list">GRN
                             List</a>
                         <a class="collapse-item" href="${pageContext.request.contextPath}/purchase-orders">Purchase
@@ -46,49 +46,65 @@
                 </div>
             </li>
 
+            <!-- Nav Item - Outbound -->
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseOutbound"
+                    aria-expanded="true" aria-controls="collapseOutbound">
+                    <i class="fas fa-fw fa-file-export"></i>
+                    <span>Outbound</span>
+                </a>
+                <div id="collapseOutbound" class="collapse" aria-labelledby="headingThree" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <h6 class="collapse-header">Goods Delivery Note:</h6>
+                        <a class="collapse-item" href="${pageContext.request.contextPath}/goods-delivery-note?action=list">GDN List</a>
+                        <a class="collapse-item" href="${pageContext.request.contextPath}/sales-orders">Sales Orders</a>
+                        <a class="collapse-item" href="${pageContext.request.contextPath}/pick-wave?action=list">Pick Wave</a>
+                        <a class="collapse-item" href="${pageContext.request.contextPath}/pick-task?action=myTasks">My Tasks</a>
+                        <a class="collapse-item" href="${pageContext.request.contextPath}/packing?action=list">Packing</a>
+                    </div>
+                </div>
+            </li>
             <!-- Divider -->
             <hr class="sidebar-divider" />
 
             <!-- ADMIN ONLY SECTION -->
-            <c:if test="${fn:contains(sessionScope.USER.roleNames, 'ADMIN')}">
-                <div class="sidebar-heading">Master Data</div>
+            <div class="sidebar-heading">Master Data</div>
 
-                <!-- Nav Item - Account Menu -->
-                <li class="nav-item">
-                    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#account"
-                        aria-expanded="true" aria-controls="account">
-                        <i class="fas fa-fw fa-user"></i>
-                        <span>Account</span>
-                    </a>
-                    <div id="account" class="collapse" aria-labelledby="account" data-parent="#accordionSidebar">
-                        <div class="bg-white py-2 collapse-inner rounded">
-                            <a class="collapse-item" href="/warehouse-management/admin/permission">Permission</a>
-                            <a class="collapse-item" href="/warehouse-management/admin/role">Role</a>
-                            <a class="collapse-item" href="/warehouse-management/admin/user">User</a>
-                        </div>
+            <!-- Nav Item - Account Menu -->
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#account"
+                    aria-expanded="true" aria-controls="account">
+                    <i class="fas fa-fw fa-user"></i>
+                    <span>Account</span>
+                </a>
+                <div id="account" class="collapse" aria-labelledby="account" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item" href="/warehouse-management/admin/permission">Permission</a>
+                        <a class="collapse-item" href="/warehouse-management/admin/role">Role</a>
+                        <a class="collapse-item" href="/warehouse-management/admin/user">User</a>
                     </div>
-                </li>
+                </div>
+            </li>
 
-                <!-- Nav Item - Product/Supplier Menu -->
-                <li class="nav-item">
-                    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#product"
-                        aria-expanded="true" aria-controls="product">
-                        <i class="fas fa-fw fa-box"></i>
-                        <span>Partner</span>
-                    </a>
-                    <div id="product" class="collapse" aria-labelledby="product" data-parent="#accordionSidebar">
-                        <div class="bg-white py-2 collapse-inner rounded">
-                            <a class="collapse-item"
-                                href="${pageContext.request.contextPath}/admin/supplier">Supplier</a>
-                            <a class="collapse-item"
-                                href="${pageContext.request.contextPath}/admin/customer">Customer</a>
-                        </div>
+            <!-- Nav Item - Product/Supplier Menu -->
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#product"
+                    aria-expanded="true" aria-controls="product">
+                    <i class="fas fa-fw fa-box"></i>
+                    <span>Partner</span>
+                </a>
+                <div id="product" class="collapse" aria-labelledby="product" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <a class="collapse-item"
+                            href="${pageContext.request.contextPath}/admin/supplier">Supplier</a>
+                        <a class="collapse-item"
+                            href="${pageContext.request.contextPath}/admin/customer">Customer</a>
                     </div>
-                </li>
+                </div>
+            </li>
 
-                <!-- Divider -->
-                <hr class="sidebar-divider" />
-            </c:if>
+            <!-- Divider -->
+            <hr class="sidebar-divider" />
 
             <!-- Sidebar Toggler (Sidebar) -->
             <div class="text-center d-none d-md-inline">
