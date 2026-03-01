@@ -23,7 +23,8 @@
                             <label class="form-label">PO Number</label>
                             <input class="form-control ${not empty fieldErrors.poNumber ? 'is-invalid' : ''}"
                                    name="poNumber"
-                                   value="${po.poNumber}" >
+                                   value="${po.poNumber}"
+                                   ${po.status != 'CREATED' ? 'readonly' : ''}>
                             <c:if test="${not empty fieldErrors.poNumber}">
                                 <div class="invalid-feedback d-block">${fieldErrors.poNumber}</div>
                             </c:if>
@@ -32,7 +33,8 @@
                         <div class="col-md-4">
                             <label class="form-label">Supplier</label>
                             <select class="form-control ${not empty fieldErrors.supplierId ? 'is-invalid' : ''}"
-                                    name="supplierId" >
+                                    name="supplierId"
+                                    ${po.status != 'CREATED' ? 'disabled' : ''}>
                                 <option value="">-- Select supplier --</option>
                                 <c:forEach var="s" items="${suppliers}">
                                     <option value="${s.supplierId}" ${s.supplierId == po.supplierId ? 'selected' : ''}>
@@ -50,7 +52,8 @@
                             <label class="form-label">Expected Delivery Date</label>
                             <input type="date" class="form-control"
                                    name="expectedDeliveryDate"
-                                   value="${po.expectedDeliveryDate}">
+                                   value="${po.expectedDeliveryDate}"
+                                   ${po.status != 'CREATED' ? 'readonly' : ''}>
                             <c:if test="${not empty fieldErrors.expectedDeliveryDate}">
                                 <div class="text-danger small">${fieldErrors.expectedDeliveryDate}</div>
                             </c:if>
@@ -58,7 +61,8 @@
 
                         <div class="col-12">
                             <label class="form-label">Note</label>
-                            <textarea class="form-control" name="note" rows="2">${po.note}</textarea>
+                            <textarea class="form-control" name="note" rows="2"
+                                      ${po.status != 'CREATED' ? 'readonly' : ''}>${po.note}</textarea>
                             <c:if test="${not empty fieldErrors.note}">
                                 <div class="text-danger small">${fieldErrors.note}</div>
                             </c:if>
@@ -101,7 +105,8 @@
                     </div>
 
                     <div class="card-footer d-flex justify-content-end gap-2">
-                        <button class="btn btn-success" type="submit">Update PO</button>
+                        <button class="btn btn-success" type="submit"
+                                ${po.status != 'CREATED' ? 'disabled' : ''}>Update PO</button>
                         <a href="${pageContext.request.contextPath}/purchase-orders" class="btn btn-secondary">Back</a>
                     </div>
                 </div>

@@ -56,4 +56,5 @@ public class ViewPath {
     public static final String SO_DETAIL = "/WEB-INF/views/outbound/sale-order-detail.jsp";
     public static final String SO_FORM_CREATE = "/WEB-INF/views/outbound/sale-order-form-create.jsp";
     public static final String SO_FORM_EDIT = "/WEB-INF/views/outbound/sale-order-form-edit.jsp";
+    public static final String SO_FORM_IMPORT = "/WEB-INF/views/outbound/sale-order-import.jsp";
 }

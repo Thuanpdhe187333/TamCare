@@ -93,12 +93,14 @@
                                     <input type="hidden" name="page" value="${page}">
                                     <t:button type="submit" size="sm" variant="outline" color="danger">Delete</t:button>
                                 </form>
-                                <form action="${pageContext.request.contextPath}/purchase-orders" method="get" style="display:inline;">
-                                    <input type="hidden" name="action" value="edit">
-                                    <input type="hidden" name="id" value="${po.poId}">
-                                    <input type="hidden" name="page" value="${page}">
-                                    <t:button type="submit" size="sm" variant="outline" color="primary">Edit</t:button>
-                                </form>
+                                <c:if test="${po.status == 'CREATED'}">
+                                    <form action="${pageContext.request.contextPath}/purchase-orders" method="get" style="display:inline;">
+                                        <input type="hidden" name="action" value="edit">
+                                        <input type="hidden" name="id" value="${po.poId}">
+                                        <input type="hidden" name="page" value="${page}">
+                                        <t:button type="submit" size="sm" variant="outline" color="primary">Edit</t:button>
+                                    </form>
+                                </c:if>
                             </td>
                         </tr>
                     </c:forEach>
