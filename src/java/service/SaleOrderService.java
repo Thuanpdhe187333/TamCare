@@ -52,7 +52,18 @@ public class SaleOrderService {
         return soDao.createManualSO(soNumber, customerId, requestedShipDate, shipToAddress, userId, lines);
     }
 
-    public void updateSalesOrder(SaleOrderHeaderDTO header, List<SaleOrderLineDTO> lines) throws Exception {
-        soDao.updateSalesOrder(header, lines);
+    /** Import from Excel: status = IMPORTED. */
+    public long createImportedSO(
+            String soNumber,
+            long customerId,
+            Date requestedShipDate,
+            String shipToAddress,
+            long userId,
+            List<SOLineCreateDTO> lines) throws Exception {
+        return soDao.createImportedSO(soNumber, customerId, requestedShipDate, shipToAddress, userId, lines);
+    }
+
+    public void updateSalesOrder(SaleOrderHeaderDTO header, List<SaleOrderLineDTO> lines, long userId) throws Exception {
+        soDao.updateSalesOrderWithReservation(header, lines, userId);
     }
 }

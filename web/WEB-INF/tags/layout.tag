@@ -34,7 +34,8 @@ name="actions" fragment="true" required="false" %>
       </div>
     </div>
 
-    <%@include file="/WEB-INF/views/layout/others.jspf" %> <%@include
-    file="/WEB-INF/views/layout/script.jspf" %>
+    <%@include file="/WEB-INF/views/layout/others.jspf" %>
+    <%@include file="/WEB-INF/views/layout/script.jspf" %>
+    <%@include file="/WEB-INF/views/layout/toast.jspf" %>
   </body>
 </html>
