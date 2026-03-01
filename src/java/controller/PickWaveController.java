@@ -34,7 +34,7 @@ public class PickWaveController extends HttpServlet {
                 default -> response.sendRedirect(request.getContextPath() + "/pick-wave?action=list");
             }
         } catch (Exception e) {
-            Logger.getLogger(PickWaveController.class.getName()).log(Level.SEVERE, null, e);
+            Logger.getLogger(PickWaveController.class.getName()).log(Level.SEVERE, "Error in doGet", e);
             throw new ServletException(e);
         }
     }
@@ -77,7 +77,7 @@ public class PickWaveController extends HttpServlet {
             try {
                 handleCreate(request, response);
             } catch (Exception e) {
-                Logger.getLogger(PickWaveController.class.getName()).log(Level.SEVERE, null, e);
+                Logger.getLogger(PickWaveController.class.getName()).log(Level.SEVERE, "Error in doPost (create action)", e);
                 throw new ServletException(e);
             }
         } else {
@@ -157,6 +157,7 @@ public class PickWaveController extends HttpServlet {
             created = taskDao.createTasksFromWave(waveId);
         } catch (Exception ex) {
             // Bất kỳ lỗi nào trong quá trình tạo task cũng không được giữ wave lại
+            Logger.getLogger(PickWaveController.class.getName()).log(Level.SEVERE, "Exception during Pick Task creation", ex);
             waveDao.deleteWaveById(waveId);
             dto.GDNDetailDTO refreshedGdn = gdnDao.getGDNDetailById(gdnId);
             request.setAttribute("gdn", refreshedGdn);
