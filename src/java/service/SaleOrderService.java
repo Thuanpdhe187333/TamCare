@@ -30,6 +30,10 @@ public class SaleOrderService {
         return soDao.countSalesOrders(keyword, status, shipFrom, shipTo);
     }
 
+    public boolean existsBySoNumber(String soNumber) throws Exception {
+        return soDao.existsBySoNumber(soNumber);
+    }
+
     public SaleOrderHeaderDTO getSaleOrderHeader(long soId) throws Exception {
         return soDao.getSaleOrderHeader(soId);
     }
@@ -48,7 +52,18 @@ public class SaleOrderService {
         return soDao.createManualSO(soNumber, customerId, requestedShipDate, shipToAddress, userId, lines);
     }
 
-    public void updateSalesOrder(SaleOrderHeaderDTO header, List<SaleOrderLineDTO> lines) throws Exception {
-        soDao.updateSalesOrder(header, lines);
+    /** Import from Excel: status = IMPORTED. */
+    public long createImportedSO(
+            String soNumber,
+            long customerId,
+            Date requestedShipDate,
+            String shipToAddress,
+            long userId,
+            List<SOLineCreateDTO> lines) throws Exception {
+        return soDao.createImportedSO(soNumber, customerId, requestedShipDate, shipToAddress, userId, lines);
+    }
+
+    public void updateSalesOrder(SaleOrderHeaderDTO header, List<SaleOrderLineDTO> lines, long userId) throws Exception {
+        soDao.updateSalesOrderWithReservation(header, lines, userId);
     }
 }

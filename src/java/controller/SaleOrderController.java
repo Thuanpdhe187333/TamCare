@@ -9,13 +9,18 @@ import dto.SOLineCreateDTO;
 import dto.SaleOrderHeaderDTO;
 import dto.SaleOrderLineDTO;
 import dto.SaleOrderListDTO;
+import service.SaleOrderImportService;
 import service.SaleOrderService;
+import util.RequestUtil;
 import util.ViewPath;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.Part;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.sql.Date;
@@ -23,13 +28,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import model.User;
 
+@MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 10485760, maxRequestSize = 20971520)
 @WebServlet(name = "SaleOrderController", urlPatterns = {"/sales-orders"})
 public class SaleOrderController extends HttpServlet {
 
     private static final int DEFAULT_PAGE = 1;
     private static final int DEFAULT_SIZE = 5;
     private final SaleOrderService soService = new SaleOrderService();
+    private final SaleOrderImportService soImportService = new SaleOrderImportService();
     private final CustomerDAO customerDao = new CustomerDAO();
 
     @Override
@@ -45,6 +53,8 @@ public class SaleOrderController extends HttpServlet {
                     forwardCreateForm(request, response);
                 case "edit" ->
                     forwardEditForm(request, response);
+                case "import" ->
+                    forwardImportForm(request, response);
                 default ->
                     forwardList(request, response);
             }
@@ -70,6 +80,8 @@ public class SaleOrderController extends HttpServlet {
                     handleUpdate(request, response);
                 case "detail" ->
                     forwardDetail(request, response);
+                case "processImport" ->
+                    handleProcessImport(request, response);
                 default ->
                     forwardList(request, response);
             }
@@ -79,8 +91,8 @@ public class SaleOrderController extends HttpServlet {
     }
 
     private void forwardList(HttpServletRequest request, HttpServletResponse response) throws Exception {
-        int page = parseInt(request.getParameter("page"), DEFAULT_PAGE);
-        int size = parseInt(request.getParameter("size"), DEFAULT_SIZE);
+        int page = RequestUtil.parseInt(request.getParameter("page"), DEFAULT_PAGE);
+        int size = RequestUtil.parseInt(request.getParameter("size"), DEFAULT_SIZE);
         if (page < 1) {
             page = 1;
         }
@@ -90,17 +102,25 @@ public class SaleOrderController extends HttpServlet {
         String fromDateStr = request.getParameter("fromDate");
         String toDateStr = request.getParameter("toDate");
 
-        if (keyword != null) { keyword = keyword.trim(); }
-        if (status != null && status.isBlank()) { status = null; }
+        if (keyword != null) {
+            keyword = keyword.trim();
+        }
+        if (status != null && status.isBlank()) {
+            status = null;
+        }
 
-        Date fromDate = parseSqlDate(fromDateStr);
-        Date toDate = parseSqlDate(toDateStr);
+        Date fromDate = RequestUtil.parseSqlDate(fromDateStr);
+        Date toDate = RequestUtil.parseSqlDate(toDateStr);
 
         int totalRecords = soService.countSalesOrders(keyword, status, fromDate, toDate);
         int totalPages = (int) Math.ceil((double) totalRecords / size);
 
-        if (totalPages < 1) { totalPages = 1; }
-        if (page > totalPages) { page = totalPages; }
+        if (totalPages < 1) {
+            totalPages = 1;
+        }
+        if (page > totalPages) {
+            page = totalPages;
+        }
 
         int offset = (page - 1) * size;
         List<SaleOrderListDTO> sos = soService.searchSalesOrders(keyword, status, fromDate, toDate, size, offset);
@@ -110,12 +130,18 @@ public class SaleOrderController extends HttpServlet {
         int endPage = Math.min(totalPages, page + window);
 
         if (endPage - startPage < window * 2) {
-            if (startPage == 1) { endPage = Math.min(totalPages, startPage + window * 2); }
-            if (endPage == totalPages) { startPage = Math.max(1, endPage - window * 2); }
+            if (startPage == 1) {
+                endPage = Math.min(totalPages, startPage + window * 2);
+            }
+            if (endPage == totalPages) {
+                startPage = Math.max(1, endPage - window * 2);
+            }
         }
 
         String baseUrl = request.getContextPath() + "/sales-orders";
-        String qs = buildQs(keyword, status, fromDateStr, toDateStr);
+        String qs = RequestUtil.buildQueryString(
+                keyword, status, fromDateStr, toDateStr,
+                "fromDate", "toDate");
 
         request.setAttribute("sos", sos);
         request.setAttribute("page", page);
@@ -131,7 +157,7 @@ public class SaleOrderController extends HttpServlet {
     }
 
     private void forwardDetail(HttpServletRequest request, HttpServletResponse response) throws Exception {
-        long soId = parseLong(request.getParameter("id"), -1L);
+        long soId = RequestUtil.parseLong(request.getParameter("id"), -1L);
         if (soId <= 0) {
             response.sendRedirect(request.getContextPath() + "/sales-orders?action=list");
             return;
@@ -158,6 +184,49 @@ public class SaleOrderController extends HttpServlet {
         request.getRequestDispatcher(ViewPath.SO_FORM_CREATE).forward(request, response);
     }
 
+    private void forwardImportForm(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        request.getRequestDispatcher(ViewPath.SO_FORM_IMPORT).forward(request, response);
+    }
+
+    private void handleProcessImport(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        try {
+            Part filePart = request.getPart("file");
+            if (filePart == null || filePart.getSize() == 0) {
+                request.setAttribute("errorMsg", "Please select a file to upload.");
+                forwardImportForm(request, response);
+                return;
+            }
+
+            HttpSession session = request.getSession(false);
+            User sessionUser = (session != null) ? (User) session.getAttribute("USER") : null;
+            if (sessionUser == null) {
+                response.sendRedirect(request.getContextPath() + "/authen");
+                return;
+            }
+            long userId = sessionUser.getUserId();
+
+            SaleOrderImportService.ImportResult result
+                    = soImportService.importFromExcel(filePart, userId);
+
+            if (result.hasErrors()) {
+                StringBuilder errMsg = new StringBuilder("Import failed due to the following errors: <ul>");
+                for (String err : result.getFieldErrors().values()) {
+                    errMsg.append("<li>").append(err).append("</li>");
+                }
+                errMsg.append("</ul>");
+                request.setAttribute("errorMsg", errMsg.toString());
+            } else {
+                request.setAttribute("successMsg",
+                        "Successfully imported Sale Order: " + result.getSoNumber());
+            }
+            forwardImportForm(request, response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            request.setAttribute("errorMsg", "Error processing Excel file: " + e.getMessage());
+            forwardImportForm(request, response);
+        }
+    }
+
     private void handleCreate(HttpServletRequest request, HttpServletResponse response)
             throws Exception {
         request.setCharacterEncoding("UTF-8");
@@ -166,10 +235,10 @@ public class SaleOrderController extends HttpServlet {
         String customerStr = request.getParameter("customerId");
         long customerId = (customerStr == null || customerStr.isBlank()) ? 0L : Long.parseLong(customerStr);
         String shipToAddress = request.getParameter("shipToAddress");
-        if(shipToAddress == null || shipToAddress.isBlank()){
+        if (shipToAddress == null || shipToAddress.isBlank()) {
             fieldErrors.put("shipToAddress", "Need enter address");
-        }else if(shipToAddress.length() >= 20){
-            fieldErrors.put("shipToAddress","Address lenght must in range 20");
+        } else if (shipToAddress.length() >= 20) {
+            fieldErrors.put("shipToAddress", "Address lenght must in range 20");
         }
         String requestedShipStr = request.getParameter("requestedShipDate");
         Date requestedShipDate = null;
@@ -187,22 +256,27 @@ public class SaleOrderController extends HttpServlet {
                 fieldErrors.put("requestedShipDate", "Invalid date format");
             }
         }
-        Long userId = (Long) request.getSession().getAttribute("userId");
-        if (userId == null) {
-            userId = 1L;
+        HttpSession session = request.getSession(false);
+        User sessionUser = (session != null) ? (User) session.getAttribute("USER") : null;
+        if (sessionUser == null) {
+            response.sendRedirect(request.getContextPath() + "/authen");
+            return;
         }
+        long userId = sessionUser.getUserId();
 
         if (soNumber == null || soNumber.isBlank()) {
             fieldErrors.put("soNumber", "SO Number is required");
         } else if (soNumber.length() > 20) {
             fieldErrors.put("soNumber", "SO Number must be at most 20 characters");
+        } else if (soService.existsBySoNumber(soNumber)) {
+            fieldErrors.put("soNumber", "SO Number already exists");
         }
 
         if (customerId <= 0) {
             fieldErrors.put("customerId", "Customer is required");
         }
 
-       List<SOLineCreateDTO> lines = new ArrayList<>();
+        List<SOLineCreateDTO> lines = new ArrayList<>();
         for (int i = 0; i < 500; i++) {
             String vid = request.getParameter("lines[" + i + "].variantId");
             String qtyStr = request.getParameter("lines[" + i + "].qty");
@@ -289,13 +363,30 @@ public class SaleOrderController extends HttpServlet {
             return;
         }
 
-        soService.createManualSO(soNumber, customerId, requestedShipDate, shipToAddress, userId, lines);
-        response.sendRedirect(request.getContextPath() + "/sales-orders");
+        // Tạo SO + giữ chỗ tồn kho (DAO sẽ check inventory & reservation)
+        try {
+            soService.createManualSO(soNumber, customerId, requestedShipDate, shipToAddress, userId, lines);
+            response.sendRedirect(request.getContextPath() + "/sales-orders");
+        } catch (IllegalArgumentException ex) {
+            // Các lỗi business như thiếu tồn kho, không có inventory_summary,...
+            fieldErrors.put("lines", ex.getMessage());
+
+            request.setAttribute("fieldErrors", fieldErrors);
+            request.setAttribute("oldSoNumber", soNumber);
+            request.setAttribute("oldCustomerId", customerId);
+            request.setAttribute("oldShipToAddress", shipToAddress);
+            request.setAttribute("oldRequestedShipDate", requestedShipStr);
+            request.setAttribute("customers", customerDao.getActiveCustomers());
+            request.setAttribute("products", new service.ProductService().getProducts());
+            request.setAttribute("oldLines", oldLines);
+
+            request.getRequestDispatcher(ViewPath.SO_FORM_CREATE).forward(request, response);
+        }
     }
 
     private void forwardEditForm(HttpServletRequest request, HttpServletResponse response)
             throws Exception {
-        long soId = parseLong(request.getParameter("id"), -1L);
+        long soId = RequestUtil.parseLong(request.getParameter("id"), -1L);
         if (soId <= 0) {
             response.sendRedirect(request.getContextPath() + "/sales-orders");
             return;
@@ -322,7 +413,15 @@ public class SaleOrderController extends HttpServlet {
         request.setCharacterEncoding("UTF-8");
         Map<String, String> fieldErrors = new HashMap<>();
 
-        long soId = parseLong(request.getParameter("soId"), -1L);
+        HttpSession session = request.getSession(false);
+        User sessionUser = (session != null) ? (User) session.getAttribute("USER") : null;
+        if (sessionUser == null) {
+            response.sendRedirect(request.getContextPath() + "/authen");
+            return;
+        }
+        long userId = sessionUser.getUserId();
+
+        long soId = RequestUtil.parseLong(request.getParameter("soId"), -1L);
         if (soId <= 0) {
             response.sendRedirect(request.getContextPath() + "/sales-orders");
             return;
@@ -359,6 +458,12 @@ public class SaleOrderController extends HttpServlet {
             fieldErrors.put("soNumber", "SO Number is required");
         } else if (soNumber.length() > 20) {
             fieldErrors.put("soNumber", "SO Number must be at most 20 characters");
+        } else {
+            if (!soNumber.equalsIgnoreCase(current.getSoNumber())) {
+                if (soService.existsBySoNumber(soNumber)) {
+                    fieldErrors.put("soNumber", "SO Number already exists");
+                }
+            }
         }
 
         if (customerId <= 0) {
@@ -478,43 +583,23 @@ public class SaleOrderController extends HttpServlet {
         }
         header.setShipToAddress(shipToAddress);
 
-        soService.updateSalesOrder(header, lines);
-        response.sendRedirect(request.getContextPath() + "/sales-orders?action=detail&id=" + soId);
-    }
-
-    private int parseInt(String raw, int def) {
-        try { return (raw == null || raw.isBlank()) ? def : Integer.parseInt(raw); }
-        catch (Exception e) { return def; }
-    }
-
-    private long parseLong(String raw, long def) {
-        try { return (raw == null || raw.isBlank()) ? def : Long.parseLong(raw); }
-        catch (Exception e) { return def; }
-    }
-
-    private Date parseSqlDate(String s) {
         try {
-            if (s == null || s.isBlank()) { return null; }
-            return Date.valueOf(s);
-        } catch (Exception e) { return null; }
-    }
+            // Cập nhật SO + điều chỉnh reservation tồn kho
+            soService.updateSalesOrder(header, lines, userId);
+            response.sendRedirect(request.getContextPath() + "/sales-orders?action=detail&id=" + soId);
+        } catch (IllegalArgumentException ex) {
+            // Lỗi business: tồn kho không đủ, thiếu inventory_summary,...
+            fieldErrors.put("lines", ex.getMessage());
 
-    private String buildQs(String keyword, String status, String fromDate, String toDate)
-            throws UnsupportedEncodingException {
-        StringBuilder sb = new StringBuilder();
-        if (keyword != null && !keyword.isBlank()) {
-            sb.append("&keyword=").append(java.net.URLEncoder.encode(keyword, "UTF-8"));
+            request.setAttribute("fieldErrors", fieldErrors);
+            request.setAttribute("so", header);
+            request.setAttribute("lines", soService.getSaleOrderDetailLines(soId));
+            request.setAttribute("oldLines", oldLines);
+            request.setAttribute("customers", customerDao.getActiveCustomers());
+            request.setAttribute("products", new service.ProductService().getProducts());
+
+            request.getRequestDispatcher(ViewPath.SO_FORM_EDIT).forward(request, response);
         }
-        if (status != null && !status.isBlank()) {
-            sb.append("&status=").append(java.net.URLEncoder.encode(status, "UTF-8"));
-        }
-        if (fromDate != null && !fromDate.isBlank()) {
-            sb.append("&fromDate=").append(java.net.URLEncoder.encode(fromDate, "UTF-8"));
-        }
-        if (toDate != null && !toDate.isBlank()) {
-            sb.append("&toDate=").append(java.net.URLEncoder.encode(toDate, "UTF-8"));
-        }
-        return sb.toString();
     }
 
     @Override

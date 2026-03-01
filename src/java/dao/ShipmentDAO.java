@@ -1,130 +1,278 @@
 package dao;
 
 import context.DBContext;
-import dto.ShipmentDTO;
 import model.Shipment;
+import model.Carrier;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ShipmentDAO extends DBContext {
 
-    /**
-     * Create shipment from SO number
-     */
-    public Long createShipmentFromSO(String soNumber, Long gdnId, Long carrierId, 
-            String shipmentType, Long createdBy) throws Exception {
-        String sql = """
-                INSERT INTO shipment
-                    (shipment_number, gdn_id, carrier_id, shipment_type, status, created_at, note)
-                VALUES (?, ?, ?, ?, 'CREATED', NOW(), ?)
-            """;
+    public List<dto.ShipmentListDTO> getFilteredShipments(String shipmentNumber, Long carrierId, String status,
+            String shipmentType,
+            String sortField, String sortOrder, int limit, int offset) throws SQLException {
+        StringBuilder sql = new StringBuilder("""
+                    SELECT s.shipment_id, s.shipment_number, s.status, s.created_at,
+                           s.shipment_type, c.name as carrier_name, gdn.gdn_number, s.tracking_code
+                    FROM shipment s
+                    LEFT JOIN carrier c ON s.carrier_id = c.carrier_id
+                    LEFT JOIN goods_delivery_note gdn ON s.gdn_id = gdn.gdn_id
+                    WHERE 1=1
+                """);
 
-        String shipmentNumber = generateShipmentNumber();
+        if (shipmentNumber != null && !shipmentNumber.isBlank()) {
+            sql.append(" AND s.shipment_number LIKE ?");
+        }
+        if (carrierId != null) {
+            sql.append(" AND s.carrier_id = ?");
+        }
+        if (status != null && !status.isBlank()) {
+            sql.append(" AND s.status = ?");
+        }
+        if (shipmentType != null && !shipmentType.isBlank()) {
+            sql.append(" AND s.shipment_type = ?");
+        }
+
+        // Validate sortField and sortOrder
+        String validSortField = "s.shipment_id";
+        if ("shipment_number".equals(sortField)) {
+            validSortField = "s.shipment_number";
+        } else if ("carrier_name".equals(sortField)) {
+            validSortField = "c.name";
+        } else if ("status".equals(sortField)) {
+            validSortField = "s.status";
+        } else if ("created_at".equals(sortField)) {
+            validSortField = "s.created_at";
+        }
+
+        String validSortOrder = "DESC";
+        if ("ASC".equalsIgnoreCase(sortOrder)) {
+            validSortOrder = "ASC";
+        }
+
+        sql.append(" ORDER BY ").append(validSortField).append(" ").append(validSortOrder);
+        sql.append(" LIMIT ? OFFSET ?");
+
+        List<dto.ShipmentListDTO> list = new ArrayList<>();
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            int paramIdx = 1;
+            if (shipmentNumber != null && !shipmentNumber.isBlank()) {
+                ps.setString(paramIdx++, "%" + shipmentNumber + "%");
+            }
+            if (carrierId != null) {
+                ps.setLong(paramIdx++, carrierId);
+            }
+            if (status != null && !status.isBlank()) {
+                ps.setString(paramIdx++, status);
+            }
+            if (shipmentType != null && !shipmentType.isBlank()) {
+                ps.setString(paramIdx++, shipmentType);
+            }
+            ps.setInt(paramIdx++, limit);
+            ps.setInt(paramIdx++, offset);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    dto.ShipmentListDTO item = new dto.ShipmentListDTO();
+                    item.setShipmentId(rs.getLong("shipment_id"));
+                    item.setShipmentNumber(rs.getString("shipment_number"));
+                    item.setCarrierName(rs.getString("carrier_name"));
+                    item.setStatus(rs.getString("status"));
+                    item.setShipmentType(rs.getString("shipment_type"));
+                    item.setGdnNumber(rs.getString("gdn_number"));
+                    item.setTrackingCode(rs.getString("tracking_code"));
+                    Timestamp createdAtTs = rs.getTimestamp("created_at");
+                    if (createdAtTs != null) {
+                        item.setCreatedAt(createdAtTs.toLocalDateTime());
+                    }
+                    list.add(item);
+                }
+            }
+        }
+        return list;
+    }
+
+    public int countFilteredShipments(String shipmentNumber, Long carrierId, String status, String shipmentType)
+            throws SQLException {
+        StringBuilder sql = new StringBuilder("""
+                    SELECT COUNT(*)
+                    FROM shipment s
+                    WHERE 1=1
+                """);
+
+        if (shipmentNumber != null && !shipmentNumber.isBlank()) {
+            sql.append(" AND s.shipment_number LIKE ?");
+        }
+        if (carrierId != null) {
+            sql.append(" AND s.carrier_id = ?");
+        }
+        if (status != null && !status.isBlank()) {
+            sql.append(" AND s.status = ?");
+        }
+        if (shipmentType != null && !shipmentType.isBlank()) {
+            sql.append(" AND s.shipment_type = ?");
+        }
 
         try (Connection conn = getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setString(1, shipmentNumber);
-            ps.setLong(2, gdnId);
-            if (carrierId != null) {
-                ps.setLong(3, carrierId);
-            } else {
-                ps.setNull(3, Types.BIGINT);
+                PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            int paramIdx = 1;
+            if (shipmentNumber != null && !shipmentNumber.isBlank()) {
+                ps.setString(paramIdx++, "%" + shipmentNumber + "%");
             }
-            ps.setString(4, shipmentType);
-            ps.setString(5, "Shipment for SO: " + soNumber);
+            if (carrierId != null) {
+                ps.setLong(paramIdx++, carrierId);
+            }
+            if (status != null && !status.isBlank()) {
+                ps.setString(paramIdx++, status);
+            }
+            if (shipmentType != null && !shipmentType.isBlank()) {
+                ps.setString(paramIdx++, shipmentType);
+            }
 
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        }
+        return 0;
+    }
+
+    public long createShipment(Shipment shipment) throws SQLException {
+        String sql = """
+                    INSERT INTO shipment (shipment_number, gdn_id, carrier_id, shipment_type, status, created_at, tracking_code, note)
+                    VALUES (?, ?, ?, ?, 'CREATED', NOW(), ?, ?)
+                """;
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, shipment.getShipmentNumber());
+            ps.setObject(2, shipment.getGdnId());
+            ps.setObject(3, shipment.getCarrierId());
+            ps.setString(4, shipment.getShipmentType());
+            ps.setString(5, shipment.getTrackingCode());
+            ps.setString(6, shipment.getNote());
             ps.executeUpdate();
 
             try (ResultSet rs = ps.getGeneratedKeys()) {
-                if (!rs.next()) {
-                    throw new SQLException("Cannot get generated shipment_id");
+                if (rs.next()) {
+                    return rs.getLong(1);
+                } else {
+                    throw new SQLException("Creating shipment failed, no ID obtained.");
                 }
-                return rs.getLong(1);
             }
         }
     }
 
-    /**
-     * Get shipment info by SO number
-     */
-    public ShipmentDTO getShipmentInfoBySONumber(String soNumber) throws Exception {
+    public Shipment getById(Long id) throws SQLException {
         String sql = """
-                SELECT 
-                    so.so_id,
-                    so.so_number,
-                    so.customer_id,
-                    c.name AS customer_name,
-                    so.ship_to_address,
-                    so.requested_ship_date,
-                    gdn.gdn_id,
-                    gdn.gdn_number
-                FROM sales_order so
-                LEFT JOIN customer c ON so.customer_id = c.customer_id
-                LEFT JOIN goods_delivery_note gdn ON gdn.so_id = so.so_id AND gdn.status = 'CONFIRMED'
-                WHERE so.so_number = ?
-                ORDER BY gdn.gdn_id DESC
-                LIMIT 1
-            """;
-
+                    SELECT s.*, c.name as carrier_name, gdn.gdn_number
+                    FROM shipment s
+                    LEFT JOIN carrier c ON s.carrier_id = c.carrier_id
+                    LEFT JOIN goods_delivery_note gdn ON s.gdn_id = gdn.gdn_id
+                    WHERE s.shipment_id = ?
+                """;
         try (Connection conn = getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, soNumber);
+            ps.setLong(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    ShipmentDTO dto = new ShipmentDTO();
-                    dto.setSoNumber(rs.getString("so_number"));
-                    dto.setCustomerId(rs.getObject("customer_id") != null ? rs.getLong("customer_id") : null);
-                    dto.setCustomerName(rs.getString("customer_name"));
-                    dto.setShipToAddress(rs.getString("ship_to_address"));
-                    Date shipDate = rs.getDate("requested_ship_date");
-                    if (shipDate != null) {
-                        dto.setRequestedShipDate(shipDate.toLocalDate().atStartOfDay());
-                    }
-                    dto.setGdnId(rs.getObject("gdn_id") != null ? rs.getLong("gdn_id") : null);
-                    dto.setGdnNumber(rs.getString("gdn_number"));
-                    return dto;
+                    Shipment s = new Shipment();
+                    s.setShipmentId(rs.getLong("shipment_id"));
+                    s.setShipmentNumber(rs.getString("shipment_number"));
+                    s.setGdnId(rs.getObject("gdn_id") != null ? rs.getLong("gdn_id") : null);
+                    s.setCarrierId(rs.getObject("carrier_id") != null ? rs.getLong("carrier_id") : null);
+                    s.setShipmentType(rs.getString("shipment_type"));
+                    s.setStatus(rs.getString("status"));
+                    s.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
+                    Timestamp pickedTs = rs.getTimestamp("picked_up_at");
+                    if (pickedTs != null)
+                        s.setPickedUpAt(pickedTs.toLocalDateTime());
+                    Timestamp deliveredTs = rs.getTimestamp("delivered_at");
+                    if (deliveredTs != null)
+                        s.setDeliveredAt(deliveredTs.toLocalDateTime());
+                    s.setTrackingCode(rs.getString("tracking_code"));
+                    s.setCarrierName(rs.getString("carrier_name")); // Added mapping
+                    s.setGdnNumber(rs.getString("gdn_number")); // Added mapping
+                    s.setNote(rs.getString("note"));
+                    return s;
                 }
             }
         }
         return null;
     }
 
-    /**
-     * Update shipment status
-     */
-    public boolean updateShipmentStatus(Long shipmentId, String status) throws Exception {
+    public boolean updateShipment(Shipment shipment) throws SQLException {
         String sql = """
-                UPDATE shipment
-                SET status = ?,
-                    picked_up_at = CASE WHEN ? = 'PICKED_UP' THEN NOW() ELSE picked_up_at END,
-                    delivered_at = CASE WHEN ? = 'DELIVERED' THEN NOW() ELSE delivered_at END
-                WHERE shipment_id = ?
-            """;
-
+                    UPDATE shipment
+                    SET carrier_id = ?, status = ?, tracking_code = ?, note = ?,
+                        picked_up_at = ?, delivered_at = ?
+                    WHERE shipment_id = ?
+                """;
         try (Connection conn = getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, status);
-            ps.setString(2, status);
-            ps.setString(3, status);
-            ps.setLong(4, shipmentId);
+            ps.setObject(1, shipment.getCarrierId());
+            ps.setString(2, shipment.getStatus());
+            ps.setString(3, shipment.getTrackingCode());
+            ps.setString(4, shipment.getNote());
+            ps.setTimestamp(5, shipment.getPickedUpAt() != null ? Timestamp.valueOf(shipment.getPickedUpAt()) : null);
+            ps.setTimestamp(6, shipment.getDeliveredAt() != null ? Timestamp.valueOf(shipment.getDeliveredAt()) : null);
+            ps.setLong(7, shipment.getShipmentId());
             return ps.executeUpdate() > 0;
         }
     }
 
-    /**
-     * Generate shipment number
-     */
-    private String generateShipmentNumber() throws Exception {
-        String sql = "SELECT COUNT(*) + 1 AS next_num FROM shipment";
+    public List<Carrier> getAllCarriers() throws SQLException {
+        String sql = "SELECT * FROM carrier ORDER BY name";
+        List<Carrier> list = new ArrayList<>();
         try (Connection conn = getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql);
                 ResultSet rs = ps.executeQuery()) {
-            if (rs.next()) {
-                int nextNum = rs.getInt("next_num");
-                return "SHIP-" + String.format("%06d", nextNum);
+            while (rs.next()) {
+                Carrier c = new Carrier();
+                c.setCarrierId(rs.getLong("carrier_id"));
+                c.setName(rs.getString("name"));
+                c.setCarrierType(rs.getString("carrier_type"));
+                c.setPhone(rs.getString("phone"));
+                c.setNote(rs.getString("note"));
+                list.add(c);
             }
         }
-        return "SHIP-000001";
+        return list;
+    }
+
+    public List<model.GoodsDeliveryNote> getAvailableGDNs() throws SQLException {
+        String sql = """
+                    SELECT * FROM goods_delivery_note
+                    WHERE status <> 'CANCELLED'
+                    AND gdn_id NOT IN (SELECT gdn_id FROM shipment WHERE gdn_id IS NOT NULL)
+                    ORDER BY gdn_id DESC
+                """;
+        List<model.GoodsDeliveryNote> list = new ArrayList<>();
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                model.GoodsDeliveryNote gdn = new model.GoodsDeliveryNote();
+                gdn.setGdnId(rs.getLong("gdn_id"));
+                gdn.setGdnNumber(rs.getString("gdn_number"));
+                list.add(gdn);
+            }
+        }
+        return list;
+    }
+
+    public String getNextShipmentNumber() throws SQLException {
+        String sql = "SELECT MAX(shipment_id) FROM shipment";
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+            long nextId = 1;
+            if (rs.next()) {
+                nextId = rs.getLong(1) + 1;
+            }
+            return String.format("SHIP-%05d", nextId);
+        }
     }
 }

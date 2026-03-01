@@ -107,12 +107,38 @@ public class PurchaseOrderDAO extends DBContext {
             String note,
             long userId,
             List<POLineCreateDTO> lines) throws Exception {
+        // Manual create: status = CREATED, source_file_name = 'manual_create'
+        return createPO(poNumber, supplierId, expectedDate, note, userId, lines,
+                "CREATED", "manual_create");
+    }
+
+    public long createImportedPO(
+            String poNumber,
+            long supplierId,
+            Date expectedDate,
+            String note,
+            long userId,
+            List<POLineCreateDTO> lines) throws Exception {
+        // Import from Excel: status = IMPORTED, source_file_name = 'excel_import'
+        return createPO(poNumber, supplierId, expectedDate, note, userId, lines,
+                "IMPORTED", "excel_import");
+    }
+
+    private long createPO(
+            String poNumber,
+            long supplierId,
+            Date expectedDate,
+            String note,
+            long userId,
+            List<POLineCreateDTO> lines,
+            String status,
+            String sourceFileName) throws Exception {
 
         String sqlPO = """
                     INSERT INTO purchase_order
                         (po_number, supplier_id, expected_delivery_date, status,
                          imported_by, imported_at, source_file_name, note)
-                      VALUES (?, ?, ?, 'CREATED', ?, NOW(), 'manual_create', ?)
+                      VALUES (?, ?, ?, ?, ?, NOW(), ?, ?)
                 """;
 
         String sqlLine = """
@@ -130,8 +156,10 @@ public class PurchaseOrderDAO extends DBContext {
                 } else {
                     psPO.setNull(3, Types.DATE);
                 }
-                psPO.setLong(4, userId);
-                psPO.setString(5, note);
+                psPO.setString(4, status);
+                psPO.setLong(5, userId);
+                psPO.setString(6, sourceFileName);
+                psPO.setString(7, note);
 
                 psPO.executeUpdate();
 

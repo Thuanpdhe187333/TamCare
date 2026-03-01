@@ -2,6 +2,7 @@ package dao;
 
 import context.DBContext;
 import dto.SlotProductDTO;
+import dto.SlotQtyDTO;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -140,6 +141,39 @@ public class InventoryBalanceDAO extends DBContext {
         }
         
         return BigDecimal.ZERO;
+    }
+
+    /**
+     * Get slots with available qty for a variant (for allocating from_slot_id in pick task lines).
+     * Ordered by slot for consistent allocation (FIFO by slot code).
+     */
+    public List<SlotQtyDTO> getAvailableSlotsForVariant(Long warehouseId, Long variantId, BigDecimal minQty) throws Exception {
+        List<SlotQtyDTO> list = new ArrayList<>();
+        String sql = """
+            SELECT ib.slot_id, s.code AS slot_code, z.zone_id, z.code AS zone_code, ib.qty_available
+            FROM inventory_balance ib
+            JOIN slot s ON s.slot_id = ib.slot_id
+            JOIN zone z ON z.zone_id = s.zone_id
+            WHERE ib.warehouse_id = ? AND ib.variant_id = ? AND ib.qty_available > 0
+            ORDER BY z.code, s.code
+            """;
+        try (Connection con = getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setLong(1, warehouseId);
+            ps.setLong(2, variantId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    SlotQtyDTO dto = new SlotQtyDTO();
+                    dto.setSlotId(rs.getLong("slot_id"));
+                    dto.setSlotCode(rs.getString("slot_code"));
+                    dto.setZoneId(rs.getLong("zone_id"));
+                    dto.setZoneCode(rs.getString("zone_code"));
+                    dto.setQtyAvailable(rs.getBigDecimal("qty_available"));
+                    list.add(dto);
+                }
+            }
+        }
+        return list;
     }
 
     /**

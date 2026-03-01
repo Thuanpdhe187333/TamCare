@@ -1,6 +1,7 @@
 package controller;
 
 import dao.GoodsDeliveryNoteDAO;
+import dao.PickWaveDAO;
 import dao.SaleOrderDAO;
 import dao.WarehouseDAO;
 import dao.UserDAO;
@@ -115,7 +116,9 @@ public class GoodsDeliveryNoteController extends HttpServlet {
             return;
         }
 
+        PickWaveDAO waveDao = new PickWaveDAO();
         request.setAttribute("gdn", gdn);
+        request.setAttribute("wave", waveDao.getWaveByGdnId(gdnId));
         request.getRequestDispatcher("WEB-INF/views/outbound/goods-delivery-note-detail.jsp")
                .forward(request, response);
     }
@@ -130,10 +133,10 @@ public class GoodsDeliveryNoteController extends HttpServlet {
         }
 
         GDNDetailDTO gdn = gdnDao.getGDNDetailById(gdnId);
-        if (gdn == null || !("PENDING".equals(gdn.getStatus()) || "DRAFT".equals(gdn.getStatus()) || "ONGOING".equals(gdn.getStatus()))) {
-            response.sendRedirect(request.getContextPath() + "/goods-delivery-note?action=detail&id=" + gdnId);
-            return;
-        }
+//        if (gdn == null || !("PENDING".equals(gdn.getStatus()) || "DRAFT".equals(gdn.getStatus()) || "ONGOING".equals(gdn.getStatus()))) {
+//            response.sendRedirect(request.getContextPath() + "/goods-delivery-note?action=detail&id=" + gdnId);
+//            return;
+//        }
 
         request.setAttribute("gdn", gdn);
         request.getRequestDispatcher("WEB-INF/views/outbound/goods-delivery-note-edit.jsp")

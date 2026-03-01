@@ -119,6 +119,27 @@ public class UserDAO extends DBContext implements Dao<User> {
         return 0L;
     }
 
+    /** Get users that have the given role name (e.g. WAREHOUSE_STAFF). */
+    public List<User> getUsersByRole(String roleName) throws SQLException {
+        List<User> list = new ArrayList<>();
+        String sql = """
+            SELECT u.*, (SELECT GROUP_CONCAT(r2.name SEPARATOR ', ') FROM user_role ur2 JOIN role r2 ON ur2.role_id = r2.role_id WHERE ur2.user_id = u.user_id) AS role_names
+            FROM `user` u
+            WHERE u.user_id IN (SELECT ur.user_id FROM user_role ur JOIN role r ON ur.role_id = r.role_id WHERE r.name = ?)
+              AND u.is_deleted = 0 AND u.status = 'ACTIVE'
+            ORDER BY u.full_name
+            """;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, roleName);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapResultSetToUser(rs));
+                }
+            }
+        }
+        return list;
+    }
+
     public User getById(Long id) throws SQLException {
         String sql = """
             SELECT u.*, GROUP_CONCAT(r.name SEPARATOR ', ') as role_names

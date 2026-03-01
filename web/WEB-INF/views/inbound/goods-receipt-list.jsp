@@ -133,19 +133,16 @@
                         </table>
                     </div>
 
+                    <!-- Hidden inputs for sort persistence -->
+                    <input type="hidden" name="sortBy" value="${param.sortBy}">
+                    <input type="hidden" name="order" value="${param.order}">
+
                     <!-- Pagination -->
-                    <c:if test="${totalPages > 1}">
-                        <nav class="mt-4">
-                            <ul class="pagination justify-content-center">
-                                <c:forEach var="i" begin="1" end="${totalPages}">
-                                    <li class="page-item ${currentPage == i ? 'active' : ''}">
-                                        <a class="page-link shadow-sm"
-                                            href="${pageContext.request.contextPath}/goods-receipt?action=list&page=${i}&grnNumber=${param.grnNumber}&supplierId=${param.supplierId}&status=${param.status}&sortBy=${param.sortBy}&order=${param.order}">${i}</a>
-                                    </li>
-                                </c:forEach>
-                            </ul>
-                        </nav>
-                    </c:if>
+                    <div class="mt-4">
+                        <t:pagination page="${currentPage}" pages="${totalPages}" size="${pageSize}"
+                            total="${totalRecords}" url="${pageContext.request.contextPath}/goods-receipt?action=list"
+                            include="[name='grnNumber'], [name='supplierId'], [name='status'], [name='sortBy'], [name='order']" />
+                    </div>
                 </div>
 
                 <script>
