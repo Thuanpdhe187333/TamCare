@@ -18,4 +18,8 @@ public class Shipment {
     private LocalDateTime deliveredAt;
     private String trackingCode;
     private String note;
+
+    // Transient fields (joined from other tables)
+    private String carrierName;
+    private String gdnNumber;
 }

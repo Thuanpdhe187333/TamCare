@@ -651,7 +651,7 @@ public class GoodsReceiptController extends HttpServlet {
 
                                 // C. Record Transaction (Audit Trail)
                                 model.InventoryTxn txn = new model.InventoryTxn();
-                                txn.setTxnType("INBOUND");
+                                txn.setTxnType("RECEIPT");
                                 txn.setWarehouseId(grn.getWarehouseId());
                                 txn.setToSlotId(pl.getToSlotId());
                                 txn.setVariantId(variantId);
