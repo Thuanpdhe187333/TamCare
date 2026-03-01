@@ -48,7 +48,6 @@ public class SaleOrderDAO extends DBContext {
             params.add("%" + keyword + "%");
         }
 
-        // 📌 Status filter
         if (status != null) {
             status = status.trim();
         }
@@ -57,7 +56,6 @@ public class SaleOrderDAO extends DBContext {
             params.add(status);
         }
 
-        // 📅 Date filter
         if (shipFrom != null) {
             sql.append(" AND so.requested_ship_date >= ? ");
             params.add(shipFrom);
@@ -344,6 +342,13 @@ public class SaleOrderDAO extends DBContext {
             long userId,
             List<SOLineCreateDTO> lines) throws Exception {
 
+        if (lines == null || lines.isEmpty()) {
+            throw new IllegalArgumentException("SO must have at least 1 line");
+        }
+
+        final long warehouseId = 1L;
+        final String condition = "GOOD";
+
         String sqlSO = """
         INSERT INTO sales_order
             (so_number, customer_id, requested_ship_date,
@@ -351,17 +356,51 @@ public class SaleOrderDAO extends DBContext {
         VALUES (?, ?, ?, ?, 'CREATED', ?, NOW(), ?)
     """;
 
-        String sqlLine = """
+        // Insert line từng dòng để lấy so_line_id (reservation cần so_line_id)
+        String sqlInsertLine = """
         INSERT INTO sales_order_line
             (so_id, variant_id, qty_ordered, unit_price, discount)
         VALUES (?, ?, ?, ?, ?)
     """;
 
+        // Lock + check tồn
+        String sqlLockSummary = """
+        SELECT qty_available
+        FROM inventory_summary
+        WHERE warehouse_id = ?
+          AND variant_id = ?
+          AND `condition` = ?
+        FOR UPDATE
+    """;
+
+        // Update reserved/available
+        String sqlUpdateSummary = """
+        UPDATE inventory_summary
+        SET qty_reserved = qty_reserved + ?,
+            qty_available = qty_available - ?
+        WHERE warehouse_id = ?
+          AND variant_id = ?
+          AND `condition` = ?
+    """;
+
+        // Insert reservation
+        String sqlInsertReservation = """
+        INSERT INTO inventory_reservation
+            (warehouse_id, so_line_id, variant_id, qty_reserved, status)
+        VALUES (?, ?, ?, ?, 'ACTIVE')
+    """;
+
         try (Connection con = DBContext.getConnection()) {
+            if (con == null) {
+                throw new SQLException("Cannot get DB connection");
+            }
+
+            boolean oldAutoCommit = con.getAutoCommit();
             con.setAutoCommit(false);
 
-            try (PreparedStatement psSO = con.prepareStatement(sqlSO, Statement.RETURN_GENERATED_KEYS)) {
-
+            try (
+                    PreparedStatement psSO = con.prepareStatement(sqlSO, Statement.RETURN_GENERATED_KEYS); PreparedStatement psLock = con.prepareStatement(sqlLockSummary); PreparedStatement psLine = con.prepareStatement(sqlInsertLine, Statement.RETURN_GENERATED_KEYS); PreparedStatement psRes = con.prepareStatement(sqlInsertReservation); PreparedStatement psUpd = con.prepareStatement(sqlUpdateSummary)) {
+                // 1) Insert SO header
                 psSO.setString(1, soNumber);
                 psSO.setLong(2, customerId);
 
@@ -378,43 +417,101 @@ public class SaleOrderDAO extends DBContext {
                 }
 
                 psSO.setLong(5, userId);
-                
-                // Parameter 6 for note (can be null)
+
+                // note (tạm để null)
                 psSO.setNull(6, Types.VARCHAR);
 
                 psSO.executeUpdate();
 
                 long soId;
-                try (ResultSet rs = psSO.getGeneratedKeys()) {
-                    if (!rs.next()) {
+                try (ResultSet gk = psSO.getGeneratedKeys()) {
+                    if (!gk.next()) {
                         throw new SQLException("Cannot get generated so_id");
                     }
-                    soId = rs.getLong(1);
+                    soId = gk.getLong(1);
                 }
 
-                // Insert lines
-                try (PreparedStatement psLine = con.prepareStatement(sqlLine)) {
-                    for (SOLineCreateDTO l : lines) {
-
-                        psLine.setLong(1, soId);
-                        psLine.setLong(2, l.getVariantId());
-                        psLine.setBigDecimal(3, l.getQty());
-
-                        if (l.getUnitPrice() != null) {
-                            psLine.setBigDecimal(4, l.getUnitPrice());
-                        } else {
-                            psLine.setNull(4, Types.DECIMAL);
-                        }
-
-                        if (l.getDiscount() != null) {
-                            psLine.setBigDecimal(5, l.getDiscount());
-                        } else {
-                            psLine.setNull(5, Types.DECIMAL);
-                        }
-
-                        psLine.addBatch();
+                // 2) Với mỗi line: lock + check + insert line + reserve + update summary
+                for (SOLineCreateDTO l : lines) {
+                    if (l.getQty() == null || l.getQty().signum() <= 0) {
+                        throw new IllegalArgumentException("Invalid qty for variantId=" + l.getVariantId());
                     }
-                    psLine.executeBatch();
+
+                    // 2.1) Lock & check inventory_summary
+                    psLock.setLong(1, warehouseId);
+                    psLock.setLong(2, l.getVariantId());
+                    psLock.setString(3, condition);
+
+                    java.math.BigDecimal available = java.math.BigDecimal.ZERO;
+                    boolean hasRow = false;
+
+                    try (ResultSet rs = psLock.executeQuery()) {
+                        if (rs.next()) {
+                            hasRow = true;
+                            available = rs.getBigDecimal("qty_available");
+                            if (available == null) {
+                                available = java.math.BigDecimal.ZERO;
+                            }
+                        }
+                    }
+
+                    if (!hasRow) {
+                        throw new IllegalArgumentException(
+                                "No inventory_summary row for variantId=" + l.getVariantId()
+                                + " (warehouseId=" + warehouseId + ", condition=" + condition + ")");
+                    }
+
+                    if (available.compareTo(l.getQty()) < 0) {
+                        throw new IllegalArgumentException(
+                                "Not enough stock for variantId=" + l.getVariantId()
+                                + ". Available=" + available + ", Required=" + l.getQty());
+                    }
+
+                    // 2.2) Insert SO line (lấy so_line_id)
+                    psLine.setLong(1, soId);
+                    psLine.setLong(2, l.getVariantId());
+                    psLine.setBigDecimal(3, l.getQty());
+
+                    if (l.getUnitPrice() != null) {
+                        psLine.setBigDecimal(4, l.getUnitPrice());
+                    } else {
+                        psLine.setNull(4, Types.DECIMAL);
+                    }
+
+                    if (l.getDiscount() != null) {
+                        psLine.setBigDecimal(5, l.getDiscount());
+                    } else {
+                        psLine.setNull(5, Types.DECIMAL);
+                    }
+
+                    psLine.executeUpdate();
+
+                    long soLineId;
+                    try (ResultSet gk2 = psLine.getGeneratedKeys()) {
+                        if (!gk2.next()) {
+                            throw new SQLException("Cannot get generated so_line_id");
+                        }
+                        soLineId = gk2.getLong(1);
+                    }
+
+                    // 2.3) Insert reservation (ACTIVE)
+                    psRes.setLong(1, warehouseId);
+                    psRes.setLong(2, soLineId);
+                    psRes.setLong(3, l.getVariantId());
+                    psRes.setBigDecimal(4, l.getQty());
+                    psRes.executeUpdate();
+
+                    // 2.4) Update inventory_summary (reserved += qty, available -= qty)
+                    psUpd.setBigDecimal(1, l.getQty());
+                    psUpd.setBigDecimal(2, l.getQty());
+                    psUpd.setLong(3, warehouseId);
+                    psUpd.setLong(4, l.getVariantId());
+                    psUpd.setString(5, condition);
+
+                    int updated = psUpd.executeUpdate();
+                    if (updated != 1) {
+                        throw new SQLException("Update inventory_summary failed for variantId=" + l.getVariantId());
+                    }
                 }
 
                 con.commit();
@@ -424,115 +521,253 @@ public class SaleOrderDAO extends DBContext {
                 con.rollback();
                 throw ex;
             } finally {
-                con.setAutoCommit(true);
+                con.setAutoCommit(oldAutoCommit);
             }
         }
     }
 
-    public void updateSalesOrder(SaleOrderHeaderDTO header,
-            List<SaleOrderLineDTO> lines) throws Exception {
+    public void updateSalesOrderWithReservation(SaleOrderHeaderDTO header,
+            List<SaleOrderLineDTO> newLines,
+            long userId) throws Exception {
 
-        if (lines == null || lines.isEmpty()) {
+        if (newLines == null || newLines.isEmpty()) {
             throw new IllegalArgumentException("SO must have at least 1 line");
         }
 
-        boolean oldAutoCommit = conn.getAutoCommit();
-        try {
-            conn.setAutoCommit(false);
+        final long warehouseId = 1L;       // single warehouse
+        final String condition = "GOOD";   // outbound reserve GOOD
 
-            // 1. Check status + lock row
-            String status = getSoStatusForUpdate(header.getSoId());
-            if (!"CREATED".equalsIgnoreCase(status)) {
-                throw new IllegalArgumentException(
-                        "SO cannot be updated when status = " + status);
-            }
+        String sqlLockSO = "SELECT status FROM sales_order WHERE so_id=? FOR UPDATE";
 
-            // 2. Update header
-            updateSoHeader(header);
-
-            // 3. Delete old lines
-            deleteSoLinesBySoId(header.getSoId());
-
-            // 4. Insert new lines
-            insertSoLines(header.getSoId(), lines);
-
-            conn.commit();
-        } catch (Exception e) {
-            conn.rollback();
-            throw e;
-        } finally {
-            conn.setAutoCommit(oldAutoCommit);
-        }
-    }
-
-    private String getSoStatusForUpdate(long soId) throws Exception {
-        String sql = "SELECT status FROM sales_order WHERE so_id=? FOR UPDATE";
-
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, soId);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) {
-                    throw new IllegalArgumentException("SO not found: " + soId);
-                }
-                return rs.getString("status");
-            }
-        }
-    }
-
-private void updateSoHeader(SaleOrderHeaderDTO h) throws Exception {
-    String sql = """
+        String sqlUpdateHeader = """
         UPDATE sales_order
         SET so_number = ?,
             customer_id = ?,
             requested_ship_date = ?,
             ship_to_address = ?
         WHERE so_id = ?
-        """;
+    """;
 
-    try (PreparedStatement ps = conn.prepareStatement(sql)) {
-        ps.setString(1, h.getSoNumber());
-        ps.setLong(2, h.getCustomerId());
-        ps.setDate(3, Date.valueOf(h.getRequestedShipDate()));
-        ps.setString(4, h.getShipToAddress());
-        ps.setLong(5, h.getSoId());
+        // lấy reservation ACTIVE của SO (join qua sales_order_line)
+        String sqlSelectActiveRes = """
+        SELECT r.reservation_id, r.variant_id, r.qty_reserved
+        FROM inventory_reservation r
+        JOIN sales_order_line sol ON sol.so_line_id = r.so_line_id
+        WHERE sol.so_id = ?
+          AND r.status = 'ACTIVE'
+    """;
 
-        ps.executeUpdate();
-    }
-}
+        // release reservation
+        String sqlReleaseRes = """
+        UPDATE inventory_reservation
+        SET status = 'RELEASED'
+        WHERE reservation_id = ?
+          AND status = 'ACTIVE'
+    """;
 
-    private void deleteSoLinesBySoId(long soId) throws Exception {
-        String sql = "DELETE FROM sales_order_line WHERE so_id=?";
+        // hoàn trả summary
+        String sqlReturnSummary = """
+        UPDATE inventory_summary
+        SET qty_reserved = qty_reserved - ?,
+            qty_available = qty_available + ?
+        WHERE warehouse_id = ?
+          AND variant_id = ?
+          AND `condition` = ?
+    """;
 
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, soId);
-            ps.executeUpdate();
-        }
-    }
+        String sqlDeleteLines = "DELETE FROM sales_order_line WHERE so_id=?";
 
-    private void insertSoLines(long soId, List<SaleOrderLineDTO> lines) throws Exception {
-        String sql = """
-            INSERT INTO sales_order_line
+        String sqlInsertLine = """
+        INSERT INTO sales_order_line
             (so_id, variant_id, qty_ordered, unit_price, discount)
-            VALUES (?,?,?,?,?)
-            """;
+        VALUES (?, ?, ?, ?, ?)
+    """;
 
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            for (SaleOrderLineDTO l : lines) {
-                ps.setLong(1, soId);
-                ps.setLong(2, l.getVariantId());
-                ps.setBigDecimal(3, l.getOrderedQty());
-                ps.setBigDecimal(4, l.getUnitPrice());
+        // lock + check summary khi reserve mới
+        String sqlLockSummary = """
+        SELECT qty_available
+        FROM inventory_summary
+        WHERE warehouse_id = ?
+          AND variant_id = ?
+          AND `condition` = ?
+        FOR UPDATE
+    """;
 
-                // discount nullable
-                if (l.getDiscount() != null) {
-                    ps.setBigDecimal(5, l.getDiscount());
-                } else {
-                    ps.setNull(5, java.sql.Types.DECIMAL);
+        String sqlReserveSummary = """
+        UPDATE inventory_summary
+        SET qty_reserved = qty_reserved + ?,
+            qty_available = qty_available - ?
+        WHERE warehouse_id = ?
+          AND variant_id = ?
+          AND `condition` = ?
+    """;
+
+        String sqlInsertRes = """
+        INSERT INTO inventory_reservation
+            (warehouse_id, so_line_id, variant_id, qty_reserved, status)
+        VALUES (?, ?, ?, ?, 'ACTIVE')
+    """;
+
+        try (Connection con = DBContext.getConnection()) {
+            if (con == null) {
+                throw new SQLException("Cannot get DB connection");
+            }
+
+            boolean oldAutoCommit = con.getAutoCommit();
+            con.setAutoCommit(false);
+
+            try (
+                    PreparedStatement psLockSO = con.prepareStatement(sqlLockSO); PreparedStatement psUpdHeader = con.prepareStatement(sqlUpdateHeader); PreparedStatement psSelRes = con.prepareStatement(sqlSelectActiveRes); PreparedStatement psRelease = con.prepareStatement(sqlReleaseRes); PreparedStatement psReturn = con.prepareStatement(sqlReturnSummary); PreparedStatement psDelLines = con.prepareStatement(sqlDeleteLines); PreparedStatement psLockSum = con.prepareStatement(sqlLockSummary); PreparedStatement psInsLine = con.prepareStatement(sqlInsertLine, Statement.RETURN_GENERATED_KEYS); PreparedStatement psInsRes = con.prepareStatement(sqlInsertRes); PreparedStatement psReserve = con.prepareStatement(sqlReserveSummary)) {
+                // 1) lock SO + check status
+                psLockSO.setLong(1, header.getSoId());
+                String status;
+                try (ResultSet rs = psLockSO.executeQuery()) {
+                    if (!rs.next()) {
+                        throw new IllegalArgumentException("SO not found: " + header.getSoId());
+                    }
+                    status = rs.getString("status");
+                }
+                if (!"CREATED".equalsIgnoreCase(status)) {
+                    throw new IllegalArgumentException("SO cannot be updated when status = " + status);
                 }
 
-                ps.addBatch();
+                // 2) lấy reservation ACTIVE của SO, hoàn trả summary + release reservation
+                psSelRes.setLong(1, header.getSoId());
+                try (ResultSet rs = psSelRes.executeQuery()) {
+                    while (rs.next()) {
+                        long reservationId = rs.getLong("reservation_id");
+                        long variantId = rs.getLong("variant_id");
+                        java.math.BigDecimal qty = rs.getBigDecimal("qty_reserved");
+                        if (qty == null) {
+                            qty = java.math.BigDecimal.ZERO;
+                        }
+
+                        // lock summary row liên quan bằng cách update (row sẽ bị lock trong InnoDB)
+                        psReturn.setBigDecimal(1, qty);
+                        psReturn.setBigDecimal(2, qty);
+                        psReturn.setLong(3, warehouseId);
+                        psReturn.setLong(4, variantId);
+                        psReturn.setString(5, condition);
+
+                        int updated = psReturn.executeUpdate();
+                        if (updated != 1) {
+                            throw new IllegalArgumentException(
+                                    "Cannot return inventory_summary for variantId=" + variantId);
+                        }
+
+                        psRelease.setLong(1, reservationId);
+                        psRelease.executeUpdate();
+                    }
+                }
+
+                // 3) update header (null-safe)
+                psUpdHeader.setString(1, header.getSoNumber());
+                psUpdHeader.setLong(2, header.getCustomerId());
+
+                if (header.getRequestedShipDate() != null) {
+                    psUpdHeader.setDate(3, java.sql.Date.valueOf(header.getRequestedShipDate()));
+                } else {
+                    psUpdHeader.setNull(3, Types.DATE);
+                }
+
+                if (header.getShipToAddress() != null && !header.getShipToAddress().isBlank()) {
+                    psUpdHeader.setString(4, header.getShipToAddress().trim());
+                } else {
+                    psUpdHeader.setNull(4, Types.VARCHAR);
+                }
+
+                psUpdHeader.setLong(5, header.getSoId());
+                psUpdHeader.executeUpdate();
+
+                // 4) delete old lines
+                psDelLines.setLong(1, header.getSoId());
+                psDelLines.executeUpdate();
+
+                // 5) insert new lines + reserve again
+                for (SaleOrderLineDTO l : newLines) {
+                    if (l.getOrderedQty() == null || l.getOrderedQty().signum() <= 0) {
+                        throw new IllegalArgumentException("Invalid qty for variantId=" + l.getVariantId());
+                    }
+
+                    // 5.1 lock + check available
+                    psLockSum.setLong(1, warehouseId);
+                    psLockSum.setLong(2, l.getVariantId());
+                    psLockSum.setString(3, condition);
+
+                    java.math.BigDecimal available = java.math.BigDecimal.ZERO;
+                    boolean hasRow = false;
+                    try (ResultSet rs = psLockSum.executeQuery()) {
+                        if (rs.next()) {
+                            hasRow = true;
+                            available = rs.getBigDecimal("qty_available");
+                            if (available == null) {
+                                available = java.math.BigDecimal.ZERO;
+                            }
+                        }
+                    }
+                    if (!hasRow) {
+                        throw new IllegalArgumentException("No inventory_summary row for variantId=" + l.getVariantId());
+                    }
+                    if (available.compareTo(l.getOrderedQty()) < 0) {
+                        throw new IllegalArgumentException(
+                                "Not enough stock for variantId=" + l.getVariantId()
+                                + ". Available=" + available + ", Required=" + l.getOrderedQty());
+                    }
+
+                    // 5.2 insert line -> get so_line_id
+                    psInsLine.setLong(1, header.getSoId());
+                    psInsLine.setLong(2, l.getVariantId());
+                    psInsLine.setBigDecimal(3, l.getOrderedQty());
+
+                    if (l.getUnitPrice() != null) {
+                        psInsLine.setBigDecimal(4, l.getUnitPrice());
+                    } else {
+                        psInsLine.setNull(4, Types.DECIMAL);
+                    }
+
+                    if (l.getDiscount() != null) {
+                        psInsLine.setBigDecimal(5, l.getDiscount());
+                    } else {
+                        psInsLine.setNull(5, Types.DECIMAL);
+                    }
+
+                    psInsLine.executeUpdate();
+
+                    long soLineId;
+                    try (ResultSet gk = psInsLine.getGeneratedKeys()) {
+                        if (!gk.next()) {
+                            throw new SQLException("Cannot get generated so_line_id");
+                        }
+                        soLineId = gk.getLong(1);
+                    }
+
+                    // 5.3 insert reservation ACTIVE
+                    psInsRes.setLong(1, warehouseId);
+                    psInsRes.setLong(2, soLineId);
+                    psInsRes.setLong(3, l.getVariantId());
+                    psInsRes.setBigDecimal(4, l.getOrderedQty());
+                    psInsRes.executeUpdate();
+
+                    // 5.4 update summary reserve
+                    psReserve.setBigDecimal(1, l.getOrderedQty());
+                    psReserve.setBigDecimal(2, l.getOrderedQty());
+                    psReserve.setLong(3, warehouseId);
+                    psReserve.setLong(4, l.getVariantId());
+                    psReserve.setString(5, condition);
+
+                    int upd = psReserve.executeUpdate();
+                    if (upd != 1) {
+                        throw new SQLException("Reserve inventory_summary failed for variantId=" + l.getVariantId());
+                    }
+                }
+
+                con.commit();
+            } catch (Exception e) {
+                con.rollback();
+                throw e;
+            } finally {
+                con.setAutoCommit(oldAutoCommit);
             }
-            ps.executeBatch();
         }
     }
 }

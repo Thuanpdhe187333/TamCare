@@ -299,8 +299,25 @@ public class SaleOrderController extends HttpServlet {
             return;
         }
 
-        soService.createManualSO(soNumber, customerId, requestedShipDate, shipToAddress, userId, lines);
-        response.sendRedirect(request.getContextPath() + "/sales-orders");
+        // Tạo SO + giữ chỗ tồn kho (DAO sẽ check inventory & reservation)
+        try {
+            soService.createManualSO(soNumber, customerId, requestedShipDate, shipToAddress, userId, lines);
+            response.sendRedirect(request.getContextPath() + "/sales-orders");
+        } catch (IllegalArgumentException ex) {
+            // Các lỗi business như thiếu tồn kho, không có inventory_summary,...
+            fieldErrors.put("lines", ex.getMessage());
+
+            request.setAttribute("fieldErrors", fieldErrors);
+            request.setAttribute("oldSoNumber", soNumber);
+            request.setAttribute("oldCustomerId", customerId);
+            request.setAttribute("oldShipToAddress", shipToAddress);
+            request.setAttribute("oldRequestedShipDate", requestedShipStr);
+            request.setAttribute("customers", customerDao.getActiveCustomers());
+            request.setAttribute("products", new service.ProductService().getProducts());
+            request.setAttribute("oldLines", oldLines);
+
+            request.getRequestDispatcher(ViewPath.SO_FORM_CREATE).forward(request, response);
+        }
     }
 
     private void forwardEditForm(HttpServletRequest request, HttpServletResponse response)
@@ -331,6 +348,14 @@ public class SaleOrderController extends HttpServlet {
 
         request.setCharacterEncoding("UTF-8");
         Map<String, String> fieldErrors = new HashMap<>();
+
+        HttpSession session = request.getSession(false);
+        User sessionUser = (session != null) ? (User) session.getAttribute("USER") : null;
+        if (sessionUser == null) {
+            response.sendRedirect(request.getContextPath() + "/authen");
+            return;
+        }
+        long userId = sessionUser.getUserId();
 
         long soId = RequestUtil.parseLong(request.getParameter("soId"), -1L);
         if (soId <= 0) {
@@ -494,8 +519,23 @@ public class SaleOrderController extends HttpServlet {
         }
         header.setShipToAddress(shipToAddress);
 
-        soService.updateSalesOrder(header, lines);
-        response.sendRedirect(request.getContextPath() + "/sales-orders?action=detail&id=" + soId);
+        try {
+            // Cập nhật SO + điều chỉnh reservation tồn kho
+            soService.updateSalesOrder(header, lines, userId);
+            response.sendRedirect(request.getContextPath() + "/sales-orders?action=detail&id=" + soId);
+        } catch (IllegalArgumentException ex) {
+            // Lỗi business: tồn kho không đủ, thiếu inventory_summary,...
+            fieldErrors.put("lines", ex.getMessage());
+
+            request.setAttribute("fieldErrors", fieldErrors);
+            request.setAttribute("so", header);
+            request.setAttribute("lines", soService.getSaleOrderDetailLines(soId));
+            request.setAttribute("oldLines", oldLines);
+            request.setAttribute("customers", customerDao.getActiveCustomers());
+            request.setAttribute("products", new service.ProductService().getProducts());
+
+            request.getRequestDispatcher(ViewPath.SO_FORM_EDIT).forward(request, response);
+        }
     }
 
     @Override

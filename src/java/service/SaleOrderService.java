@@ -52,7 +52,7 @@ public class SaleOrderService {
         return soDao.createManualSO(soNumber, customerId, requestedShipDate, shipToAddress, userId, lines);
     }
 
-    public void updateSalesOrder(SaleOrderHeaderDTO header, List<SaleOrderLineDTO> lines) throws Exception {
-        soDao.updateSalesOrder(header, lines);
+    public void updateSalesOrder(SaleOrderHeaderDTO header, List<SaleOrderLineDTO> lines, long userId) throws Exception {
+        soDao.updateSalesOrderWithReservation(header, lines, userId);
     }
 }
