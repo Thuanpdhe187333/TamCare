@@ -168,13 +168,15 @@ public class UserController extends HttpServlet {
 
         try {
             userService.create(uReq, createdBy);
+            request.getSession().setAttribute("message", "Tạo người dùng thành công");
             response.sendRedirect(request.getContextPath() + "/admin/user");
         } catch (util.ValidationException e) {
-            request.setAttribute("error", e.getMessage());
+            request.getSession().setAttribute("message", e.getMessage());
             request.setAttribute("user", uReq);
             viewCreate(request, response);
         } catch (SQLException e) {
             e.printStackTrace();
+            request.getSession().setAttribute("message", "Lỗi cơ sở dữ liệu khi tạo người dùng");
             viewList(request, response);
         }
     }
@@ -206,13 +208,16 @@ public class UserController extends HttpServlet {
 
             try {
                 userService.update(id, uReq);
+                request.getSession().setAttribute("message", "Cập nhật người dùng thành công");
                 response.setHeader("HX-Location", request.getContextPath() + "/admin/user");
             } catch (util.ValidationException e) {
+                request.getSession().setAttribute("message", e.getMessage());
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 response.getWriter().write(e.getMessage());
             }
         } catch (Exception e) {
             e.printStackTrace();
+            request.getSession().setAttribute("message", "Cập nhật người dùng thất bại");
             response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Cập nhật thất bại");
         }
     }
@@ -225,10 +230,12 @@ public class UserController extends HttpServlet {
             if (idRaw != null) {
                 Long id = Long.valueOf(idRaw);
                 userService.delete(id);
+                request.getSession().setAttribute("message", "Xóa người dùng thành công");
             }
             response.setHeader("HX-Location", request.getContextPath() + "/admin/user");
         } catch (NumberFormatException | SQLException e) {
             e.printStackTrace();
+            request.getSession().setAttribute("message", "Xóa người dùng thất bại");
             response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Xóa thất bại");
         }
     }
@@ -240,10 +247,12 @@ public class UserController extends HttpServlet {
             if (idRaw != null) {
                 Long id = Long.valueOf(idRaw);
                 userService.restore(id);
+                request.getSession().setAttribute("message", "Khôi phục người dùng thành công");
             }
             response.setHeader("HX-Redirect", request.getContextPath() + "/admin/user");
         } catch (Exception e) {
             e.printStackTrace();
+            request.getSession().setAttribute("message", "Khôi phục người dùng thất bại");
             response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Khôi phục thất bại");
         }
     }
