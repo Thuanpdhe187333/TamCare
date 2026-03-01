@@ -82,7 +82,13 @@ public class GoodsReceiptController extends HttpServlet {
         if (pageStr != null && !pageStr.isBlank()) {
             page = Integer.parseInt(pageStr);
         }
+
         int pageSize = 10;
+        String sizeStr = request.getParameter("size");
+        if (sizeStr != null && !sizeStr.isBlank()) {
+            pageSize = Integer.parseInt(sizeStr);
+        }
+
         int offset = (page - 1) * pageSize;
 
         List<GoodsReceiptListDTO> grns = grnDao.getFilteredGRNs(grnNumber, supplierId, status, sortField, sortOrder,
@@ -93,6 +99,8 @@ public class GoodsReceiptController extends HttpServlet {
         request.setAttribute("grns", grns);
         request.setAttribute("totalPages", totalPages);
         request.setAttribute("currentPage", page);
+        request.setAttribute("pageSize", pageSize);
+        request.setAttribute("totalRecords", total);
         request.setAttribute("suppliers", supplierDao.getActiveSuppliers());
 
         request.getRequestDispatcher(ViewPath.GRN_LIST).forward(request, response);
@@ -104,7 +112,19 @@ public class GoodsReceiptController extends HttpServlet {
         GoodsReceiptDAO grnDao = new GoodsReceiptDAO();
         request.setAttribute("suppliers", supplierDao.getActiveSuppliers());
         request.setAttribute("variants", grnDao.getActiveVariants());
-        request.setAttribute("purchaseOrders", grnDao.getPurchaseOrdersForSelection(null));
+
+        // Ensure purchaseOrders includes the current selection if it's an edit or
+        // re-load
+        Object oldPoIdAttr = request.getAttribute("oldPoId");
+        Long poId = null;
+        if (oldPoIdAttr != null && !oldPoIdAttr.toString().isBlank()) {
+            try {
+                poId = Long.parseLong(oldPoIdAttr.toString());
+            } catch (Exception e) {
+            }
+        }
+
+        request.setAttribute("purchaseOrders", grnDao.getPurchaseOrdersForSelection(poId));
         request.getRequestDispatcher(ViewPath.GRN_CREATE).forward(request, response);
     }
 
@@ -119,6 +139,7 @@ public class GoodsReceiptController extends HttpServlet {
         }
         request.setAttribute("grn", grn);
         request.setAttribute("lines", grnDao.getLinesByGrnId(id));
+        request.setAttribute("putawayDetails", grnDao.getPutawayDetailsByGrnId(id));
 
         // Get warehouse name
         WarehouseDAO warehouseDao = new WarehouseDAO();
@@ -134,7 +155,7 @@ public class GoodsReceiptController extends HttpServlet {
         Long id = Long.parseLong(request.getParameter("id"));
         GoodsReceipt grn = grnDao.getById(id);
 
-        if (grn == null || !"PENDING".equals(grn.getStatus())) {
+        if (grn == null || (!"PENDING".equals(grn.getStatus()) && !"DRAFT".equals(grn.getStatus()))) {
             response.sendRedirect(request.getContextPath() + "/goods-receipt?action=detail&id=" + id);
             return;
         }
@@ -156,22 +177,40 @@ public class GoodsReceiptController extends HttpServlet {
         request.setAttribute("oldSupplierId", poHeader != null ? poHeader.getSupplierId() : null);
 
         request.setAttribute("oldNote", grn.getNote());
-
-        List<Map<String, String>> lineMaps = lines.stream().map(l -> {
-            Map<String, String> m = new java.util.HashMap<>();
-            m.put("poLineId", String.valueOf(l.getPoLineId()));
-            m.put("variantId", String.valueOf(l.getVariantId()));
-            m.put("unitPrice", String.valueOf(l.getUnitPrice()));
-            m.put("qtyExpected", String.valueOf(l.getQtyExpected()));
-            m.put("qtyGood", String.valueOf(l.getQtyGood()));
-            m.put("qtyDamaged", String.valueOf(l.getQtyDamaged()));
-            m.put("qtyMissing", String.valueOf(l.getQtyMissing()));
-            m.put("note", l.getNote());
-            return m;
-        }).collect(Collectors.toList());
-        request.setAttribute("oldLines", lineMaps);
+        request.setAttribute("oldLinesJson", packageLinesToJson(lines));
 
         request.getRequestDispatcher(ViewPath.GRN_CREATE).forward(request, response);
+    }
+
+    private String packageLinesToJson(List<model.GoodsReceiptLine> lines) {
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < lines.size(); i++) {
+            model.GoodsReceiptLine l = lines.get(i);
+            if (i > 0)
+                sb.append(",");
+            sb.append("{");
+            sb.append("\"poLineId\":\"").append(l.getPoLineId() != null ? l.getPoLineId() : "").append("\",");
+            sb.append("\"variantId\":\"").append(l.getVariantId()).append("\",");
+            sb.append("\"unitPrice\":\"").append(l.getUnitPrice() != null ? l.getUnitPrice() : 0).append("\",");
+            sb.append("\"qtyExpected\":\"").append(l.getQtyExpected() != null ? l.getQtyExpected().toBigInteger() : 0)
+                    .append("\",");
+            sb.append("\"qtyGood\":\"").append(l.getQtyGood() != null ? l.getQtyGood().toBigInteger() : 0)
+                    .append("\",");
+            sb.append("\"qtyDamaged\":\"").append(l.getQtyDamaged() != null ? l.getQtyDamaged().toBigInteger() : 0)
+                    .append("\",");
+            sb.append("\"qtyMissing\":\"").append(l.getQtyMissing() != null ? l.getQtyMissing().toBigInteger() : 0)
+                    .append("\",");
+
+            String safeNote = l.getNote() != null ? l.getNote()
+                    .replace("\\", "\\\\")
+                    .replace("\"", "\\\"")
+                    .replace("\n", "\\n")
+                    .replace("\r", "") : "";
+            sb.append("\"note\":\"").append(safeNote).append("\"");
+            sb.append("}");
+        }
+        sb.append("]");
+        return sb.toString();
     }
 
     private void handleGetPoDetails(HttpServletRequest request, HttpServletResponse response) throws Exception {
@@ -210,7 +249,8 @@ public class GoodsReceiptController extends HttpServlet {
             sb.append("\"sku\":\"").append(l.getVariantSku() != null ? l.getVariantSku() : "").append("\",");
             sb.append("\"productName\":\"")
                     .append(l.getProductName() != null ? l.getProductName().replace("\"", "\\\"") : "").append("\",");
-            sb.append("\"orderedQty\":").append(l.getOrderedQty()).append(",");
+            sb.append("\"orderedQty\":").append(l.getOrderedQty() != null ? l.getOrderedQty().toBigInteger() : 0)
+                    .append(",");
             sb.append("\"unitPrice\":").append(l.getUnitPrice() != null ? l.getUnitPrice() : 0);
             sb.append("}");
         }
@@ -371,7 +411,32 @@ public class GoodsReceiptController extends HttpServlet {
             request.setAttribute("oldPoId", poIdStr);
             request.setAttribute("oldSupplierId", supplierIdStr);
             request.setAttribute("oldNote", note);
-            request.setAttribute("oldLines", allSubmittedLines);
+
+            // Re-package submitted lines into the same JSON format for consistency
+            List<model.GoodsReceiptLine> dummyLines = new ArrayList<>();
+            for (Map<String, String> m : allSubmittedLines) {
+                model.GoodsReceiptLine dl = new model.GoodsReceiptLine();
+                try {
+                    String plId = m.get("poLineId");
+                    dl.setPoLineId(plId != null && !plId.isBlank() ? Long.parseLong(plId) : null);
+                    dl.setVariantId(Long.parseLong(m.get("variantId")));
+                    dl.setUnitPrice(new BigDecimal(
+                            request.getParameter("lines[" + allSubmittedLines.indexOf(m) + "].unitPrice") != null
+                                    ? request.getParameter("lines[" + allSubmittedLines.indexOf(m) + "].unitPrice")
+                                    : "0"));
+                    dl.setQtyExpected(new BigDecimal(
+                            request.getParameter("lines[" + allSubmittedLines.indexOf(m) + "].qtyExpected") != null
+                                    ? request.getParameter("lines[" + allSubmittedLines.indexOf(m) + "].qtyExpected")
+                                    : "0"));
+                    dl.setQtyGood(new BigDecimal(m.get("qtyGood")));
+                    dl.setQtyDamaged(new BigDecimal(m.get("qtyDamaged")));
+                    dl.setQtyMissing(new BigDecimal(m.get("qtyMissing")));
+                    dl.setNote(m.get("note"));
+                    dummyLines.add(dl);
+                } catch (Exception e) {
+                }
+            }
+            request.setAttribute("oldLinesJson", packageLinesToJson(dummyLines));
             handleCreateForm(request, response);
             return;
         }
@@ -404,17 +469,6 @@ public class GoodsReceiptController extends HttpServlet {
             resultGrnId = grnDao.createGRN(grn, validLines);
         }
 
-        // Cập nhật trạng thái PO sang CLOSED để ẩn đi
-        if (poId != null) {
-            try {
-                PurchaseOrderDAO poDao = new PurchaseOrderDAO();
-                poDao.updateStatus(poId, "CLOSED");
-            } catch (Exception e) {
-                // Log error but don't fail the whole GRN creation
-                System.err.println("Error updating PO status: " + e.getMessage());
-            }
-        }
-
         // Sau khi lưu thành công, chuyển đến màn hình Putaway
         response.sendRedirect(request.getContextPath() + "/goods-receipt?action=putaway&id=" + resultGrnId);
     }
@@ -445,10 +499,12 @@ public class GoodsReceiptController extends HttpServlet {
         Zone damZone = zones.stream().filter(z -> "Z-DAM".equals(z.getCode())).findFirst().orElse(null);
 
         if (stoZone != null) {
-            request.setAttribute("storageSlots", slotDao.getSlotsByZoneId(stoZone.getZoneId()));
+            request.setAttribute("storageSlots",
+                    slotDao.getSlotsWithInventoryByZoneId(stoZone.getZoneId(), grn.getWarehouseId()));
         }
         if (damZone != null) {
-            request.setAttribute("damageSlots", slotDao.getSlotsByZoneId(damZone.getZoneId()));
+            request.setAttribute("damageSlots",
+                    slotDao.getSlotsWithInventoryByZoneId(damZone.getZoneId(), grn.getWarehouseId()));
         }
 
         request.getRequestDispatcher(ViewPath.GRN_PUTAWAY).forward(request, response);
@@ -464,39 +520,51 @@ public class GoodsReceiptController extends HttpServlet {
             userId = ((model.User) sessionUser).getUserId();
         }
 
-        String[] lineIndices = request.getParameterValues("lineIndices");
+        // Lấy danh sách GRN Lines để loop qua từng sản phẩm
+        List<model.GoodsReceiptLine> lines = grnDao.getLinesByGrnId(grnId);
         List<model.PutAwayLine> putawayLines = new ArrayList<>();
 
-        if (lineIndices != null) {
-            for (String idx : lineIndices) {
-                Long grnLineId = Long.parseLong(request.getParameter("grnLineId_" + idx));
+        for (model.GoodsReceiptLine line : lines) {
+            Long grnLineId = line.getGrnLineId();
 
-                // Process Good items
-                String goodQtyStr = request.getParameter("goodQty_" + idx);
-                String goodSlotIdStr = request.getParameter("goodSlotId_" + idx);
-                if (goodQtyStr != null && !goodQtyStr.isEmpty() && goodSlotIdStr != null && !goodSlotIdStr.isEmpty()) {
-                    BigDecimal qty = new BigDecimal(goodQtyStr);
-                    if (qty.compareTo(BigDecimal.ZERO) > 0) {
-                        model.PutAwayLine pl = new model.PutAwayLine();
-                        pl.setGrnLineId(grnLineId);
-                        pl.setToSlotId(Long.parseLong(goodSlotIdStr));
-                        pl.setQtyPutaway(qty);
-                        putawayLines.add(pl);
+            // 1. Process STORAGE assignments
+            String[] storageQtys = request.getParameterValues("qty_" + grnLineId + "_STORAGE[]");
+            String[] storageSlots = request.getParameterValues("slotId_" + grnLineId + "_STORAGE[]");
+
+            if (storageQtys != null && storageSlots != null) {
+                for (int i = 0; i < Math.min(storageQtys.length, storageSlots.length); i++) {
+                    String qStr = storageQtys[i];
+                    String sStr = storageSlots[i];
+                    if (qStr != null && !qStr.isEmpty() && sStr != null && !sStr.isEmpty()) {
+                        BigDecimal qty = new BigDecimal(qStr);
+                        if (qty.compareTo(BigDecimal.ZERO) > 0) {
+                            model.PutAwayLine pl = new model.PutAwayLine();
+                            pl.setGrnLineId(grnLineId);
+                            pl.setToSlotId(Long.parseLong(sStr));
+                            pl.setQtyPutaway(qty);
+                            putawayLines.add(pl);
+                        }
                     }
                 }
+            }
 
-                // Process Damaged items
-                String damagedQtyStr = request.getParameter("damagedQty_" + idx);
-                String damagedSlotIdStr = request.getParameter("damagedSlotId_" + idx);
-                if (damagedQtyStr != null && !damagedQtyStr.isEmpty() && damagedSlotIdStr != null
-                        && !damagedSlotIdStr.isEmpty()) {
-                    BigDecimal qty = new BigDecimal(damagedQtyStr);
-                    if (qty.compareTo(BigDecimal.ZERO) > 0) {
-                        model.PutAwayLine pl = new model.PutAwayLine();
-                        pl.setGrnLineId(grnLineId);
-                        pl.setToSlotId(Long.parseLong(damagedSlotIdStr));
-                        pl.setQtyPutaway(qty);
-                        putawayLines.add(pl);
+            // 2. Process DAMAGE assignments
+            String[] damageQtys = request.getParameterValues("qty_" + grnLineId + "_DAMAGE[]");
+            String[] damageSlots = request.getParameterValues("slotId_" + grnLineId + "_DAMAGE[]");
+
+            if (damageQtys != null && damageSlots != null) {
+                for (int i = 0; i < Math.min(damageQtys.length, damageSlots.length); i++) {
+                    String qStr = damageQtys[i];
+                    String sStr = damageSlots[i];
+                    if (qStr != null && !qStr.isEmpty() && sStr != null && !sStr.isEmpty()) {
+                        BigDecimal qty = new BigDecimal(qStr);
+                        if (qty.compareTo(BigDecimal.ZERO) > 0) {
+                            model.PutAwayLine pl = new model.PutAwayLine();
+                            pl.setGrnLineId(grnLineId);
+                            pl.setToSlotId(Long.parseLong(sStr));
+                            pl.setQtyPutaway(qty);
+                            putawayLines.add(pl);
+                        }
                     }
                 }
             }
@@ -516,8 +584,13 @@ public class GoodsReceiptController extends HttpServlet {
         if (idStr != null) {
             Long id = Long.parseLong(idStr);
             GoodsReceipt grn = grnDao.getById(id);
-            if (grn != null && "PENDING".equals(grn.getStatus())) {
+            if (grn != null && ("PENDING".equals(grn.getStatus()) || "DRAFT".equals(grn.getStatus()))) {
                 grnDao.deleteGRN(id);
+                // Re-open PO if it was closed
+                if (grn.getPoId() != null) {
+                    PurchaseOrderDAO poDao = new PurchaseOrderDAO();
+                    poDao.updateStatus(grn.getPoId(), "CREATED"); // Or "IMPORTED", "CREATED" is safer
+                }
             }
         }
         response.sendRedirect(request.getContextPath() + "/goods-receipt?action=list");
@@ -527,6 +600,9 @@ public class GoodsReceiptController extends HttpServlet {
             throws Exception {
         GoodsReceiptDAO grnDao = new GoodsReceiptDAO();
         dao.InventoryBalanceDAO invDao = new dao.InventoryBalanceDAO();
+        dao.InventorySummaryDAO summaryDao = new dao.InventorySummaryDAO();
+        dao.InventoryTxnDAO txnDao = new dao.InventoryTxnDAO();
+        dao.PurchaseOrderDAO poDao = new dao.PurchaseOrderDAO();
         SlotDAO slotDao = new SlotDAO();
         String idStr = request.getParameter("id");
 
@@ -540,6 +616,11 @@ public class GoodsReceiptController extends HttpServlet {
                 model.User user = (model.User) sessionUser;
                 approverId = user.getUserId();
                 userRoles = user.getRoleNames();
+                // Nếu roleNames null (login() chưa query roles), giữ default "ADMIN"
+                // vì AuthFilter đã xác thực user rồi, backend chỉ cần biết đã login
+                if (userRoles == null) {
+                    userRoles = "ADMIN";
+                }
             }
 
             if (userRoles != null && (userRoles.contains("ADMIN") || userRoles.contains("WAREHOUSE_MANAGER"))) {
@@ -548,19 +629,50 @@ public class GoodsReceiptController extends HttpServlet {
                     boolean success = grnDao.updateStatus(id, status, approverId);
 
                     if (success && "APPROVED".equals(status)) {
-                        // EXECUTING ACTUAL INVENTORY UPDATE
+                        // 1. UPDATE INVENTORY (BALANCE, SUMMARY, TXN)
                         List<model.PutAwayLine> ptlines = grnDao.getPutawayLinesByGrnId(id);
                         for (model.PutAwayLine pl : ptlines) {
                             Long variantId = grnDao.getVariantIdByGrnLineId(pl.getGrnLineId());
                             if (variantId != null) {
                                 String zoneType = slotDao.getZoneTypeBySlotId(pl.getToSlotId());
                                 String condition = "GOOD"; // Default
-                                if ("DAMAGE".equals(zoneType)) {
+                                if ("DAMAGED".equals(zoneType) || "DAMAGE".equals(zoneType)
+                                        || "Z-DAM".equals(zoneType)) {
                                     condition = "DAMAGED";
                                 }
+
+                                // A. Update Detailed Inventory (By Slot)
                                 invDao.assignProductToSlot(grn.getWarehouseId(), pl.getToSlotId(), variantId, condition,
                                         pl.getQtyPutaway());
+
+                                // B. Update Aggregated Inventory (By Warehouse)
+                                summaryDao.updateSummary(grn.getWarehouseId(), variantId, condition,
+                                        pl.getQtyPutaway());
+
+                                // C. Record Transaction (Audit Trail)
+                                model.InventoryTxn txn = new model.InventoryTxn();
+                                txn.setTxnType("INBOUND");
+                                txn.setWarehouseId(grn.getWarehouseId());
+                                txn.setToSlotId(pl.getToSlotId());
+                                txn.setVariantId(variantId);
+                                txn.setCondition(condition);
+                                txn.setQtyDelta(pl.getQtyPutaway());
+                                txn.setRefDocType("GRN");
+                                txn.setRefDocId(grn.getGrnId());
+                                txn.setNote("Nhập hàng từ phiếu " + grn.getGrnNumber());
+                                txn.setCreatedBy(approverId);
+                                txnDao.insertTxn(txn);
                             }
+                        }
+
+                        // 2. CLOSE PURCHASE ORDER
+                        if (grn.getPoId() != null) {
+                            poDao.updateStatus(grn.getPoId(), "CLOSED");
+                        }
+                    } else if (success && "REJECTED".equals(status)) {
+                        // Re-open PO if it was closed by the earlier bug during save
+                        if (grn.getPoId() != null) {
+                            poDao.updateStatus(grn.getPoId(), "CREATED");
                         }
                     }
 
