@@ -4,7 +4,6 @@ import context.DBContext;
 import model.GoodsReceipt;
 import model.GoodsReceiptLine;
 import model.PutAwayLine;
-import model.PutAwayOrder;
 import dto.ProductVariantDTO;
 import java.sql.*;
 import java.util.ArrayList;
@@ -322,7 +321,14 @@ public class GoodsReceiptDAO extends DBContext {
     }
 
     public List<dto.PurchaseOrderListDTO> getPurchaseOrdersForSelection(Long includePoId) throws SQLException {
-        String sql = "SELECT po_id, po_number FROM purchase_order WHERE (status != 'CLOSED' AND status != 'CANCELLED') OR po_id = ? ORDER BY po_id DESC";
+        String sql = """
+                    SELECT po_id, po_number
+                    FROM purchase_order
+                    WHERE ((status != 'CLOSED' AND status != 'CANCELLED')
+                           AND po_id NOT IN (SELECT po_id FROM goods_receipt WHERE status IN ('DRAFT', 'PENDING', 'APPROVED') AND po_id IS NOT NULL))
+                    OR po_id = ?
+                    ORDER BY po_id DESC
+                """;
         List<dto.PurchaseOrderListDTO> list = new ArrayList<>();
         try (Connection conn = getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -356,21 +362,35 @@ public class GoodsReceiptDAO extends DBContext {
     }
 
     public void deleteGRN(Long grnId) throws SQLException {
+        String sqlPutawayLines = "DELETE FROM putaway_line WHERE grn_line_id IN (SELECT grn_line_id FROM goods_receipt_line WHERE grn_id = ?)";
+        String sqlPutawayOrders = "DELETE FROM putaway_order WHERE grn_id = ?";
         String sqlLines = "DELETE FROM goods_receipt_line WHERE grn_id = ?";
         String sqlGR = "DELETE FROM goods_receipt WHERE grn_id = ?";
+
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false);
-            try (PreparedStatement psLines = conn.prepareStatement(sqlLines)) {
-                psLines.setLong(1, grnId);
-                psLines.executeUpdate();
+            try {
+                try (PreparedStatement psPL = conn.prepareStatement(sqlPutawayLines)) {
+                    psPL.setLong(1, grnId);
+                    psPL.executeUpdate();
+                }
+                try (PreparedStatement psPO = conn.prepareStatement(sqlPutawayOrders)) {
+                    psPO.setLong(1, grnId);
+                    psPO.executeUpdate();
+                }
+                try (PreparedStatement psLines = conn.prepareStatement(sqlLines)) {
+                    psLines.setLong(1, grnId);
+                    psLines.executeUpdate();
+                }
+                try (PreparedStatement psGR = conn.prepareStatement(sqlGR)) {
+                    psGR.setLong(1, grnId);
+                    psGR.executeUpdate();
+                }
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
             }
-            try (PreparedStatement psGR = conn.prepareStatement(sqlGR)) {
-                psGR.setLong(1, grnId);
-                psGR.executeUpdate();
-            }
-            conn.commit();
-        } catch (SQLException e) {
-            throw e;
         }
     }
 
@@ -481,6 +501,56 @@ public class GoodsReceiptDAO extends DBContext {
             }
             conn.commit();
         }
+    }
+
+    public List<dto.PutawayDetailDTO> getPutawayDetailsByGrnId(Long grnId) throws SQLException {
+        String sql = """
+                    SELECT
+                        pv.variant_sku AS sku,
+                        p.name AS product_name,
+                        s.code AS slot_code,
+                        z.name AS zone_name,
+                        z.code AS zone_code,
+                        pl.qty_putaway
+                    FROM putaway_line pl
+                    JOIN putaway_order po ON pl.putaway_id = po.putaway_id
+                    JOIN goods_receipt_line gl ON pl.grn_line_id = gl.grn_line_id
+                    JOIN product_variant pv ON gl.variant_id = pv.variant_id
+                    JOIN product p ON pv.product_id = p.product_id
+                    JOIN slot s ON pl.to_slot_id = s.slot_id
+                    JOIN zone z ON s.zone_id = z.zone_id
+                    WHERE po.grn_id = ?
+                    ORDER BY pv.variant_sku, s.code
+                """;
+        List<dto.PutawayDetailDTO> list = new ArrayList<>();
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, grnId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    dto.PutawayDetailDTO d = new dto.PutawayDetailDTO();
+                    d.setSku(rs.getString("sku"));
+                    d.setProductName(rs.getString("product_name"));
+                    d.setSlotCode(rs.getString("slot_code"));
+                    d.setZoneName(rs.getString("zone_name"));
+                    String zCode = rs.getString("zone_code");
+                    d.setZoneCode(zCode);
+                    d.setQtyPutaway(rs.getBigDecimal("qty_putaway"));
+
+                    // Determine type based on zone code
+                    if ("Z-DAM".equals(zCode)) {
+                        d.setType("DAMAGED");
+                    } else if ("Z-STO".equals(zCode)) {
+                        d.setType("GOOD");
+                    } else {
+                        d.setType("STORAGE");
+                    }
+
+                    list.add(d);
+                }
+            }
+        }
+        return list;
     }
 
     public List<PutAwayLine> getPutawayLinesByGrnId(Long grnId) throws SQLException {
