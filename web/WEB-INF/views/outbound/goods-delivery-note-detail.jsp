@@ -5,6 +5,12 @@
 <%@taglib uri="jakarta.tags.functions" prefix="fn" %>
 <t:layout title="Goods Delivery Note Details">
     <div class="container-fluid py-4">
+        <c:if test="${not empty param.error}">
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                ${fn:replace(fn:replace(param.error, '+', ' '), '%3A', ':')}
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+        </c:if>
         <!-- Breadcrumb / Back Link -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <nav aria-label="breadcrumb">
@@ -134,7 +140,7 @@
                     </button>
                     <a href="${pageContext.request.contextPath}/pick-task?action=assign&gdnId=${gdn.gdnId}"
                         class="btn btn-primary shadow-sm d-flex align-items-center justify-content-center"
-                        style="min-width: 120px; height: 38px; padding: 0;">
+                        style="min-width: 165px; height: 38px; padding: 0;">
                         <i class="fas fa-user-check me-2"></i>Assign Pick Task
                     </a>
                 </div>
@@ -147,7 +153,8 @@
                     </button>
                     <c:if test="${gdn.status == 'DRAFT'}">
                         <a href="${pageContext.request.contextPath}/pick-task?action=assign&gdnId=${gdn.gdnId}"
-                            class="btn btn-primary shadow-sm">
+                            class="btn btn-primary shadow-sm d-flex align-items-center justify-content-center"
+                            style="min-width: 165px; height: 38px; padding: 0 1rem;">
                             <i class="fas fa-user-check me-2"></i>Assign Pick Task
                         </a>
                     </c:if>
