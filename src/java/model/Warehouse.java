@@ -10,6 +10,8 @@ public class Warehouse {
     private Long warehouseId;
     private String code;
     private String name;
+    private String email;
+    private String phone;
     private String address;
     private String status;
     private LocalDateTime createdAt;
