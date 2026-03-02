@@ -108,6 +108,24 @@ public class CustomerDAO extends DBContext implements Dao<Customer> {
         return null;
     }
 
+    /** Returns customer_id for the given code, or null if not found. */
+    public Long findIdByCode(String code) throws SQLException {
+        if (code == null || code.isBlank()) {
+            return null;
+        }
+        String sql = "SELECT customer_id FROM customer WHERE code = ?";
+        try (Connection con = DBContext.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, code.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getLong("customer_id");
+                }
+            }
+        }
+        return null;
+    }
+
     @Override
     public boolean create(Customer customer) throws SQLException {
         String sql = """

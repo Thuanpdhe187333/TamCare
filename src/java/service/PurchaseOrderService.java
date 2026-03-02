@@ -39,6 +39,10 @@ public class PurchaseOrderService {
         poDao.createManualPO(poNumber, supplierId, expectedDate, note, userId, lines);
     }
 
+    public void createImportedPO(String poNumber, long supplierId, Date expectedDate, String note, Long userId, List<POLineCreateDTO> lines) throws Exception {
+        poDao.createImportedPO(poNumber, supplierId, expectedDate, note, userId, lines);
+    }
+
     public void updatePurchaseOrder(PurchaseOrderHeaderDTO header, List<PurchaseOrderLineDTO> lines) throws Exception {
         poDao.updatePurchaseOrder(header, lines);
     }

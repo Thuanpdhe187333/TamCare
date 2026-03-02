@@ -10,13 +10,10 @@ import lombok.Setter;
 public class PurchaseOrderListDTO {
     private Long poId;
     private String poNumber;
-
     private Long supplierId;
     private String supplierName;
-
     private LocalDate expectedDeliveryDate;
     private String status;
-
     private Long importedBy;
     private String importedByUsername;
     private LocalDateTime importedAt;

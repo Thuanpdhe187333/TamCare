@@ -125,7 +125,7 @@ public class ProductDAO extends DBContext {
         } else if ("zone_code".equalsIgnoreCase(validSortBy)) {
             orderByClause = "ORDER BY z.code " + validSortOrder;
         } else if ("condition".equalsIgnoreCase(validSortBy)) {
-            orderByClause = "ORDER BY ib.condition " + validSortOrder;
+            orderByClause = "ORDER BY `condition` " + validSortOrder;
         } else {
             orderByClause = "ORDER BY p." + validSortBy + " " + validSortOrder;
         }
@@ -139,14 +139,14 @@ public class ProductDAO extends DBContext {
         sqlBuilder.append("    p.created_at, ");
         sqlBuilder.append("    pv.variant_id, ");
         sqlBuilder.append("    pv.variant_sku, ");
-        sqlBuilder.append("    ib.qty_on_hand AS total_qty_on_hand, ");
-        sqlBuilder.append("    ib.qty_available AS total_qty_available, ");
-        sqlBuilder.append("    s.code AS slot_code, ");
-        sqlBuilder.append("    z.code AS zone_code, ");
-        sqlBuilder.append("    z.name AS zone_name, ");
-        sqlBuilder.append("    ib.condition, ");
-        sqlBuilder.append("    w.code AS warehouse_code, ");
-        sqlBuilder.append("    w.name AS warehouse_name ");
+        sqlBuilder.append("    COALESCE(SUM(ib.qty_on_hand), 0) AS total_qty_on_hand, ");
+        sqlBuilder.append("    COALESCE(SUM(ib.qty_available), 0) AS total_qty_available, ");
+        sqlBuilder.append("    MIN(s.code) AS slot_code, ");
+        sqlBuilder.append("    MIN(z.code) AS zone_code, ");
+        sqlBuilder.append("    MIN(z.name) AS zone_name, ");
+        sqlBuilder.append("    MIN(ib.condition) AS `condition`, ");
+        sqlBuilder.append("    MIN(w.code) AS warehouse_code, ");
+        sqlBuilder.append("    MIN(w.name) AS warehouse_name ");
         sqlBuilder.append("FROM product p ");
         sqlBuilder.append("INNER JOIN product_variant pv ON pv.product_id = p.product_id ");
         sqlBuilder.append("INNER JOIN inventory_balance ib ON ib.variant_id = pv.variant_id ");
@@ -154,6 +154,7 @@ public class ProductDAO extends DBContext {
         sqlBuilder.append("INNER JOIN zone z ON z.zone_id = s.zone_id ");
         sqlBuilder.append("INNER JOIN warehouse w ON w.warehouse_id = ib.warehouse_id ");
         sqlBuilder.append(whereClause.toString());
+        sqlBuilder.append(" GROUP BY p.product_id, p.sku, p.name, p.barcode, p.created_at, pv.variant_id, pv.variant_sku ");
         sqlBuilder.append(" ").append(orderByClause);
         sqlBuilder.append(" LIMIT ? OFFSET ?");
         
@@ -261,7 +262,7 @@ public class ProductDAO extends DBContext {
         whereClause.append("WHERE ").append(String.join(" AND ", conditions));
         
         StringBuilder sqlBuilder = new StringBuilder();
-        sqlBuilder.append("SELECT COUNT(DISTINCT CONCAT(p.product_id, '-', pv.variant_id, '-', ib.slot_id, '-', ib.condition)) AS total ");
+        sqlBuilder.append("SELECT COUNT(DISTINCT pv.variant_id) AS total ");
         sqlBuilder.append("FROM product p ");
         sqlBuilder.append("INNER JOIN product_variant pv ON pv.product_id = p.product_id ");
         sqlBuilder.append("INNER JOIN inventory_balance ib ON ib.variant_id = pv.variant_id ");

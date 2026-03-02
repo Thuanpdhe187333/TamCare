@@ -6,7 +6,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class ProductVariantDAO extends DBContext {
 
@@ -40,6 +43,35 @@ public class ProductVariantDAO extends DBContext {
         }
 
         return list;
+    }
+
+    /**
+     * Returns map variant_sku -> variant_id for the given SKUs.
+     * Only includes SKUs that exist in DB. Empty set returns empty map.
+     */
+    public Map<String, Long> findIdsBySkus(Set<String> skus) throws Exception {
+        Map<String, Long> out = new HashMap<>();
+        if (skus == null || skus.isEmpty()) {
+            return out;
+        }
+        List<String> list = new ArrayList<>(skus);
+        StringBuilder placeholders = new StringBuilder();
+        for (int i = 0; i < list.size(); i++) {
+            if (i > 0) placeholders.append(",");
+            placeholders.append("?");
+        }
+        String sql = "SELECT variant_sku, variant_id FROM product_variant WHERE variant_sku IN (" + placeholders + ")";
+        try (Connection con = DBContext.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            for (int i = 0; i < list.size(); i++) {
+                ps.setString(i + 1, list.get(i));
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.put(rs.getString("variant_sku"), rs.getLong("variant_id"));
+                }
+            }
+        }
+        return out;
     }
 
     public List<ProductVariantDTO> listByProductId(long productId) throws Exception {

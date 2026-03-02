@@ -2,6 +2,7 @@ package dao;
 
 import context.DBContext;
 import dto.SlotProductDTO;
+import dto.SlotQtyDTO;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -140,5 +141,93 @@ public class InventoryBalanceDAO extends DBContext {
         }
         
         return BigDecimal.ZERO;
+    }
+
+    /**
+     * Get slots with available qty for a variant (for allocating from_slot_id in pick task lines).
+     * Ordered by slot for consistent allocation (FIFO by slot code).
+     */
+    public List<SlotQtyDTO> getAvailableSlotsForVariant(Long warehouseId, Long variantId, BigDecimal minQty) throws Exception {
+        List<SlotQtyDTO> list = new ArrayList<>();
+        String sql = """
+            SELECT ib.slot_id, s.code AS slot_code, z.zone_id, z.code AS zone_code, ib.qty_available
+            FROM inventory_balance ib
+            JOIN slot s ON s.slot_id = ib.slot_id
+            JOIN zone z ON z.zone_id = s.zone_id
+            WHERE ib.warehouse_id = ? AND ib.variant_id = ? AND ib.qty_available > 0
+            ORDER BY z.code, s.code
+            """;
+        try (Connection con = getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setLong(1, warehouseId);
+            ps.setLong(2, variantId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    SlotQtyDTO dto = new SlotQtyDTO();
+                    dto.setSlotId(rs.getLong("slot_id"));
+                    dto.setSlotCode(rs.getString("slot_code"));
+                    dto.setZoneId(rs.getLong("zone_id"));
+                    dto.setZoneCode(rs.getString("zone_code"));
+                    dto.setQtyAvailable(rs.getBigDecimal("qty_available"));
+                    list.add(dto);
+                }
+            }
+        }
+        return list;
+    }
+
+    /**
+     * Deduct quantity from warehouse inventory for a variant (outbound).
+     * Deducts from slots that have qty_available; may span multiple rows.
+     */
+    public void deductQtyFromWarehouseVariant(Long warehouseId, Long variantId, BigDecimal qtyToDeduct) throws Exception {
+        if (qtyToDeduct == null || qtyToDeduct.signum() <= 0) return;
+        String sqlSelect = """
+            SELECT inv_balance_id, slot_id, `condition`, qty_available
+            FROM inventory_balance
+            WHERE warehouse_id = ? AND variant_id = ? AND qty_available > 0
+            ORDER BY inv_balance_id
+            """;
+        String sqlUpdate = """
+            UPDATE inventory_balance
+            SET qty_on_hand = qty_on_hand - ?,
+                qty_available = qty_available - ?
+            WHERE inv_balance_id = ?
+            """;
+        try (Connection con = DBContext.getConnection()) {
+            con.setAutoCommit(false);
+            try (PreparedStatement psSelect = con.prepareStatement(sqlSelect)) {
+                psSelect.setLong(1, warehouseId);
+                psSelect.setLong(2, variantId);
+                try (ResultSet rs = psSelect.executeQuery()) {
+                    java.util.List<Object[]> rows = new java.util.ArrayList<>();
+                    while (rs.next()) {
+                        rows.add(new Object[] {
+                            rs.getLong("inv_balance_id"),
+                            rs.getBigDecimal("qty_available")
+                        });
+                    }
+                    BigDecimal remaining = qtyToDeduct;
+                    for (Object[] row : rows) {
+                        if (remaining.signum() <= 0) break;
+                        Long invBalanceId = (Long) row[0];
+                        BigDecimal available = (BigDecimal) row[1];
+                        BigDecimal deduct = remaining.min(available);
+                        try (PreparedStatement psUpdate = con.prepareStatement(sqlUpdate)) {
+                            psUpdate.setBigDecimal(1, deduct);
+                            psUpdate.setBigDecimal(2, deduct);
+                            psUpdate.setLong(3, invBalanceId);
+                            psUpdate.executeUpdate();
+                        }
+                        remaining = remaining.subtract(deduct);
+                    }
+                    if (remaining.signum() > 0) {
+                        con.rollback();
+                        throw new IllegalStateException("Insufficient inventory for variant " + variantId + ": need " + qtyToDeduct + ", short by " + remaining);
+                    }
+                }
+            }
+            con.commit();
+        }
     }
 }

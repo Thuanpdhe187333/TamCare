@@ -12,54 +12,6 @@ import java.util.List;
 public class PurchaseOrderDAO extends DBContext {
 
     Connection conn = DBContext.getConnection();
-
-    public List<PurchaseOrderListDTO> getPurchaseOrderList(int limit, int offset) throws SQLException {
-        String sql = """
-                    SELECT
-                      po.po_id,
-                      po.po_number,
-                      po.supplier_id,
-                      s.name AS supplier_name,
-                      po.expected_delivery_date,
-                      po.status,
-                      po.imported_by,
-                      u.full_name AS imported_by_username,
-                      po.imported_at
-                    FROM purchase_order po
-                    LEFT JOIN supplier s ON s.supplier_id = po.supplier_id
-                    LEFT JOIN user u ON u.user_id = po.imported_by
-                    ORDER BY po.po_id DESC
-                    LIMIT ? OFFSET ?
-                """;
-        List<PurchaseOrderListDTO> list = new ArrayList<>();
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, limit);
-            ps.setInt(2, offset);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    PurchaseOrderListDTO dto = new PurchaseOrderListDTO();
-                    dto.setPoId(rs.getLong("po_id"));
-                    dto.setPoNumber(rs.getString("po_number"));
-                    // supplier
-                    dto.setSupplierId(rs.getObject("supplier_id") != null ? rs.getLong("supplier_id") : null);
-                    dto.setSupplierName(rs.getString("supplier_name"));
-                    // dates
-                    Date d = rs.getDate("expected_delivery_date");
-                    dto.setExpectedDeliveryDate(d != null ? d.toLocalDate() : null);
-                    dto.setStatus(rs.getString("status"));
-                    // imported by
-                    dto.setImportedBy(rs.getObject("imported_by") != null ? rs.getLong("imported_by") : null);
-                    dto.setImportedByUsername(rs.getString("imported_by_username"));
-                    Timestamp ts = rs.getTimestamp("imported_at");
-                    dto.setImportedAt(ts != null ? ts.toLocalDateTime() : null);
-                    list.add(dto);
-                }
-            }
-        }
-        return list;
-    }
-
     public PurchaseOrderHeaderDTO getPurchaseOrderHeader(long poId) throws Exception {
         String sql = """
                     SELECT
@@ -155,12 +107,38 @@ public class PurchaseOrderDAO extends DBContext {
             String note,
             long userId,
             List<POLineCreateDTO> lines) throws Exception {
+        // Manual create: status = CREATED, source_file_name = 'manual_create'
+        return createPO(poNumber, supplierId, expectedDate, note, userId, lines,
+                "CREATED", "manual_create");
+    }
+
+    public long createImportedPO(
+            String poNumber,
+            long supplierId,
+            Date expectedDate,
+            String note,
+            long userId,
+            List<POLineCreateDTO> lines) throws Exception {
+        // Import from Excel: status = IMPORTED, source_file_name = 'excel_import'
+        return createPO(poNumber, supplierId, expectedDate, note, userId, lines,
+                "IMPORTED", "excel_import");
+    }
+
+    private long createPO(
+            String poNumber,
+            long supplierId,
+            Date expectedDate,
+            String note,
+            long userId,
+            List<POLineCreateDTO> lines,
+            String status,
+            String sourceFileName) throws Exception {
 
         String sqlPO = """
                     INSERT INTO purchase_order
                         (po_number, supplier_id, expected_delivery_date, status,
                          imported_by, imported_at, source_file_name, note)
-                      VALUES (?, ?, ?, 'CREATED', ?, NOW(), 'manual_create', ?)
+                      VALUES (?, ?, ?, ?, ?, NOW(), ?, ?)
                 """;
 
         String sqlLine = """
@@ -178,8 +156,10 @@ public class PurchaseOrderDAO extends DBContext {
                 } else {
                     psPO.setNull(3, Types.DATE);
                 }
-                psPO.setLong(4, userId);
-                psPO.setString(5, note);
+                psPO.setString(4, status);
+                psPO.setLong(5, userId);
+                psPO.setString(6, sourceFileName);
+                psPO.setString(7, note);
 
                 psPO.executeUpdate();
 
@@ -230,13 +210,11 @@ public class PurchaseOrderDAO extends DBContext {
         try {
             conn.setAutoCommit(false);
 
-            // 1) Xóa lines trước để tránh FK constraint
             try (PreparedStatement ps = conn.prepareStatement(deleteLinesSql)) {
                 ps.setLong(1, poId);
                 ps.executeUpdate();
             }
 
-            // 2) Xóa PO header
             int affected;
             try (PreparedStatement ps = conn.prepareStatement(deletePoSql)) {
                 ps.setLong(1, poId);
