@@ -150,6 +150,74 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                <!-- Putaway Information Card -->
+                                <c:if test="${not empty putawayDetails}">
+                                    <div class="col-lg-12 mt-4">
+                                        <div class="card shadow-sm border-0">
+                                            <div class="card-header bg-secondary text-white py-3">
+                                                <h5 class="card-title mb-0"><i class="fas fa-warehouse me-2"></i>Storage
+                                                    Locations</h5>
+                                            </div>
+                                            <div class="card-body p-0">
+                                                <div class="table-responsive">
+                                                    <table class="table table-hover align-middle mb-0">
+                                                        <thead class="table-light text-secondary text-uppercase small">
+                                                            <tr class="text-center">
+                                                                <th class="text-start ps-4">Product</th>
+                                                                <th>Type</th>
+                                                                <th>Quantity</th>
+                                                                <th>Slot</th>
+                                                                <th>Zone</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <c:forEach var="p" items="${putawayDetails}">
+                                                                <tr class="text-center">
+                                                                    <td class="text-start ps-4">
+                                                                        <div class="fw-bold text-dark">${p.sku}</div>
+                                                                        <div class="small text-muted">${p.productName}
+                                                                        </div>
+                                                                    </td>
+                                                                    <td>
+                                                                        <c:choose>
+                                                                            <c:when test="${p.type == 'GOOD'}">
+                                                                                <span
+                                                                                    class="badge bg-success-subtle text-success border border-success-subtle px-2">GOOD</span>
+                                                                            </c:when>
+                                                                            <c:when test="${p.type == 'DAMAGED'}">
+                                                                                <span
+                                                                                    class="badge bg-danger-subtle text-danger border border-danger-subtle px-2">DAMAGED</span>
+                                                                            </c:when>
+                                                                            <c:otherwise>
+                                                                                <span
+                                                                                    class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2">${p.type}</span>
+                                                                            </c:otherwise>
+                                                                        </c:choose>
+                                                                    </td>
+                                                                    <td>
+                                                                        <fmt:formatNumber value="${p.qtyPutaway}"
+                                                                            pattern="#,##0" />
+                                                                    </td>
+                                                                    <td>
+                                                                        <span
+                                                                            class="badge bg-info-subtle text-info px-3 border border-info-subtle">
+                                                                            ${p.slotCode}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td>
+                                                                        <span
+                                                                            class="text-muted small">${p.zoneName}</span>
+                                                                    </td>
+                                                                </tr>
+                                                            </c:forEach>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </c:if>
                             </div>
 
                             <!-- Action Buttons -->
@@ -162,40 +230,19 @@
                                     </a>
                                 </div>
 
-                                <c:if test="${grn.status == 'PENDING'}">
-                                    <div class="d-flex gap-2">
-                                        <!-- Nút Edit -->
-                                        <a href="${pageContext.request.contextPath}/goods-receipt?action=edit&id=${grn.grnId}"
-                                            class="btn btn-warning shadow-sm text-dark d-flex align-items-center justify-content-center"
-                                            style="width: 100px; height: 38px; padding: 0;">
-                                            <i class="fas fa-edit me-2"></i>Edit
-                                        </a>
-
-                                        <!-- Nút Delete -->
-                                        <form action="${pageContext.request.contextPath}/goods-receipt" method="post"
-                                            onsubmit="return confirm('Are you sure you want to delete this GRN? This action cannot be undone.')">
-                                            <input type="hidden" name="action" value="delete">
-                                            <input type="hidden" name="id" value="${grn.grnId}">
-                                            <button type="submit"
-                                                class="btn btn-danger shadow-sm d-flex align-items-center justify-content-center"
-                                                style="width: 100px; height: 38px; padding: 0;">
-                                                <i class="fas fa-trash-alt me-2"></i>Delete
-                                            </button>
-                                        </form>
-
-                                        <c:if
-                                            test="${fn:contains(sessionScope.USER.roleNames, 'ADMIN') || fn:contains(sessionScope.USER.roleNames, 'WAREHOUSE_MANAGER') || sessionScope.USER == null}">
-                                            <div class="vr mx-2"></div>
+                                <div class="d-flex gap-2">
+                                    <c:choose>
+                                        <c:when test="${grn.status == 'PENDING' || grn.status == 'DRAFT'}">
 
                                             <!-- Nút Approve -->
                                             <form action="${pageContext.request.contextPath}/goods-receipt"
                                                 method="post"
-                                                onsubmit="return confirm('Are you sure you want to approve this GRN?')">
+                                                onsubmit="return confirm('Bạn chắc chắn muốn APPROVE phiếu này?')">
                                                 <input type="hidden" name="action" value="approve">
                                                 <input type="hidden" name="id" value="${grn.grnId}">
                                                 <button type="submit"
                                                     class="btn btn-success shadow-sm d-flex align-items-center justify-content-center"
-                                                    style="width: 100px; height: 38px; padding: 0;">
+                                                    style="height: 38px; padding: 0 16px;">
                                                     <i class="fas fa-check me-2"></i>Approve
                                                 </button>
                                             </form>
@@ -203,18 +250,47 @@
                                             <!-- Nút Reject -->
                                             <form action="${pageContext.request.contextPath}/goods-receipt"
                                                 method="post"
-                                                onsubmit="return confirm('Are you sure you want to reject this GRN?')">
+                                                onsubmit="return confirm('Bạn chắc chắn muốn REJECT phiếu này?')">
                                                 <input type="hidden" name="action" value="reject">
                                                 <input type="hidden" name="id" value="${grn.grnId}">
                                                 <button type="submit"
-                                                    class="btn btn-danger shadow-sm d-flex align-items-center justify-content-center"
-                                                    style="width: 100px; height: 38px; padding: 0;">
+                                                    class="btn btn-outline-danger shadow-sm d-flex align-items-center justify-content-center"
+                                                    style="height: 38px; padding: 0 16px;">
                                                     <i class="fas fa-times me-2"></i>Reject
                                                 </button>
                                             </form>
-                                        </c:if>
-                                    </div>
-                                </c:if>
+
+                                            <div class="vr mx-2"></div>
+
+                                            <!-- Nút Edit -->
+                                            <a href="${pageContext.request.contextPath}/goods-receipt?action=edit&id=${grn.grnId}"
+                                                class="btn btn-warning shadow-sm text-dark d-flex align-items-center justify-content-center"
+                                                style="height: 38px; padding: 0 16px;">
+                                                <i class="fas fa-edit me-2"></i>Edit
+                                            </a>
+
+                                            <!-- Nút Delete -->
+                                            <form action="${pageContext.request.contextPath}/goods-receipt"
+                                                method="post"
+                                                onsubmit="return confirm('Xóa phiếu này? Hành động không thể hoàn tác!')">
+                                                <input type="hidden" name="action" value="delete">
+                                                <input type="hidden" name="id" value="${grn.grnId}">
+                                                <button type="submit"
+                                                    class="btn btn-danger shadow-sm d-flex align-items-center justify-content-center"
+                                                    style="height: 38px; padding: 0 16px;">
+                                                    <i class="fas fa-trash-alt me-2"></i>Delete
+                                                </button>
+                                            </form>
+
+                                        </c:when>
+                                        <c:otherwise>
+                                            <span class="text-muted fst-italic small align-self-center">
+                                                <i class="fas fa-lock me-1"></i>
+                                                Phiếu đã được xử lý (${grn.status}) — không thể chỉnh sửa.
+                                            </span>
+                                        </c:otherwise>
+                                    </c:choose>
+                                </div>
                             </div>
                         </div>
 
