@@ -164,18 +164,24 @@ public class PickWaveController extends HttpServlet {
 
         // Validate kỹ dữ liệu GDN trước khi tạo wave
         if (!"PENDING".equalsIgnoreCase(gdn.getStatus())) {
-            request.getSession().setAttribute("message", "Chỉ được tạo pick wave cho GDN ở trạng thái PENDING.");
-            response.sendRedirect(request.getContextPath() + "/goods-delivery-note?action=detail&id=" + gdnId);
+            request.setAttribute("gdn", gdn);
+            request.setAttribute("error", "Pick wave can only be created for GDN in PENDING status.");
+            request.getRequestDispatcher("WEB-INF/views/outbound/goods-delivery-note-detail.jsp")
+                   .forward(request, response);
             return;
         }
         if (gdn.getWarehouseId() == null) {
-            request.getSession().setAttribute("message", "GDN chưa gắn warehouse. Vui lòng kiểm tra lại cấu hình.");
-            response.sendRedirect(request.getContextPath() + "/goods-delivery-note?action=detail&id=" + gdnId);
+            request.setAttribute("gdn", gdn);
+            request.setAttribute("error", "GDN has no warehouse assigned. Please check the configuration.");
+            request.getRequestDispatcher("WEB-INF/views/outbound/goods-delivery-note-detail.jsp")
+                   .forward(request, response);
             return;
         }
         if (gdn.getLines() == null || gdn.getLines().isEmpty()) {
-            request.getSession().setAttribute("message", "GDN không có dòng hàng nào để tạo pick wave.");
-            response.sendRedirect(request.getContextPath() + "/goods-delivery-note?action=detail&id=" + gdnId);
+            request.setAttribute("gdn", gdn);
+            request.setAttribute("error", "GDN has no lines to create a pick wave.");
+            request.getRequestDispatcher("WEB-INF/views/outbound/goods-delivery-note-detail.jsp")
+                   .forward(request, response);
             return;
         }
         boolean insufficientTotalStock = gdn.getLines().stream().anyMatch(
@@ -183,8 +189,10 @@ public class PickWaveController extends HttpServlet {
                         && (l.getQtyAvailable() == null || l.getQtyAvailable().compareTo(l.getQtyRequired()) < 0)
         );
         if (insufficientTotalStock) {
-            request.getSession().setAttribute("message", "Tồn kho tổng không đủ cho một số dòng GDN.");
-            response.sendRedirect(request.getContextPath() + "/goods-delivery-note?action=detail&id=" + gdnId);
+            request.setAttribute("gdn", gdn);
+            request.setAttribute("error", "Total inventory is not enough for some GDN lines. Please check requested quantity and inventory.");
+            request.getRequestDispatcher("WEB-INF/views/outbound/goods-delivery-note-detail.jsp")
+                   .forward(request, response);
             return;
         }
 
@@ -210,22 +218,28 @@ public class PickWaveController extends HttpServlet {
             // Bất kỳ lỗi nào trong quá trình tạo task cũng không được giữ wave lại
             Logger.getLogger(PickWaveController.class.getName()).log(Level.SEVERE, "Exception during Pick Task creation", ex);
             waveDao.deleteWaveById(waveId);
-            request.getSession().setAttribute("message", "Không thể tạo pick wave do lỗi dữ liệu liên quan. Vui lòng kiểm tra lại.");
-            response.sendRedirect(request.getContextPath() + "/goods-delivery-note?action=detail&id=" + gdnId);
+            dto.GDNDetailDTO refreshedGdn = gdnDao.getGDNDetailById(gdnId);
+            request.setAttribute("gdn", refreshedGdn);
+            request.setAttribute("error", "Cannot create pick wave due to related data error (GDN/Inventory). Please check and try again.");
+            request.getRequestDispatcher("WEB-INF/views/outbound/goods-delivery-note-detail.jsp")
+                   .forward(request, response);
             return;
         }
         if (!created) {
             // Không đủ tồn kho theo từng slot để tạo đầy đủ pick task -> xóa wave và báo lỗi
             waveDao.deleteWaveById(waveId);
-            request.getSession().setAttribute("message", "Không đủ tồn kho tại các vị trí để tạo pick wave.");
-            response.sendRedirect(request.getContextPath() + "/goods-delivery-note?action=detail&id=" + gdnId);
+            dto.GDNDetailDTO refreshedGdn = gdnDao.getGDNDetailById(gdnId);
+            request.setAttribute("gdn", refreshedGdn);
+            request.setAttribute("error", "Insufficient inventory at locations to create pick wave. Please check inventory or adjust quantity.");
+            request.getRequestDispatcher("WEB-INF/views/outbound/goods-delivery-note-detail.jsp")
+                   .forward(request, response);
             return;
         }
 
         waveDao.updateWaveStatus(waveId, "CREATED");
         gdnDao.updateGDNStatus(gdnId, "ONGOING");
 
-        request.getSession().setAttribute("message", "Tạo Pick Wave thành công cho GDN #" + gdn.getGdnNumber());
+        request.getSession().setAttribute("message", "Pick wave created successfully for GDN #" + gdn.getGdnNumber());
         response.sendRedirect(request.getContextPath() + "/pick-task?action=assign&waveId=" + waveId);
     }
 
