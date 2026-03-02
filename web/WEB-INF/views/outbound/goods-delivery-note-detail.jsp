@@ -1,4 +1,4 @@
-%@page contentType="text/html" pageEncoding="UTF-8" %>
+
 <%@taglib tagdir="/WEB-INF/tags/" prefix="t" %>
 <%@taglib uri="jakarta.tags.core" prefix="c" %>
 <%@taglib uri="jakarta.tags.fmt" prefix="fmt" %>
@@ -141,22 +141,11 @@
                         style="min-width: 100px; height: 38px;">
                         <i class="fas fa-edit me-2"></i>Edit
                     </button>
-<<<<<<< HEAD
                     <a href="${pageContext.request.contextPath}/pick-task?action=assign&gdnId=${gdn.gdnId}"
                         class="btn btn-primary shadow-sm d-flex align-items-center justify-content-center"
                         style="min-width: 165px; height: 38px; padding: 0;">
                         <i class="fas fa-user-check me-2"></i>Assign Pick Task
                     </a>
-=======
-                    <form action="${pageContext.request.contextPath}/pick-wave" method="post" class="d-inline">
-                        <input type="hidden" name="action" value="create"/>
-                        <input type="hidden" name="gdnId" value="${gdn.gdnId}"/>
-                        <button type="submit" class="btn btn-primary shadow-sm d-flex align-items-center justify-content-center"
-                            style="min-width: 180px; height: 38px;">
-                            <i class="fas fa-box-open me-2"></i>Tạo wave & Bắt đầu picking
-                        </button>
-                    </form>
->>>>>>> origin/main
                 </div>
             </c:if>
 
@@ -165,18 +154,11 @@
                     <button type="button" class="btn btn-warning shadow-sm text-dark" data-toggle="modal" data-target="#editGdnModal">
                         <i class="fas fa-edit me-2"></i>Edit
                     </button>
-<<<<<<< HEAD
                     <c:if test="${gdn.status == 'DRAFT'}">
                         <a href="${pageContext.request.contextPath}/pick-task?action=assign&gdnId=${gdn.gdnId}"
                             class="btn btn-primary shadow-sm d-flex align-items-center justify-content-center"
                             style="min-width: 165px; height: 38px; padding: 0 1rem;">
                             <i class="fas fa-user-check me-2"></i>Assign Pick Task
-=======
-                    <c:if test="${wave != null}">
-                        <a href="${pageContext.request.contextPath}/pick-task?action=assign&waveId=${wave.waveId}"
-                            class="btn btn-primary shadow-sm">
-                            <i class="fas fa-user-check me-2"></i>Assign tasks
->>>>>>> origin/main
                         </a>
                     </c:if>
                     <a href="${pageContext.request.contextPath}/packing?action=form&gdnId=${gdn.gdnId}"
