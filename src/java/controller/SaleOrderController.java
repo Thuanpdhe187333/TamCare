@@ -80,6 +80,8 @@ public class SaleOrderController extends HttpServlet {
                     handleUpdate(request, response);
                 case "detail" ->
                     forwardDetail(request, response);
+                case "delete" ->
+                    handleDelete(request, response);
                 case "processImport" ->
                     handleProcessImport(request, response);
                 default ->
@@ -600,6 +602,32 @@ public class SaleOrderController extends HttpServlet {
 
             request.getRequestDispatcher(ViewPath.SO_FORM_EDIT).forward(request, response);
         }
+    }
+
+    private void handleDelete(HttpServletRequest request, HttpServletResponse response)
+            throws Exception {
+
+        long soId = RequestUtil.parseLong(request.getParameter("id"), -1L);
+        if (soId <= 0) {
+            response.sendRedirect(request.getContextPath() + "/sales-orders");
+            return;
+        }
+
+        SaleOrderHeaderDTO so = soService.getSaleOrderHeader(soId);
+        if (so != null && "CLOSED".equalsIgnoreCase(so.getStatus())) {
+            String page = request.getParameter("page");
+            String redirectUrl = request.getContextPath() + "/sales-orders";
+            redirectUrl += (page != null && !page.isBlank()) ? "?page=" + page + "&msg=cannotdelete" : "?msg=cannotdelete";
+            response.sendRedirect(redirectUrl);
+            return;
+        }
+
+        boolean ok = soService.deleteSalesOrder(soId);
+        String msg = ok ? "deleted" : "notfound";
+        String page = request.getParameter("page");
+        String redirectUrl = request.getContextPath() + "/sales-orders";
+        redirectUrl += (page != null && !page.isBlank()) ? "?page=" + page + "&msg=" + msg : "?msg=" + msg;
+        response.sendRedirect(redirectUrl);
     }
 
     @Override
