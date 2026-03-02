@@ -105,21 +105,21 @@ public class PickWaveController extends HttpServlet {
         // Validate kỹ dữ liệu GDN trước khi tạo wave
         if (!"PENDING".equalsIgnoreCase(gdn.getStatus())) {
             request.setAttribute("gdn", gdn);
-            request.setAttribute("error", "Chỉ được tạo pick wave cho GDN ở trạng thái PENDING.");
+            request.setAttribute("error", "Pick wave can only be created for GDN in PENDING status.");
             request.getRequestDispatcher("WEB-INF/views/outbound/goods-delivery-note-detail.jsp")
                    .forward(request, response);
             return;
         }
         if (gdn.getWarehouseId() == null) {
             request.setAttribute("gdn", gdn);
-            request.setAttribute("error", "GDN chưa gắn warehouse. Vui lòng kiểm tra lại cấu hình.");
+            request.setAttribute("error", "GDN has no warehouse assigned. Please check the configuration.");
             request.getRequestDispatcher("WEB-INF/views/outbound/goods-delivery-note-detail.jsp")
                    .forward(request, response);
             return;
         }
         if (gdn.getLines() == null || gdn.getLines().isEmpty()) {
             request.setAttribute("gdn", gdn);
-            request.setAttribute("error", "GDN không có dòng hàng nào để tạo pick wave.");
+            request.setAttribute("error", "GDN has no lines to create a pick wave.");
             request.getRequestDispatcher("WEB-INF/views/outbound/goods-delivery-note-detail.jsp")
                    .forward(request, response);
             return;
@@ -130,7 +130,7 @@ public class PickWaveController extends HttpServlet {
         );
         if (insufficientTotalStock) {
             request.setAttribute("gdn", gdn);
-            request.setAttribute("error", "Tồn kho tổng không đủ cho một số dòng GDN. Vui lòng kiểm tra lại số lượng yêu cầu và tồn kho.");
+            request.setAttribute("error", "Total inventory is not enough for some GDN lines. Please check requested quantity and inventory.");
             request.getRequestDispatcher("WEB-INF/views/outbound/goods-delivery-note-detail.jsp")
                    .forward(request, response);
             return;
@@ -160,7 +160,7 @@ public class PickWaveController extends HttpServlet {
             waveDao.deleteWaveById(waveId);
             dto.GDNDetailDTO refreshedGdn = gdnDao.getGDNDetailById(gdnId);
             request.setAttribute("gdn", refreshedGdn);
-            request.setAttribute("error", "Không thể tạo pick wave do lỗi dữ liệu liên quan (GDN/Inventory). Vui lòng kiểm tra lại.");
+            request.setAttribute("error", "Cannot create pick wave due to related data error (GDN/Inventory). Please check and try again.");
             request.getRequestDispatcher("WEB-INF/views/outbound/goods-delivery-note-detail.jsp")
                    .forward(request, response);
             return;
@@ -170,7 +170,7 @@ public class PickWaveController extends HttpServlet {
             waveDao.deleteWaveById(waveId);
             dto.GDNDetailDTO refreshedGdn = gdnDao.getGDNDetailById(gdnId);
             request.setAttribute("gdn", refreshedGdn);
-            request.setAttribute("error", "Không đủ tồn kho tại các vị trí để tạo pick wave. Vui lòng kiểm tra tồn kho hoặc điều chỉnh số lượng.");
+            request.setAttribute("error", "Insufficient inventory at locations to create pick wave. Please check inventory or adjust quantity.");
             request.getRequestDispatcher("WEB-INF/views/outbound/goods-delivery-note-detail.jsp")
                    .forward(request, response);
             return;
