@@ -38,21 +38,6 @@
                                     </div>
                                 </div>
 
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="email" class="form-label">Email</label>
-                                        <input type="email" class="form-control" id="email" name="email"
-                                            value="${warehouse.email}" placeholder="contact@warehouse.com">
-                                    </div>
-
-                                    <div class="col-md-6 mb-3">
-                                        <label for="phone" class="form-label">Phone</label>
-                                        <input type="tel" class="form-control" id="phone" name="phone"
-                                            value="${warehouse.phone}" placeholder="0123456789" pattern="0[0-9]{9}"
-                                            title="Số điện thoại phải bắt đầu bằng số 0 và có độ dài 10 chữ số">
-                                    </div>
-                                </div>
-
                                 <div class="mb-4">
                                     <label for="address" class="form-label">Address</label>
                                     <textarea class="form-control" id="address" name="address" rows="2"

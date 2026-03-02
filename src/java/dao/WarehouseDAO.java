@@ -40,7 +40,7 @@ public class WarehouseDAO extends DBContext implements Dao<Warehouse> {
 
         String query = """
                     SELECT * FROM warehouse
-                    WHERE (name LIKE ? OR code LIKE ? OR email LIKE ? OR phone LIKE ?)
+                    WHERE (name LIKE ? OR code LIKE ?)
                     ORDER BY
                         CASE WHEN ? = 'name' THEN name END ASC,
                         CASE WHEN ? = 'code' THEN code END ASC,
@@ -53,14 +53,12 @@ public class WarehouseDAO extends DBContext implements Dao<Warehouse> {
         try (Connection con = DBContext.getConnection(); PreparedStatement statement = con.prepareStatement(query)) {
             statement.setString(1, search);
             statement.setString(2, search);
-            statement.setString(3, search);
-            statement.setString(4, search);
 
-            statement.setString(5, sort);
-            statement.setString(6, sort);
+            statement.setString(3, sort);
+            statement.setString(4, sort);
 
-            statement.setLong(7, size);
-            statement.setLong(8, offset);
+            statement.setLong(5, size);
+            statement.setLong(6, offset);
 
             try (ResultSet result = statement.executeQuery()) {
                 while (result.next()) {
@@ -75,14 +73,12 @@ public class WarehouseDAO extends DBContext implements Dao<Warehouse> {
     public Long getPageCount(String search) throws SQLException {
         String query = """
                     SELECT COUNT(*) FROM warehouse
-                    WHERE (name LIKE ? OR code LIKE ? OR email LIKE ? OR phone LIKE ?)
+                    WHERE (name LIKE ? OR code LIKE ?)
                 """;
 
         try (Connection con = DBContext.getConnection(); PreparedStatement statement = con.prepareStatement(query)) {
             statement.setString(1, search);
             statement.setString(2, search);
-            statement.setString(3, search);
-            statement.setString(4, search);
 
             try (ResultSet result = statement.executeQuery()) {
                 if (result.next()) {
@@ -111,18 +107,16 @@ public class WarehouseDAO extends DBContext implements Dao<Warehouse> {
     @Override
     public boolean create(Warehouse warehouse) throws SQLException {
         String sql = """
-                    INSERT INTO warehouse (code, name, email, phone, address, status)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    INSERT INTO warehouse (code, name, address, status)
+                    VALUES (?, ?, ?, ?)
                 """;
 
         try (Connection con = DBContext.getConnection();
                 PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, warehouse.getCode());
             ps.setString(2, warehouse.getName());
-            ps.setString(3, warehouse.getEmail());
-            ps.setString(4, warehouse.getPhone());
-            ps.setString(5, warehouse.getAddress());
-            ps.setString(6, warehouse.getStatus() == null ? "ACTIVE" : warehouse.getStatus());
+            ps.setString(3, warehouse.getAddress());
+            ps.setString(4, warehouse.getStatus() == null ? "ACTIVE" : warehouse.getStatus());
 
             int rowsAffected = ps.executeUpdate();
             if (rowsAffected > 0) {
@@ -141,20 +135,26 @@ public class WarehouseDAO extends DBContext implements Dao<Warehouse> {
     public boolean update(Warehouse warehouse) throws SQLException {
         String sql = """
                     UPDATE warehouse
-                    SET code = ?, name = ?, email = ?, phone = ?, address = ?, status = ?
+                    SET code = ?, name = ?, address = ?, status = ?
                     WHERE warehouse_id = ?
                 """;
 
         try (Connection con = DBContext.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, warehouse.getCode());
             ps.setString(2, warehouse.getName());
-            ps.setString(3, warehouse.getEmail());
-            ps.setString(4, warehouse.getPhone());
-            ps.setString(5, warehouse.getAddress());
-            ps.setString(6, warehouse.getStatus());
-            ps.setLong(7, warehouse.getWarehouseId());
+            ps.setString(3, warehouse.getAddress());
+            ps.setString(4, warehouse.getStatus());
+            ps.setLong(5, warehouse.getWarehouseId());
 
-            return ps.executeUpdate() > 0;
+            System.out.println("Executing UPDATE: " + sql);
+            System.out.println("Parameters: code=" + warehouse.getCode() + ", name=" + warehouse.getName() 
+                + ", address=" + warehouse.getAddress() + ", status=" + warehouse.getStatus() 
+                + ", id=" + warehouse.getWarehouseId());
+
+            int rowsAffected = ps.executeUpdate();
+            System.out.println("Rows affected: " + rowsAffected);
+            
+            return rowsAffected > 0;
         }
     }
 
@@ -163,7 +163,14 @@ public class WarehouseDAO extends DBContext implements Dao<Warehouse> {
         String sql = "DELETE FROM warehouse WHERE warehouse_id = ?";
         try (Connection con = DBContext.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setLong(1, id);
-            return ps.executeUpdate() > 0;
+            
+            System.out.println("Executing DELETE: " + sql);
+            System.out.println("Parameter: id=" + id);
+            
+            int rowsAffected = ps.executeUpdate();
+            System.out.println("Rows affected: " + rowsAffected);
+            
+            return rowsAffected > 0;
         }
     }
 
@@ -187,8 +194,6 @@ public class WarehouseDAO extends DBContext implements Dao<Warehouse> {
         w.setWarehouseId(rs.getLong("warehouse_id"));
         w.setCode(rs.getString("code"));
         w.setName(rs.getString("name"));
-        w.setEmail(rs.getString("email"));
-        w.setPhone(rs.getString("phone"));
         w.setAddress(rs.getString("address"));
         w.setStatus(rs.getString("status"));
 

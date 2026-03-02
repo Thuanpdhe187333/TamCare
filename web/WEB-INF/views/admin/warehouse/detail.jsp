@@ -71,17 +71,6 @@
                                 <div class="col-sm-9 fs-5 fw-bold text-dark">${warehouse.name}</div>
                             </div>
                             <hr class="bg-light">
-                            <div class="row mb-3">
-                                <div class="col-sm-3 text-muted small text-uppercase fw-bold">Email Address</div>
-                                <div class="col-sm-9 text-primary">${empty warehouse.email ? 'N/A' : warehouse.email}
-                                </div>
-                            </div>
-                            <hr class="bg-light">
-                            <div class="row mb-3">
-                                <div class="col-sm-3 text-muted small text-uppercase fw-bold">Phone Number</div>
-                                <div class="col-sm-9">${empty warehouse.phone ? 'N/A' : warehouse.phone}</div>
-                            </div>
-                            <hr class="bg-light">
                             <div class="row mb-0">
                                 <div class="col-sm-3 text-muted small text-uppercase fw-bold">Address</div>
                                 <div class="col-sm-9">${empty warehouse.address ? 'N/A' : warehouse.address}</div>

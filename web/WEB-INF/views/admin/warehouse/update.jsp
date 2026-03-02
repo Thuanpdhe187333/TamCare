@@ -13,8 +13,15 @@
                 <jsp:body>
                     <div class="card shadow-sm">
                         <div class="card-body">
-                            <form hx-put="${pageContext.request.contextPath}/admin/warehouse" hx-swap="none"
-                                class="m-0">
+                            <c:if test="${not empty error}">
+                                <div class="alert alert-danger">${error}</div>
+                            </c:if>
+                            
+                            <c:if test="${not empty success}">
+                                <div class="alert alert-success">${success}</div>
+                            </c:if>
+
+                            <form method="POST" action="${pageContext.request.contextPath}/admin/warehouse/update" class="m-0">
 
                                 <input type="hidden" name="id" value="${warehouse.warehouseId}">
 
@@ -33,21 +40,6 @@
                                         </label>
                                         <input type="text" class="form-control" id="name" name="name" required
                                             value="${warehouse.name}" placeholder="Warehouse Name">
-                                    </div>
-                                </div>
-
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="email" class="form-label">Email</label>
-                                        <input type="email" class="form-control" id="email" name="email"
-                                            value="${warehouse.email}" placeholder="contact@warehouse.com">
-                                    </div>
-
-                                    <div class="col-md-6 mb-3">
-                                        <label for="phone" class="form-label">Phone</label>
-                                        <input type="tel" class="form-control" id="phone" name="phone"
-                                            value="${warehouse.phone}" placeholder="0123456789" pattern="0[0-9]{9}"
-                                            title="Số điện thoại phải bắt đầu bằng số 0 và có độ dài 10 chữ số">
                                     </div>
                                 </div>
 

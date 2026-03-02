@@ -13,13 +13,13 @@
 
                     <jsp:body>
                         <c:set var="columns"
-                            value='${["Index", "Code", "Name", "Email", "Phone", "Status", "Action"]}' />
+                            value='${["Index", "Code", "Name", "Status", "Action"]}' />
                         <t:table columns="${columns}">
                             <jsp:attribute name="head">
                                 <form hx-get="${pageContext.request.contextPath}/admin/warehouse" hx-target="#wrapper"
                                     hx-select="#wrapper" hx-swap="outerHTML" hx-push-url="true" class="input-group m-0">
                                     <input name="search" class="form-control"
-                                        placeholder="Search by name, code, email, phone" value="${search}" />
+                                        placeholder="Search by name, code" value="${search}" />
                                     <button type="submit" class="btn btn-primary">
                                         <i class="bi bi-search"></i>
                                     </button>
@@ -38,8 +38,6 @@
                                         <td>${status.index + 1 + (page - 1) * size}</td>
                                         <td><strong>${w.code}</strong></td>
                                         <td>${w.name}</td>
-                                        <td>${w.email}</td>
-                                        <td>${w.phone}</td>
                                         <td>
                                             <c:choose>
                                                 <c:when test="${w.status == 'ACTIVE'}">
@@ -74,12 +72,12 @@
                                                     <strong>${w.name}</strong>? This action cannot be undone.
                                                 </jsp:attribute>
                                                 <jsp:attribute name="action">
-                                                    <button type="button" class="btn btn-danger"
-                                                        hx-delete="${pageContext.request.contextPath}/admin/warehouse?id=${w.warehouseId}"
-                                                        hx-target="#wrapper" hx-select="#wrapper" hx-swap="outerHTML"
-                                                        data-bs-dismiss="modal">
-                                                        Delete
-                                                    </button>
+                                                    <form method="POST" action="${pageContext.request.contextPath}/admin/warehouse/delete" style="display:inline;">
+                                                        <input type="hidden" name="id" value="${w.warehouseId}">
+                                                        <button type="submit" class="btn btn-danger" data-bs-dismiss="modal">
+                                                            Delete
+                                                        </button>
+                                                    </form>
                                                 </jsp:attribute>
                                             </t:alert>
                                         </td>
