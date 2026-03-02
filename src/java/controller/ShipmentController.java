@@ -1,157 +1,178 @@
 package controller;
 
 import dao.ShipmentDAO;
-import dao.CarrierDAO;
-import dao.SaleOrderDAO;
-import dto.ShipmentDTO;
+import model.Shipment;
+import util.ViewPath;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import model.User;
+import jakarta.servlet.http.*;
 import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.sql.SQLException;
+import java.util.List;
 
 @WebServlet(name = "ShipmentController", urlPatterns = { "/shipment" })
 public class ShipmentController extends HttpServlet {
 
+    private final ShipmentDAO shipmentDAO = new ShipmentDAO();
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        request.setCharacterEncoding("UTF-8");
-        response.setCharacterEncoding("UTF-8");
-
         String action = request.getParameter("action");
-        if (action == null) {
-            action = "create";
-        }
+        if (action == null)
+            action = "list";
 
         try {
             switch (action) {
-                case "create" -> handleCreateForm(request, response);
-                case "getSoInfo" -> handleGetSoInfo(request, response);
-                default -> response.sendRedirect(request.getContextPath() + "/shipment?action=create");
+                case "list" -> handleList(request, response);
+                case "create" -> handleCreate(request, response);
+                case "detail" -> handleDetail(request, response);
+                case "edit" -> handleEdit(request, response);
+                default -> response.sendRedirect(request.getContextPath() + "/shipment?action=list");
             }
-        } catch (Exception e) {
-            Logger.getLogger(ShipmentController.class.getName()).log(Level.SEVERE, null, e);
+        } catch (SQLException e) {
             throw new ServletException(e);
         }
-    }
-
-    private void handleCreateForm(HttpServletRequest request, HttpServletResponse response) throws Exception {
-        CarrierDAO carrierDao = new CarrierDAO();
-        request.setAttribute("carriers", carrierDao.getAll());
-        request.getRequestDispatcher("WEB-INF/views/outbound/shipment-create.jsp")
-               .forward(request, response);
-    }
-
-    private void handleGetSoInfo(HttpServletRequest request, HttpServletResponse response) throws Exception {
-        ShipmentDAO shipmentDao = new ShipmentDAO();
-        String soNumber = request.getParameter("soNumber");
-        
-        if (soNumber == null || soNumber.isBlank()) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            return;
-        }
-
-        ShipmentDTO info = shipmentDao.getShipmentInfoBySONumber(soNumber);
-        if (info == null) {
-            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            return;
-        }
-
-        response.setContentType("application/json;charset=UTF-8");
-        StringBuilder sb = new StringBuilder();
-        sb.append("{");
-        sb.append("\"soNumber\":\"").append(escapeJson(info.getSoNumber())).append("\",");
-        sb.append("\"customerId\":").append(info.getCustomerId() != null ? info.getCustomerId() : "null").append(",");
-        sb.append("\"customerName\":\"").append(escapeJson(info.getCustomerName())).append("\",");
-        sb.append("\"shipToAddress\":\"").append(escapeJson(info.getShipToAddress())).append("\",");
-        sb.append("\"requestedShipDate\":\"").append(info.getRequestedShipDate() != null ? info.getRequestedShipDate().toString() : "").append("\",");
-        sb.append("\"gdnId\":").append(info.getGdnId() != null ? info.getGdnId() : "null").append(",");
-        sb.append("\"gdnNumber\":\"").append(escapeJson(info.getGdnNumber())).append("\"");
-        sb.append("}");
-
-        response.getWriter().write(sb.toString());
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        request.setCharacterEncoding("UTF-8");
-        response.setCharacterEncoding("UTF-8");
-
         String action = request.getParameter("action");
-        if (action == null) {
-            action = "";
+        if (action == null || action.isBlank()) {
+            response.sendRedirect(request.getContextPath() + "/shipment?action=list");
+            return;
         }
-
         try {
             switch (action) {
-                case "create" -> handleCreate(request, response);
-                case "updateStatus" -> handleUpdateStatus(request, response);
-                default -> response.sendRedirect(request.getContextPath() + "/shipment?action=create");
+                case "store" -> handleStore(request, response);
+                case "update" -> handleUpdate(request, response);
+                default -> response.sendRedirect(request.getContextPath() + "/shipment?action=list");
             }
-        } catch (Exception e) {
-            Logger.getLogger(ShipmentController.class.getName()).log(Level.SEVERE, null, e);
+        } catch (SQLException e) {
             throw new ServletException(e);
         }
     }
 
-    private void handleCreate(HttpServletRequest request, HttpServletResponse response) throws Exception {
-        ShipmentDAO shipmentDao = new ShipmentDAO();
-        
-        String soNumber = request.getParameter("soNumber");
-        Long gdnId = parseLong(request.getParameter("gdnId"), -1);
-        Long carrierId = parseLong(request.getParameter("carrierId"), -1);
-        String shipmentType = request.getParameter("shipmentType");
-        
-        if (gdnId <= 0 || carrierId <= 0) {
-            request.setAttribute("error", "Invalid GDN ID or Carrier ID");
-            handleCreateForm(request, response);
-            return;
-        }
-
-        User user = (User) request.getSession().getAttribute("USER");
-        Long createdBy = user != null ? user.getUserId() : null;
-
-        Long shipmentId = shipmentDao.createShipmentFromSO(soNumber, gdnId, carrierId, shipmentType, createdBy);
-        
-        response.sendRedirect(request.getContextPath() + "/goods-delivery-note?action=list");
-    }
-
-    private void handleUpdateStatus(HttpServletRequest request, HttpServletResponse response) throws Exception {
-        ShipmentDAO shipmentDao = new ShipmentDAO();
-        Long shipmentId = parseLong(request.getParameter("shipmentId"), -1);
+    private void handleList(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException, SQLException {
+        String shipmentNumber = request.getParameter("shipmentNumber");
+        String carrierIdStr = request.getParameter("carrierId");
+        Long carrierId = (carrierIdStr != null && !carrierIdStr.isEmpty()) ? Long.valueOf(carrierIdStr) : null;
         String status = request.getParameter("status");
-        
-        if (shipmentId <= 0 || status == null || status.isBlank()) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        String shipmentType = request.getParameter("shipmentType");
+        String sortBy = request.getParameter("sortBy");
+        String order = request.getParameter("order");
+
+        int page = 1;
+        String pageStr = request.getParameter("page");
+        if (pageStr != null && !pageStr.isEmpty())
+            page = Integer.parseInt(pageStr);
+        int limit = 10;
+        int offset = (page - 1) * limit;
+
+        List<dto.ShipmentListDTO> shipments = shipmentDAO.getFilteredShipments(shipmentNumber, carrierId, status,
+                shipmentType,
+                sortBy, order, limit, offset);
+        int totalRecords = shipmentDAO.countFilteredShipments(shipmentNumber, carrierId, status, shipmentType);
+        int totalPages = (int) Math.ceil((double) totalRecords / limit);
+
+        request.setAttribute("shipments", shipments);
+        request.setAttribute("shipmentType", shipmentType);
+        request.setAttribute("carriers", shipmentDAO.getAllCarriers());
+        request.setAttribute("totalPages", totalPages);
+        request.setAttribute("currentPage", page);
+        request.getRequestDispatcher(ViewPath.SHIPMENT_LIST).forward(request, response);
+    }
+
+    private void handleCreate(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException, SQLException {
+        request.setAttribute("carriers", shipmentDAO.getAllCarriers());
+        request.setAttribute("gdns", shipmentDAO.getAvailableGDNs());
+        request.setAttribute("nextShipmentNumber", shipmentDAO.getNextShipmentNumber());
+        request.getRequestDispatcher(ViewPath.SHIPMENT_CREATE).forward(request, response);
+    }
+
+    private void handleStore(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException, SQLException {
+        Shipment s = new Shipment();
+        s.setShipmentNumber(request.getParameter("shipmentNumber"));
+        s.setGdnId(Long.valueOf(request.getParameter("gdnId")));
+        String carrierIdStr = request.getParameter("carrierId");
+        s.setCarrierId((carrierIdStr != null && !carrierIdStr.isBlank()) ? Long.valueOf(carrierIdStr) : null);
+        s.setShipmentType(request.getParameter("shipmentType"));
+        s.setTrackingCode(request.getParameter("trackingCode"));
+        s.setNote(request.getParameter("note"));
+
+        shipmentDAO.createShipment(s);
+        response.sendRedirect(request.getContextPath() + "/shipment?action=list");
+    }
+
+    private void handleDetail(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException, SQLException {
+        Long id = Long.valueOf(request.getParameter("id"));
+        Shipment s = shipmentDAO.getById(id);
+        if (s == null) {
+            response.sendRedirect(request.getContextPath() + "/shipment?action=list");
             return;
         }
-
-        shipmentDao.updateShipmentStatus(shipmentId, status);
-        
-        response.setContentType("application/json;charset=UTF-8");
-        response.getWriter().write("{\"success\":true}");
+        request.setAttribute("shipment", s);
+        request.getRequestDispatcher(ViewPath.SHIPMENT_DETAIL).forward(request, response);
     }
 
-    private long parseLong(String raw, long def) {
-        try {
-            return (raw == null || raw.isBlank()) ? def : Long.parseLong(raw);
-        } catch (Exception e) {
-            return def;
+    private void handleEdit(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException, SQLException {
+        Long id = Long.valueOf(request.getParameter("id"));
+        Shipment s = shipmentDAO.getById(id);
+        if (s == null || "CANCELLED".equals(s.getStatus()) || "DELIVERED".equals(s.getStatus())) {
+            response.sendRedirect(request.getContextPath() + "/shipment?action=detail&id=" + id);
+            return;
         }
+        request.setAttribute("shipment", s);
+        request.setAttribute("carriers", shipmentDAO.getAllCarriers());
+        request.getRequestDispatcher(ViewPath.SHIPMENT_EDIT).forward(request, response);
     }
 
-    private String escapeJson(String str) {
-        if (str == null) return "";
-        return str.replace("\\", "\\\\")
-                  .replace("\"", "\\\"")
-                  .replace("\n", "\\n")
-                  .replace("\r", "\\r")
-                  .replace("\t", "\\t");
+    private void handleUpdate(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException, SQLException {
+        Long id = Long.valueOf(request.getParameter("id"));
+        Shipment s = shipmentDAO.getById(id);
+        if (s != null) {
+            if ("CANCELLED".equals(s.getStatus()) || "DELIVERED".equals(s.getStatus())) {
+                response.sendRedirect(request.getContextPath() + "/shipment?action=detail&id=" + id);
+                return;
+            }
+            String newStatus = request.getParameter("status");
+            String carrierIdStr = request.getParameter("carrierId");
+
+            // Only allow carrier change if currently CREATED
+            if ("CREATED".equals(s.getStatus())) {
+                s.setCarrierId((carrierIdStr != null && !carrierIdStr.isBlank()) ? Long.valueOf(carrierIdStr) : null);
+            }
+            s.setTrackingCode(request.getParameter("trackingCode"));
+            s.setNote(request.getParameter("note"));
+
+            // Log logic for status changes
+            if (newStatus != null && s.getStatus() != null && !s.getStatus().equals(newStatus)) {
+                if ("PICKED_UP".equals(newStatus) || "IN_TRANSIT".equals(newStatus)) {
+                    if (s.getPickedUpAt() == null) {
+                        s.setPickedUpAt(java.time.LocalDateTime.now());
+                    }
+                }
+                if ("DELIVERED".equals(newStatus)) {
+                    if (s.getDeliveredAt() == null) {
+                        s.setDeliveredAt(java.time.LocalDateTime.now());
+                    }
+                    if (s.getPickedUpAt() == null) {
+                        s.setPickedUpAt(java.time.LocalDateTime.now());
+                    }
+                }
+            }
+            if (newStatus != null && !newStatus.isBlank()) {
+                s.setStatus(newStatus);
+            }
+            shipmentDAO.updateShipment(s);
+        }
+        response.sendRedirect(request.getContextPath() + "/shipment?action=detail&id=" + id);
     }
 }
