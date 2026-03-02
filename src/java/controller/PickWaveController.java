@@ -42,10 +42,21 @@ public class PickWaveController extends HttpServlet {
 
     private void handleList(HttpServletRequest request, HttpServletResponse response) throws Exception {
         String status = request.getParameter("status");
+        int page = (int) parseLong(request.getParameter("page"), 1);
+        int pageSize = (int) parseLong(request.getParameter("size"), 10);
+        int offset = (page - 1) * pageSize;
+
         PickWaveDAO waveDao = new PickWaveDAO();
-        List<PickWaveDTO> waves = waveDao.getWavesByStatus(status);
+        List<PickWaveDTO> waves = waveDao.getWaveList(status, pageSize, offset);
+        int totalWaves = waveDao.countWaves(status);
+        int totalPages = (int) Math.ceil((double) totalWaves / pageSize);
+
         request.setAttribute("waves", waves);
         request.setAttribute("status", status);
+        request.setAttribute("page", (long) page);
+        request.setAttribute("pages", (long) totalPages);
+        request.setAttribute("size", (long) pageSize);
+        request.setAttribute("total", (long) totalWaves);
         request.getRequestDispatcher("/WEB-INF/views/outbound/pick-wave-list.jsp").forward(request, response);
     }
 
@@ -153,24 +164,18 @@ public class PickWaveController extends HttpServlet {
 
         // Validate kỹ dữ liệu GDN trước khi tạo wave
         if (!"PENDING".equalsIgnoreCase(gdn.getStatus())) {
-            request.setAttribute("gdn", gdn);
-            request.setAttribute("error", "Chỉ được tạo pick wave cho GDN ở trạng thái PENDING.");
-            request.getRequestDispatcher("WEB-INF/views/outbound/goods-delivery-note-detail.jsp")
-                   .forward(request, response);
+            request.getSession().setAttribute("message", "Chỉ được tạo pick wave cho GDN ở trạng thái PENDING.");
+            response.sendRedirect(request.getContextPath() + "/goods-delivery-note?action=detail&id=" + gdnId);
             return;
         }
         if (gdn.getWarehouseId() == null) {
-            request.setAttribute("gdn", gdn);
-            request.setAttribute("error", "GDN chưa gắn warehouse. Vui lòng kiểm tra lại cấu hình.");
-            request.getRequestDispatcher("WEB-INF/views/outbound/goods-delivery-note-detail.jsp")
-                   .forward(request, response);
+            request.getSession().setAttribute("message", "GDN chưa gắn warehouse. Vui lòng kiểm tra lại cấu hình.");
+            response.sendRedirect(request.getContextPath() + "/goods-delivery-note?action=detail&id=" + gdnId);
             return;
         }
         if (gdn.getLines() == null || gdn.getLines().isEmpty()) {
-            request.setAttribute("gdn", gdn);
-            request.setAttribute("error", "GDN không có dòng hàng nào để tạo pick wave.");
-            request.getRequestDispatcher("WEB-INF/views/outbound/goods-delivery-note-detail.jsp")
-                   .forward(request, response);
+            request.getSession().setAttribute("message", "GDN không có dòng hàng nào để tạo pick wave.");
+            response.sendRedirect(request.getContextPath() + "/goods-delivery-note?action=detail&id=" + gdnId);
             return;
         }
         boolean insufficientTotalStock = gdn.getLines().stream().anyMatch(
@@ -178,10 +183,8 @@ public class PickWaveController extends HttpServlet {
                         && (l.getQtyAvailable() == null || l.getQtyAvailable().compareTo(l.getQtyRequired()) < 0)
         );
         if (insufficientTotalStock) {
-            request.setAttribute("gdn", gdn);
-            request.setAttribute("error", "Tồn kho tổng không đủ cho một số dòng GDN. Vui lòng kiểm tra lại số lượng yêu cầu và tồn kho.");
-            request.getRequestDispatcher("WEB-INF/views/outbound/goods-delivery-note-detail.jsp")
-                   .forward(request, response);
+            request.getSession().setAttribute("message", "Tồn kho tổng không đủ cho một số dòng GDN.");
+            response.sendRedirect(request.getContextPath() + "/goods-delivery-note?action=detail&id=" + gdnId);
             return;
         }
 
@@ -207,27 +210,22 @@ public class PickWaveController extends HttpServlet {
             // Bất kỳ lỗi nào trong quá trình tạo task cũng không được giữ wave lại
             Logger.getLogger(PickWaveController.class.getName()).log(Level.SEVERE, "Exception during Pick Task creation", ex);
             waveDao.deleteWaveById(waveId);
-            dto.GDNDetailDTO refreshedGdn = gdnDao.getGDNDetailById(gdnId);
-            request.setAttribute("gdn", refreshedGdn);
-            request.setAttribute("error", "Không thể tạo pick wave do lỗi dữ liệu liên quan (GDN/Inventory). Vui lòng kiểm tra lại.");
-            request.getRequestDispatcher("WEB-INF/views/outbound/goods-delivery-note-detail.jsp")
-                   .forward(request, response);
+            request.getSession().setAttribute("message", "Không thể tạo pick wave do lỗi dữ liệu liên quan. Vui lòng kiểm tra lại.");
+            response.sendRedirect(request.getContextPath() + "/goods-delivery-note?action=detail&id=" + gdnId);
             return;
         }
         if (!created) {
             // Không đủ tồn kho theo từng slot để tạo đầy đủ pick task -> xóa wave và báo lỗi
             waveDao.deleteWaveById(waveId);
-            dto.GDNDetailDTO refreshedGdn = gdnDao.getGDNDetailById(gdnId);
-            request.setAttribute("gdn", refreshedGdn);
-            request.setAttribute("error", "Không đủ tồn kho tại các vị trí để tạo pick wave. Vui lòng kiểm tra tồn kho hoặc điều chỉnh số lượng.");
-            request.getRequestDispatcher("WEB-INF/views/outbound/goods-delivery-note-detail.jsp")
-                   .forward(request, response);
+            request.getSession().setAttribute("message", "Không đủ tồn kho tại các vị trí để tạo pick wave.");
+            response.sendRedirect(request.getContextPath() + "/goods-delivery-note?action=detail&id=" + gdnId);
             return;
         }
 
         waveDao.updateWaveStatus(waveId, "CREATED");
         gdnDao.updateGDNStatus(gdnId, "ONGOING");
 
+        request.getSession().setAttribute("message", "Tạo Pick Wave thành công cho GDN #" + gdn.getGdnNumber());
         response.sendRedirect(request.getContextPath() + "/pick-task?action=assign&waveId=" + waveId);
     }
 
