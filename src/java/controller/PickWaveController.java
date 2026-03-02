@@ -31,6 +31,7 @@ public class PickWaveController extends HttpServlet {
             switch (action) {
                 case "list" -> handleList(request, response);
                 case "detail" -> handleDetail(request, response);
+                case "create" -> handleCreateForm(request, response);
                 default -> response.sendRedirect(request.getContextPath() + "/pick-wave?action=list");
             }
         } catch (Exception e) {
@@ -46,6 +47,43 @@ public class PickWaveController extends HttpServlet {
         request.setAttribute("waves", waves);
         request.setAttribute("status", status);
         request.getRequestDispatcher("/WEB-INF/views/outbound/pick-wave-list.jsp").forward(request, response);
+    }
+
+    /**
+     * Hiển thị màn hình chọn GDN để tạo Pick Wave.
+     * Chỉ ADMIN / WAREHOUSE_MANAGER mới được phép truy cập.
+     */
+    private void handleCreateForm(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        User user = (User) request.getSession().getAttribute("USER");
+        if (user == null) {
+            response.sendRedirect(request.getContextPath() + "/authen?action=login");
+            return;
+        }
+        String roles = user.getRoleNames() != null ? user.getRoleNames() : "";
+        if (!roles.contains("ADMIN") && !roles.contains("WAREHOUSE_MANAGER")) {
+            response.sendRedirect(request.getContextPath() + "/pick-wave?action=list");
+            return;
+        }
+
+        GoodsDeliveryNoteDAO gdnDao = new GoodsDeliveryNoteDAO();
+
+        String gdnNumber = request.getParameter("gdnNumber");
+        String soNumber = request.getParameter("soNumber");
+        String status = request.getParameter("status");
+        if (status == null || status.isBlank()) {
+            status = "PENDING";
+        }
+
+        int size = 100;
+        int offset = 0;
+        java.util.List<dto.GDNListDTO> gdns = gdnDao.getGDNList(gdnNumber, soNumber, status, size, offset);
+
+        request.setAttribute("gdns", gdns);
+        request.setAttribute("gdnNumber", gdnNumber);
+        request.setAttribute("soNumber", soNumber);
+        request.setAttribute("status", status);
+
+        request.getRequestDispatcher("/WEB-INF/views/outbound/pick-wave-create.jsp").forward(request, response);
     }
 
     private void handleDetail(HttpServletRequest request, HttpServletResponse response) throws Exception {
@@ -89,6 +127,17 @@ public class PickWaveController extends HttpServlet {
      * Create wave from GDN: insert pick_wave, create tasks from wave (by zone/slot), update GDN ONGOING, redirect to assign.
      */
     private void handleCreate(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        User user = (User) request.getSession().getAttribute("USER");
+        if (user == null) {
+            response.sendRedirect(request.getContextPath() + "/authen?action=login");
+            return;
+        }
+        String roles = user.getRoleNames() != null ? user.getRoleNames() : "";
+        if (!roles.contains("ADMIN") && !roles.contains("WAREHOUSE_MANAGER")) {
+            response.sendRedirect(request.getContextPath() + "/pick-wave?action=list");
+            return;
+        }
+
         long gdnId = parseLong(request.getParameter("gdnId"), -1);
         if (gdnId <= 0) {
             response.sendRedirect(request.getContextPath() + "/goods-delivery-note?action=list");
@@ -142,8 +191,7 @@ public class PickWaveController extends HttpServlet {
             return;
         }
 
-        User user = (User) request.getSession().getAttribute("USER");
-        Long createdBy = user != null ? user.getUserId() : null;
+        Long createdBy = user.getUserId();
 
         Long waveId = waveDao.createWaveFromGDN(gdnId, createdBy);
         if (waveId == null) {

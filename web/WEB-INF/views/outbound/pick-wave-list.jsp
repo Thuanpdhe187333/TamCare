@@ -2,6 +2,7 @@
 <%@taglib tagdir="/WEB-INF/tags/" prefix="t" %>
 <%@taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
+<%@taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>
 <t:layout title="Pick Waves">
     <div class="container-fluid">
         <div class="card mb-4 shadow-sm">
@@ -22,6 +23,19 @@
             </div>
         </div>
 
+        <c:set var="roleNames" value="${sessionScope.USER != null ? sessionScope.USER.roleNames : ''}"/>
+        <div class="mb-3 d-flex justify-content-between align-items-center">
+            <p class="mb-0 text-muted small">
+                Quản lý các đợt Pick Wave được tạo từ GDN. Chỉ <strong>Warehouse Manager/Admin</strong> mới được tạo wave mới.
+            </p>
+            <c:if test="${fn:contains(roleNames, 'ADMIN') || fn:contains(roleNames, 'WAREHOUSE_MANAGER')}">
+                <a href="${pageContext.request.contextPath}/pick-wave?action=create"
+                   class="btn btn-success shadow-sm">
+                    <i class="fas fa-plus me-1"></i> Create Pick Wave
+                </a>
+            </c:if>
+        </div>
+
         <div class="table-responsive shadow-sm rounded">
             <table class="table table-bordered table-hover align-middle mb-0">
                 <thead class="table-dark">
@@ -29,6 +43,7 @@
                         <th>Wave ID</th>
                         <th>GDN Number</th>
                         <th>Status</th>
+                        <th>Created by</th>
                         <th>Created at</th>
                         <th>Actions</th>
                     </tr>
@@ -37,12 +52,32 @@
                     <c:forEach var="w" items="${waves}">
                         <tr>
                             <td class="text-center">${w.waveId}</td>
-                            <td><a href="${pageContext.request.contextPath}/goods-delivery-note?action=detail&id=${w.gdnId}">${w.gdnNumber}</a></td>
-                            <td class="text-center"><span class="badge bg-secondary">${w.status}</span></td>
-                            <td class="text-center">${w.createdAt}</td>
+                            <td>
+                                <a href="${pageContext.request.contextPath}/goods-delivery-note?action=detail&id=${w.gdnId}"
+                                   class="fw-semibold text-decoration-none">
+                                    ${w.gdnNumber}
+                                </a>
+                            </td>
                             <td class="text-center">
-                                <a href="${pageContext.request.contextPath}/pick-task?action=assign&waveId=${w.waveId}" class="btn btn-sm btn-primary">Assign tasks</a>
-                                <a href="${pageContext.request.contextPath}/pick-wave?action=detail&id=${w.waveId}" class="btn btn-sm btn-outline-secondary">Detail</a>
+                                <span class="badge ${w.status == 'CREATED' ? 'bg-secondary' : 'bg-info'}">
+                                    ${w.status}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                ${w.createdByName != null ? w.createdByName : '-'}
+                            </td>
+                            <td class="text-center">
+                                <fmt:formatDate value="${w.createdAt}" pattern="yyyy-MM-dd HH:mm" />
+                            </td>
+                            <td class="text-center">
+                                <a href="${pageContext.request.contextPath}/pick-task?action=assign&waveId=${w.waveId}"
+                                   class="btn btn-sm btn-primary me-1">
+                                    Assign tasks
+                                </a>
+                                <a href="${pageContext.request.contextPath}/pick-wave?action=detail&id=${w.waveId}"
+                                   class="btn btn-sm btn-outline-secondary">
+                                    Detail
+                                </a>
                             </td>
                         </tr>
                     </c:forEach>
