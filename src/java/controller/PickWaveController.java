@@ -31,21 +31,70 @@ public class PickWaveController extends HttpServlet {
             switch (action) {
                 case "list" -> handleList(request, response);
                 case "detail" -> handleDetail(request, response);
+                case "create" -> handleCreateForm(request, response);
                 default -> response.sendRedirect(request.getContextPath() + "/pick-wave?action=list");
             }
         } catch (Exception e) {
-            Logger.getLogger(PickWaveController.class.getName()).log(Level.SEVERE, null, e);
+            Logger.getLogger(PickWaveController.class.getName()).log(Level.SEVERE, "Error in doGet", e);
             throw new ServletException(e);
         }
     }
 
     private void handleList(HttpServletRequest request, HttpServletResponse response) throws Exception {
         String status = request.getParameter("status");
+        int page = (int) parseLong(request.getParameter("page"), 1);
+        int pageSize = (int) parseLong(request.getParameter("size"), 10);
+        int offset = (page - 1) * pageSize;
+
         PickWaveDAO waveDao = new PickWaveDAO();
-        List<PickWaveDTO> waves = waveDao.getWavesByStatus(status);
+        List<PickWaveDTO> waves = waveDao.getWaveList(status, pageSize, offset);
+        int totalWaves = waveDao.countWaves(status);
+        int totalPages = (int) Math.ceil((double) totalWaves / pageSize);
+
         request.setAttribute("waves", waves);
         request.setAttribute("status", status);
+        request.setAttribute("page", (long) page);
+        request.setAttribute("pages", (long) totalPages);
+        request.setAttribute("size", (long) pageSize);
+        request.setAttribute("total", (long) totalWaves);
         request.getRequestDispatcher("/WEB-INF/views/outbound/pick-wave-list.jsp").forward(request, response);
+    }
+
+    /**
+     * Hiển thị màn hình chọn GDN để tạo Pick Wave.
+     * Chỉ ADMIN / WAREHOUSE_MANAGER mới được phép truy cập.
+     */
+    private void handleCreateForm(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        User user = (User) request.getSession().getAttribute("USER");
+        if (user == null) {
+            response.sendRedirect(request.getContextPath() + "/authen?action=login");
+            return;
+        }
+        String roles = user.getRoleNames() != null ? user.getRoleNames() : "";
+        if (!roles.contains("ADMIN") && !roles.contains("WAREHOUSE_MANAGER")) {
+            response.sendRedirect(request.getContextPath() + "/pick-wave?action=list");
+            return;
+        }
+
+        GoodsDeliveryNoteDAO gdnDao = new GoodsDeliveryNoteDAO();
+
+        String gdnNumber = request.getParameter("gdnNumber");
+        String soNumber = request.getParameter("soNumber");
+        String status = request.getParameter("status");
+        if (status == null || status.isBlank()) {
+            status = "PENDING";
+        }
+
+        int size = 100;
+        int offset = 0;
+        java.util.List<dto.GDNListDTO> gdns = gdnDao.getGDNList(gdnNumber, soNumber, status, size, offset);
+
+        request.setAttribute("gdns", gdns);
+        request.setAttribute("gdnNumber", gdnNumber);
+        request.setAttribute("soNumber", soNumber);
+        request.setAttribute("status", status);
+
+        request.getRequestDispatcher("/WEB-INF/views/outbound/pick-wave-create.jsp").forward(request, response);
     }
 
     private void handleDetail(HttpServletRequest request, HttpServletResponse response) throws Exception {
@@ -77,7 +126,7 @@ public class PickWaveController extends HttpServlet {
             try {
                 handleCreate(request, response);
             } catch (Exception e) {
-                Logger.getLogger(PickWaveController.class.getName()).log(Level.SEVERE, null, e);
+                Logger.getLogger(PickWaveController.class.getName()).log(Level.SEVERE, "Error in doPost (create action)", e);
                 throw new ServletException(e);
             }
         } else {
@@ -89,6 +138,17 @@ public class PickWaveController extends HttpServlet {
      * Create wave from GDN: insert pick_wave, create tasks from wave (by zone/slot), update GDN ONGOING, redirect to assign.
      */
     private void handleCreate(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        User user = (User) request.getSession().getAttribute("USER");
+        if (user == null) {
+            response.sendRedirect(request.getContextPath() + "/authen?action=login");
+            return;
+        }
+        String roles = user.getRoleNames() != null ? user.getRoleNames() : "";
+        if (!roles.contains("ADMIN") && !roles.contains("WAREHOUSE_MANAGER")) {
+            response.sendRedirect(request.getContextPath() + "/pick-wave?action=list");
+            return;
+        }
+
         long gdnId = parseLong(request.getParameter("gdnId"), -1);
         if (gdnId <= 0) {
             response.sendRedirect(request.getContextPath() + "/goods-delivery-note?action=list");
@@ -142,8 +202,7 @@ public class PickWaveController extends HttpServlet {
             return;
         }
 
-        User user = (User) request.getSession().getAttribute("USER");
-        Long createdBy = user != null ? user.getUserId() : null;
+        Long createdBy = user.getUserId();
 
         Long waveId = waveDao.createWaveFromGDN(gdnId, createdBy);
         if (waveId == null) {
@@ -157,6 +216,7 @@ public class PickWaveController extends HttpServlet {
             created = taskDao.createTasksFromWave(waveId);
         } catch (Exception ex) {
             // Bất kỳ lỗi nào trong quá trình tạo task cũng không được giữ wave lại
+            Logger.getLogger(PickWaveController.class.getName()).log(Level.SEVERE, "Exception during Pick Task creation", ex);
             waveDao.deleteWaveById(waveId);
             dto.GDNDetailDTO refreshedGdn = gdnDao.getGDNDetailById(gdnId);
             request.setAttribute("gdn", refreshedGdn);
@@ -179,6 +239,7 @@ public class PickWaveController extends HttpServlet {
         waveDao.updateWaveStatus(waveId, "CREATED");
         gdnDao.updateGDNStatus(gdnId, "ONGOING");
 
+        request.getSession().setAttribute("message", "Pick wave created successfully for GDN #" + gdn.getGdnNumber());
         response.sendRedirect(request.getContextPath() + "/pick-task?action=assign&waveId=" + waveId);
     }
 

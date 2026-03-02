@@ -565,6 +565,7 @@ public class PurchaseOrderController extends HttpServlet {
             po.setSupplierId(supplierId);
             po.setExpectedDeliveryDate(expectedDate);
             po.setNote(note);
+            po.setStatus(current.getStatus()); // Giữ status để JSP không set readonly/disabled khi validation lỗi
 
             request.setAttribute("fieldErrors", fieldErrors);
             request.setAttribute("po", po);
@@ -592,6 +593,15 @@ public class PurchaseOrderController extends HttpServlet {
             throws Exception {
 
         long poId = Long.parseLong(request.getParameter("id"));
+        PurchaseOrderHeaderDTO po = poService.getPurchaseOrderHeader(poId);
+        if (po != null && "CLOSED".equalsIgnoreCase(po.getStatus())) {
+            String page = request.getParameter("page");
+            String redirectUrl = request.getContextPath() + "/purchase-orders";
+            redirectUrl += (page != null && !page.isBlank()) ? "?page=" + page + "&msg=cannotdelete" : "?msg=cannotdelete";
+            response.sendRedirect(redirectUrl);
+            return;
+        }
+
         boolean ok = poService.deletePurchaseOrder(poId);
         String msg = ok ? "deleted" : "notfound";
         String page = request.getParameter("page");
