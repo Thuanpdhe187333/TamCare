@@ -105,6 +105,16 @@
         </div>
     </li>
 
+                <!-- Nav Item - Warehouse -->
+                <li class="nav-item">
+                    <a class="nav-link" href="${pageContext.request.contextPath}/admin/warehouse">
+                        <i class="fas fa-fw fa-warehouse"></i>
+                        <span>Warehouse</span>
+                    </a>
+                </li>
+
+                
+
     <!-- Divider -->
     <hr class="sidebar-divider" />
 
