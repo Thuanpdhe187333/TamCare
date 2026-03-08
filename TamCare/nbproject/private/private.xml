@@ -3,23 +3,15 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/D:/EBOOK/EXE101_BE/hihihi/TamCare/TamCare/src/java/dal/DBContext.java</file>
-            <file>file:/D:/EBOOK/EXE101_BE/hihihi/TamCare/TamCare/src/java/model/User.java</file>
-            <file>file:/D:/EBOOK/EXE101_BE/hihihi/TamCare/TamCare/web/caregiver_elderly_detail.jsp</file>
-            <file>file:/D:/EBOOK/EXE101_BE/hihihi/TamCare/TamCare/src/java/dal/UserDAO.java</file>
-            <file>file:/D:/EBOOK/EXE101_BE/hihihi/TamCare/TamCare/web/home_elderly.jsp</file>
-            <file>file:/D:/EBOOK/EXE101_BE/hihihi/TamCare/TamCare/web/admin_user_detail.jsp</file>
-            <file>file:/D:/EBOOK/EXE101_BE/hihihi/TamCare/TamCare/web/home_admin.jsp</file>
-            <file>file:/D:/EBOOK/EXE101_BE/hihihi/TamCare/TamCare/web/home_caregiver.jsp</file>
-            <file>file:/D:/EBOOK/EXE101_BE/hihihi/TamCare/TamCare/web/login.jsp</file>
-            <file>file:/D:/EBOOK/EXE101_BE/hihihi/TamCare/TamCare/src/java/controller/AdminStatsServlet.java</file>
-            <file>file:/D:/EBOOK/EXE101_BE/hihihi/TamCare/TamCare/src/java/controller/AdminUserDetailServlet.java</file>
-            <file>file:/D:/EBOOK/EXE101_BE/hihihi/TamCare/TamCare/web/chatbox.jsp</file>
-            <file>file:/D:/EBOOK/EXE101_BE/hihihi/TamCare/TamCare/web/admin_stats.jsp</file>
-            <file>file:/D:/EBOOK/EXE101_BE/hihihi/TamCare/TamCare/web/profile_caregiver.jsp</file>
-            <file>file:/D:/EBOOK/EXE101_BE/hihihi/TamCare/TamCare/web/my_relatives.jsp</file>
-            <file>file:/D:/EBOOK/EXE101_BE/hihihi/TamCare/TamCare/web/WEB-INF/web.xml</file>
-            <file>file:/D:/EBOOK/EXE101_BE/hihihi/TamCare/TamCare/web/elderly_detail.jsp</file>
+            <file>file:/C:/Users/Acer/Documents/NetBeansProjects/TamCare/TamCare/web/home_caregiver.jsp</file>
+            <file>file:/C:/Users/Acer/Documents/NetBeansProjects/TamCare/TamCare/web/home_elderly.jsp</file>
+            <file>file:/C:/Users/Acer/Documents/NetBeansProjects/TamCare/TamCare/src/java/dal/DBContext.java</file>
+            <file>file:/C:/Users/Acer/Documents/NetBeansProjects/TamCare/TamCare/src/java/controller/ViewElderlyDetailServlet.java</file>
+            <file>file:/C:/Users/Acer/Documents/NetBeansProjects/TamCare/TamCare/src/java/controller/MyRelativesServlet.java</file>
+            <file>file:/C:/Users/Acer/Documents/NetBeansProjects/TamCare/TamCare/web/elderly_detail.jsp</file>
+            <file>file:/C:/Users/Acer/Documents/NetBeansProjects/TamCare/TamCare/web/my_relatives.jsp</file>
+            <file>file:/C:/Users/Acer/Documents/NetBeansProjects/TamCare/TamCare/web/admin_user_detail.jsp</file>
+            <file>file:/C:/Users/Acer/Documents/NetBeansProjects/TamCare/TamCare/web/profile_caregiver.jsp</file>
         </group>
     </open-files>
 </project-private>
