@@ -27,6 +27,7 @@ public class CustomerController extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         String path = request.getPathInfo();
+        System.out.println(path);
         if (path == null || path.equals("/")) {
             viewList(request, response);
             return;
