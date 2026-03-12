@@ -227,26 +227,28 @@ public class UserDAO extends DBContext {
         return list;
     }
 
-    public User getUserById(int userId) {
-        String sql = "SELECT UserID, Email, FullName, PhoneNumber, Role, LinkKey FROM dbo.Users WHERE UserID = ?";
-        try (Connection conn = getConnection(); PreparedStatement st = conn.prepareStatement(sql)) {
-            st.setInt(1, userId);
-            ResultSet rs = st.executeQuery();
+public User getUserById(int id) {
+    String sql = "SELECT * FROM Users WHERE UserID = ?";
+    try (Connection conn = getConnection(); 
+         PreparedStatement ps = conn.prepareStatement(sql)) {
+        ps.setInt(1, id);
+        try (ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
                 User u = new User();
                 u.setUserID(rs.getInt("UserID"));
-                u.setEmail(rs.getString("Email"));
                 u.setFullName(rs.getString("FullName"));
+                u.setEmail(rs.getString("Email"));
                 u.setPhoneNumber(rs.getString("PhoneNumber"));
-                u.setRole(rs.getString("Role"));
                 u.setLinkKey(rs.getString("LinkKey"));
+                u.setRole(rs.getString("Role"));
                 return u;
             }
-        } catch (Exception e) {
-            e.printStackTrace();
         }
-        return null;
+    } catch (SQLException e) {
+        e.printStackTrace();
     }
+    return null;
+}
 
     public boolean isCaregiverLinkedToElderly(int caregiverId, int elderlyId) {
         String sql = "SELECT 1 FROM dbo.Relationship WHERE CaregiverUserID=? AND ElderlyUserID=? AND Status='Active'";

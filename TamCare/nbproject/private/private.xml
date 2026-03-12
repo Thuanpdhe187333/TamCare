@@ -3,15 +3,12 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/C:/Users/Acer/Documents/NetBeansProjects/TamCare/TamCare/web/home_caregiver.jsp</file>
-            <file>file:/C:/Users/Acer/Documents/NetBeansProjects/TamCare/TamCare/web/home_elderly.jsp</file>
-            <file>file:/C:/Users/Acer/Documents/NetBeansProjects/TamCare/TamCare/src/java/dal/DBContext.java</file>
-            <file>file:/C:/Users/Acer/Documents/NetBeansProjects/TamCare/TamCare/src/java/controller/ViewElderlyDetailServlet.java</file>
-            <file>file:/C:/Users/Acer/Documents/NetBeansProjects/TamCare/TamCare/src/java/controller/MyRelativesServlet.java</file>
-            <file>file:/C:/Users/Acer/Documents/NetBeansProjects/TamCare/TamCare/web/elderly_detail.jsp</file>
-            <file>file:/C:/Users/Acer/Documents/NetBeansProjects/TamCare/TamCare/web/my_relatives.jsp</file>
-            <file>file:/C:/Users/Acer/Documents/NetBeansProjects/TamCare/TamCare/web/admin_user_detail.jsp</file>
-            <file>file:/C:/Users/Acer/Documents/NetBeansProjects/TamCare/TamCare/web/profile_caregiver.jsp</file>
+            <file>file:/D:/EBOOK/EXE101_BE/TamCare/TamCare/TamCare/web/home_elderly.jsp</file>
+            <file>file:/D:/EBOOK/EXE101_BE/TamCare/TamCare/TamCare/web/home_caregiver.jsp</file>
+            <file>file:/D:/EBOOK/EXE101_BE/TamCare/TamCare/TamCare/web/products.jsp</file>
+            <file>file:/D:/EBOOK/EXE101_BE/TamCare/TamCare/TamCare/web/blog.jsp</file>
+            <file>file:/D:/EBOOK/EXE101_BE/TamCare/TamCare/TamCare/web/notifications.jsp</file>
+            <file>file:/D:/EBOOK/EXE101_BE/TamCare/TamCare/TamCare/web/about.jsp</file>
         </group>
     </open-files>
 </project-private>
