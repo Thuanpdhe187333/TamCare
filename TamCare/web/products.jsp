@@ -1,6 +1,14 @@
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
+<%@taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt"%>
 <%@page import="model.User"%>
 <%
+    // KIỂM TRA DỮ LIỆU: Nếu chưa qua Servlet, tự động đẩy về Servlet
+    if (request.getAttribute("productList") == null) {
+        response.sendRedirect("products");
+        return;
+    }
+
     User acc = (User) session.getAttribute("account");
     String userName = (acc != null) ? acc.getFullName() : "Khách";
 %>
@@ -10,14 +18,12 @@
     <meta charset="UTF-8">
     <title>Cửa hàng TamCare - Thiết bị Y tế</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #008080; 
-            --primary-dark: #006666;
-            --orange-shopee: #ee4d2d; 
-            --bg-body: #f5f5f5;
-            --white: #ffffff;
-            --transition: all 0.2s ease;
+            --primary: #008080; --primary-dark: #006666;
+            --orange-shopee: #ee4d2d; --bg-body: #f5f5f5;
+            --white: #ffffff; --transition: all 0.2s ease;
         }
 
         body { font-family: 'Lexend', sans-serif; background: var(--bg-body); margin: 0; padding-top: 130px; display: flex; flex-direction: column; min-height: 100vh; }
@@ -26,58 +32,49 @@
         .header-fixed {
             background: linear-gradient(-180deg, var(--primary), var(--primary-dark));
             position: fixed; top: 0; width: 100%; z-index: 1002; padding-bottom: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         .header-top-bar { max-width: 1200px; margin: 0 auto; display: flex; justify-content: flex-end; padding: 5px 20px; gap: 25px; font-size: 13px; color: white; }
-        .top-link-item { position: relative; cursor: pointer; display: flex; align-items: center; gap: 5px; text-decoration: none; color: white; }
+        .top-link-item { position: relative; cursor: pointer; display: flex; align-items: center; gap: 5px; text-decoration: none; color: white; font-size: 13px; }
 
-        /* --- DROPDOWN BOX --- */
-        .dropdown-box {
-            position: absolute; top: 25px; right: 0; width: 350px;
-            background: var(--white); border-radius: 2px; box-shadow: 0 5px 20px rgba(0,0,0,0.15);
-            display: none; flex-direction: column; cursor: default; color: #333; z-index: 1003;
-        }
-        .dropdown-box::after { content: ''; position: absolute; top: -10px; right: 10px; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 10px solid white; }
-        .top-link-item:hover .dropdown-box { display: flex; }
-
-        /* Giỏ hàng Hover */
-        .cart-dropdown { width: 400px; padding: 10px 0; }
-        .cart-item-demo { display: flex; padding: 10px 15px; gap: 10px; border-bottom: 1px solid #f5f5f5; align-items: center; }
-        .cart-item-demo img { width: 40px; height: 40px; border: 1px solid #eee; object-fit: cover; }
-        .btn-view-cart { background: var(--orange-shopee); color: white; text-align: center; padding: 10px; margin: 10px; text-decoration: none; border-radius: 2px; font-size: 14px; }
-
-        /* --- SEARCH & LOGO --- */
         .header-main { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; padding: 10px 20px; gap: 40px; }
         .logo { font-size: 30px; font-weight: 800; color: white; text-decoration: none; }
         .search-container { flex: 1; background: white; padding: 3px; border-radius: 3px; display: flex; }
-        .search-container input { flex: 1; border: none; padding: 10px 15px; outline: none; }
+        .search-container input { flex: 1; border: none; padding: 10px 15px; outline: none; font-family: inherit; }
         .search-container button { background: var(--primary); color: white; border: none; padding: 0 25px; cursor: pointer; }
 
         /* --- CATEGORY --- */
         .section-white { max-width: 1200px; margin: 20px auto; background: white; border-radius: 2px; box-shadow: 0 1px 1px rgba(0,0,0,.05); }
         .category-grid { display: grid; grid-template-columns: repeat(10, 1fr); }
-        .category-item { display: flex; flex-direction: column; align-items: center; padding: 20px 10px; border: 0.5px solid #f5f5f5; text-decoration: none; color: #333; text-align: center; }
-        .category-item i { font-size: 30px; color: var(--primary); margin-bottom: 12px; }
+        .category-item { display: flex; flex-direction: column; align-items: center; padding: 15px 5px; border: 0.5px solid #f5f5f5; text-decoration: none; color: #333; text-align: center; transition: 0.2s; font-size: 12px; }
+        .category-item:hover { color: var(--primary); background: #fafafa; transform: translateY(-2px); }
+        .category-item i { font-size: 24px; color: var(--primary); margin-bottom: 8px; }
 
-        /* --- PRODUCTS --- */
-        .product-grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; flex: 1; }
-        .product-card { background: white; padding: 10px; text-decoration: none; color: inherit; transition: var(--transition); border: 1px solid transparent; }
+        /* --- PRODUCTS GRID --- */
+        .product-grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; flex: 1; padding: 0 10px; margin-bottom: 40px; }
+        .product-card { 
+            background: white; padding: 10px; text-decoration: none; color: inherit; 
+            transition: var(--transition); border: 1px solid transparent; 
+            display: flex; flex-direction: column; height: 100%; box-sizing: border-box; 
+            border-radius: 2px;
+        }
         .product-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.1); border-color: var(--orange-shopee); }
-        .product-img { width: 100%; aspect-ratio: 1/1; background: #f9f9f9; display: flex; align-items: center; justify-content: center; font-size: 50px; color: #eee; }
-        .product-price { color: var(--orange-shopee); font-size: 16px; font-weight: 600; margin-top: 5px; }
+        
+        .product-img { width: 100%; aspect-ratio: 1/1; background: #fff; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .product-img img { width: 100%; height: 100%; object-fit: contain; }
+        
+        .product-name { font-size: 13px; margin-top: 10px; line-height: 1.4; height: 36px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; color: #333; }
+        .product-price { color: var(--orange-shopee); font-size: 16px; font-weight: 600; margin-top: auto; padding-top: 5px; }
 
-        /* --- CHAT COMPONENT --- */
-        #chat-trigger { position: fixed; bottom: 0; right: 30px; background: white; color: var(--orange-shopee); padding: 10px 20px; border-radius: 8px 8px 0 0; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); cursor: pointer; font-weight: 700; z-index: 2001; display: flex; align-items: center; gap: 10px; border: 1px solid #ddd; }
-        .chat-window { position: fixed; bottom: 0; right: 30px; width: 350px; background: white; border-radius: 8px 8px 0 0; box-shadow: 0 0 15px rgba(0,0,0,0.1); z-index: 2000; display: none; flex-direction: column; overflow: hidden; border: 1px solid #ddd; }
-        .chat-header { background: var(--white); border-bottom: 1px solid #eee; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-        .chat-body { height: 350px; background: #f9f9f9; padding: 20px; text-align: center; color: #888; }
+        /* --- FOOTER --- */
+        .footer { background: #1e293b; color: #94a3b8; padding: 40px 20px; margin-top: auto; }
+        .footer-container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 2fr 1fr 1.5fr; gap: 40px; }
+        .footer-col h4 { color: white; margin-bottom: 20px; font-size: 16px; text-transform: uppercase; }
+        .footer-col p, .footer-col a { font-size: 14px; color: #94a3b8; text-decoration: none; display: block; margin-bottom: 10px; }
+        .footer-col a:hover { color: white; }
+        .footer-bottom { max-width: 1200px; margin: 30px auto 0; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); text-align: center; font-size: 12px; }
 
-        /* --- FOOTER ĐỒNG BỘ --- */
-        .footer { background: #1e293b; color: #94a3b8; padding: 60px 40px; margin-top: 50px; }
-        .footer-container { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; gap: 40px; }
-        .footer-col h4 { color: white; margin-bottom: 20px; font-size: 18px; }
-        .footer-col p, .footer-col a { font-size: 14px; color: #94a3b8; text-decoration: none; display: block; margin-bottom: 10px; transition: 0.3s; }
-        .footer-col a:hover { color: var(--primary-light); }
-        .footer-bottom { max-width: 1200px; margin: 40px auto 0; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); text-align: center; font-size: 13px; }
+        .user-dropdown:hover .dropdown-box { display: flex; }
     </style>
 </head>
 <body>
@@ -86,118 +83,94 @@
         <div class="header-top-bar">
             <div class="top-link-item"><i class="fa-solid fa-bell"></i> Thông báo</div>
             <div class="top-link-item"><i class="fa-solid fa-circle-question"></i> Hỗ trợ</div>
-            <div class="top-link-item" style="font-weight: 700;">
+            <div class="top-link-item user-dropdown" style="font-weight: 700;">
                 <i class="fa-solid fa-circle-user"></i> <%= userName %>
-                <div class="dropdown-box" style="width: 160px;">
-                    <a href="profile.jsp" style="padding: 12px; text-decoration: none; color: #333; display: block;">Tài khoản</a>
-                    <a href="logout" style="padding: 12px; text-decoration: none; color: #333; display: block; border-top: 1px solid #eee;">Đăng xuất</a>
+                <div class="dropdown-box" style="width: 160px; padding: 5px 0; background: white; position: absolute; top: 20px; right: 0; display: none; border-radius: 2px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); flex-direction: column;">
+                    <a href="profile.jsp" style="padding: 10px 15px; text-decoration: none; color: #333; display: block; font-size: 14px; font-weight: 400;">Tài khoản</a>
+                    <a href="logout" style="padding: 10px 15px; text-decoration: none; color: #333; display: block; border-top: 1px solid #eee; font-size: 14px; font-weight: 400;">Đăng xuất</a>
                 </div>
             </div>
         </div>
 
         <header class="header-main">
-            <a href="home_caregiver.jsp" class="logo">TamCare</a>
-            <div class="search-container">
-                <input type="text" placeholder="Tìm thiết bị y tế, thực phẩm chức năng cho người thân...">
-                <button><i class="fa-solid fa-magnifying-glass"></i></button>
-            </div>
-            <div class="top-link-item" style="font-size: 24px; padding: 10px;">
+            <a href="home" class="logo">TamCare</a>
+            <form action="products" method="get" class="search-container">
+                <input type="text" name="txt" placeholder="Tìm thiết bị y tế, thực phẩm chức năng..." value="${param.txt}">
+                <button type="submit"><i class="fa-solid fa-magnifying-glass"></i></button>
+            </form>
+            <div class="top-link-item" style="font-size: 26px; padding: 10px;">
                 <i class="fa-solid fa-cart-shopping"></i>
-                <div class="dropdown-box cart-dropdown">
-                    <div style="padding: 15px; color: #999; font-size: 14px; border-bottom: 1px solid #f5f5f5;">Sản phẩm mới thêm</div>
-                    <div class="cart-item-demo">
-                        <img src="https://via.placeholder.com/40" alt="">
-                        <div class="cart-info">Máy đo huyết áp Omron JPN600</div>
-                        <div class="cart-price">1.250.000₫</div>
-                    </div>
-                    <div class="cart-item-demo">
-                        <img src="https://via.placeholder.com/40" alt="">
-                        <div class="cart-info">Xe lăn tay tiêu chuẩn Haruka</div>
-                        <div class="cart-price">2.400.000₫</div>
-                    </div>
-                    <a href="cart.jsp" class="btn-view-cart">Xem Giỏ Hàng</a>
-                </div>
             </div>
         </header>
     </div>
 
     <div class="section-white">
         <div class="category-grid">
-            <a href="#" class="category-item"><i class="fa-solid fa-heart-pulse"></i><span>Huyết áp</span></a>
-            <a href="#" class="category-item"><i class="fa-solid fa-droplet"></i><span>Tiểu đường</span></a>
-            <a href="#" class="category-item"><i class="fa-solid fa-wheelchair"></i><span>Di chuyển</span></a>
-            <a href="#" class="category-item"><i class="fa-solid fa-pills"></i><span>Dược phẩm</span></a>
-            <a href="#" class="category-item"><i class="fa-solid fa-thermometer"></i><span>Nhiệt kế</span></a>
-            <a href="#" class="category-item"><i class="fa-solid fa-lungs"></i><span>Máy oxy</span></a>
-            <a href="#" class="category-item"><i class="fa-solid fa-kit-medical"></i><span>Sơ cứu</span></a>
-            <a href="#" class="category-item"><i class="fa-solid fa-bed-pulse"></i><span>Giường bệnh</span></a>
-            <a href="#" class="category-item"><i class="fa-solid fa-prescription-bottle-medical"></i><span>Vitamin</span></a>
-            <a href="#" class="category-item"><i class="fa-solid fa-ellipsis"></i><span>Thêm</span></a>
+            <a href="products?category=Huyết áp" class="category-item"><i class="fa-solid fa-heart-pulse"></i><span>Huyết áp</span></a>
+            <a href="products?category=Tiểu đường" class="category-item"><i class="fa-solid fa-droplet"></i><span>Tiểu đường</span></a>
+            <a href="products?category=Di chuyển" class="category-item"><i class="fa-solid fa-wheelchair"></i><span>Di chuyển</span></a>
+            <a href="products?category=Dược phẩm" class="category-item"><i class="fa-solid fa-pills"></i><span>Dược phẩm</span></a>
+            <a href="products?category=Nhiệt kế" class="category-item"><i class="fa-solid fa-thermometer"></i><span>Nhiệt kế</span></a>
+            <a href="products?category=Máy oxy" class="category-item"><i class="fa-solid fa-lungs"></i><span>Máy oxy</span></a>
+            <a href="products?category=Sơ cứu" class="category-item"><i class="fa-solid fa-kit-medical"></i><span>Sơ cứu</span></a>
+            <a href="products?category=Giường bệnh" class="category-item"><i class="fa-solid fa-bed-pulse"></i><span>Giường bệnh</span></a>
+            <a href="products?category=Vitamin" class="category-item"><i class="fa-solid fa-prescription-bottle-medical"></i><span>Vitamin</span></a>
+            <a href="products" class="category-item"><i class="fa-solid fa-ellipsis"></i><span>Tất cả</span></a>
         </div>
     </div>
 
     <div class="product-grid">
-        <% for(int i=1; i<=12; i++) { %>
-        <a href="product_detail.jsp?id=<%=i%>" class="product-card">
-            <div class="product-img"><i class="fa-solid fa-notes-medical"></i></div>
-            <div class="product-name">Sản phẩm hỗ trợ sức khỏe TamCare mã số #<%=i%></div>
-            <div class="product-price">1.250.000₫</div>
-        </a>
-        <% } %>
-    </div>
+        <c:forEach items="${productList}" var="p">
+            <a href="product_detail?id=${p.id}" class="product-card">
+                <div class="product-img">
+                    <c:choose>
+                        <c:when test="${not empty p.imageUrl}">
+                            <img src="assets/img/products/${p.imageUrl}" 
+                                 onerror="this.src='https://via.placeholder.com/200?text=TamCare'" 
+                                 alt="${p.productName}">
+                        </c:when>
+                        <c:otherwise>
+                            <i class="fa-solid fa-notes-medical" style="color: #eee; font-size: 60px;"></i>
+                        </c:otherwise>
+                    </c:choose>
+                </div>
+                <div class="product-name">${p.productName}</div>
+                <div class="product-price">
+                    <fmt:formatNumber value="${p.price}" type="currency" currencySymbol="₫" maxFractionDigits="0"/>
+                </div>
+            </a>
+        </c:forEach>
 
-    <div id="chat-trigger" onclick="toggleChat()"><i class="fa-solid fa-comment-dots"></i> Chat</div>
-    <div class="chat-window" id="chatWindow">
-        <div class="chat-header" onclick="toggleChat()"><span>Chat với TamCare</span><i class="fa-solid fa-chevron-down"></i></div>
-        <div class="chat-body"><p>Chào mừng! Hãy đặt câu hỏi để chúng tôi hỗ trợ bạn.</p></div>
+        <c:if test="${empty productList}">
+            <div style="text-align: center; padding: 100px 0; color: #888; grid-column: span 6; background: white; border-radius: 4px;">
+                <i class="fa-solid fa-box-open fa-4x" style="margin-bottom: 20px; opacity: 0.4;"></i>
+                <p style="font-size: 18px; font-weight: 600;">Hiện tại chưa có sản phẩm này.</p>
+                <a href="products" style="color: var(--primary); text-decoration: none; font-weight: 700;">Xem tất cả sản phẩm</a>
+            </div>
+        </c:if>
     </div>
 
     <footer class="footer">
         <div class="footer-container">
             <div class="footer-col">
-                <h2 style="color: white; margin-top: 0;">TamCare</h2>
-                <p>Giải pháp chăm sóc sức khỏe người cao tuổi <br> hàng đầu bằng công nghệ hiện đại.</p>
+                <h2 style="color: white; margin-top: 0; font-size: 26px;">TamCare</h2>
+                <p>Giải pháp sức khỏe cho người cao tuổi <br> bằng công nghệ hiện đại.</p>
             </div>
             <div class="footer-col">
-                <h4>Về chúng tôi</h4>
-                <a href="about.jsp">Giới thiệu</a>
-                <a href="blog.jsp">Blog sức khỏe</a>
-                <a href="#">Tuyển dụng</a>
-            </div>
-            <div class="footer-col">
-                <h4>Hỗ trợ khách hàng</h4>
+                <h4>Hỗ trợ</h4>
                 <a href="#">Trung tâm trợ giúp</a>
                 <a href="#">Chính sách bảo mật</a>
                 <a href="#">Điều khoản sử dụng</a>
             </div>
             <div class="footer-col">
                 <h4>Liên hệ</h4>
-                <p><i class="fa-solid fa-phone"></i> Hotline: 1900 1234</p>
-                <p><i class="fa-solid fa-envelope"></i> Email: support@tamcare.vn</p>
-                <div style="display: flex; gap: 15px; margin-top: 15px; font-size: 20px;">
-                    <i class="fa-brands fa-facebook"></i>
-                    <i class="fa-brands fa-youtube"></i>
-                    <i class="fa-brands fa-linkedin"></i>
-                </div>
+                <p><i class="fa-solid fa-phone"></i> 1900 1234</p>
+                <p><i class="fa-solid fa-envelope"></i> support@tamcare.vn</p>
             </div>
         </div>
         <div class="footer-bottom">
-            &copy; 2026 TamCare Project Team. All rights reserved.
+            &copy; 2026 TamCare Team. All rights reserved.
         </div>
     </footer>
-
-    <script>
-        function toggleChat() {
-            var window = document.getElementById('chatWindow');
-            var trigger = document.getElementById('chat-trigger');
-            if (window.style.display === 'flex') {
-                window.style.display = 'none';
-                trigger.style.display = 'flex';
-            } else {
-                window.style.display = 'flex';
-                trigger.style.display = 'none';
-            }
-        }
-    </script>
 </body>
 </html>
