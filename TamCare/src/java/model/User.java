@@ -11,6 +11,8 @@ public class User {
     private String role;
     private Date dateCreated;
     private String linkKey;
+    private String gender;
+    private Integer birthYear;
 
     public User() {
     }
@@ -44,4 +46,8 @@ public class User {
     public void setRole(String role) { this.role = role; }
     public Date getDateCreated() { return dateCreated; }
     public void setDateCreated(Date dateCreated) { this.dateCreated = dateCreated; }
+    public String getGender() { return gender; }
+    public void setGender(String gender) { this.gender = gender; }
+    public Integer getBirthYear() { return birthYear; }
+    public void setBirthYear(Integer birthYear) { this.birthYear = birthYear; }
 }

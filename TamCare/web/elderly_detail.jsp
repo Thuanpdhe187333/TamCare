@@ -15,6 +15,10 @@
         try {
             int id = Integer.parseInt(idStr);
             info = dao.getUserById(id); 
+            if (info != null) {
+                request.setAttribute("gender", info.getGender());
+                request.setAttribute("birthYear", info.getBirthYear());
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -122,6 +126,8 @@
                 <div class="info-item"><div class="info-label">Họ và tên</div><div class="info-value"><%= info.getFullName() %></div></div>
                 <div class="info-item"><div class="info-label">Email</div><div class="info-value"><%= info.getEmail() %></div></div>
                 <div class="info-item"><div class="info-label">Số điện thoại</div><div class="info-value"><%= info.getPhoneNumber() %></div></div>
+                <div class="info-item"><div class="info-label">Giới tính</div><div class="info-value"><%= request.getAttribute("gender") != null ? request.getAttribute("gender") : "Chưa cập nhật" %></div></div>
+                <div class="info-item"><div class="info-label">Năm sinh</div><div class="info-value"><%= request.getAttribute("birthYear") != null ? request.getAttribute("birthYear") : "Chưa cập nhật" %></div></div>
                 <div class="info-item"><div class="info-label">Vai trò</div><div class="info-value">Người cao tuổi</div></div>
             </div>
         </div>

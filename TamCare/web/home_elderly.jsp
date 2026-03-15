@@ -1,5 +1,7 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@page import="model.User"%>
+<%@page import="dal.ProfileDAO"%>
+<%@page import="dal.AINutritionDAO"%>
 <%
     User acc = (User) session.getAttribute("account");
     if(acc == null) {
@@ -9,6 +11,16 @@
     String myKey = acc.getLinkKey();
     if (myKey == null || myKey.trim().isEmpty()) {
         myKey = "Chưa có mã";
+    }
+    // Resolve ProfileID cho AISolutions: ưu tiên ElderlyProfile, không có thì dùng UserID (khi insert trực tiếp AISolutions/MedicalHistory theo UserID)
+    ProfileDAO profileDao = new ProfileDAO();
+    int profileIdForAI = profileDao.getProfileIDByUserID(acc.getUserID());
+    if (profileIdForAI <= 0 && "Elderly".equalsIgnoreCase(acc.getRole())) {
+        profileIdForAI = acc.getUserID();
+    }
+    String[] latestAI = null;
+    if (profileIdForAI > 0) {
+        latestAI = profileDao.getLatestAISolution(profileIdForAI, "Nutrition");
     }
 %>
 <!DOCTYPE html>
@@ -151,6 +163,30 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-left: 8px solid var(--primary);
             margin-bottom: 25px;
         }
+        /* Two-column: Healthy Tips | AI Nutrition */
+        .two-col-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 25px;
+        }
+        @media (max-width: 900px) {
+            .two-col-section { grid-template-columns: 1fr; }
+        }
+        .two-col-card {
+            background: var(--white);
+            border-radius: 25px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border-left: 8px solid var(--primary);
+        }
+        .two-col-card.nutrition { border-left-color: var(--success); }
+        .two-col-card h2 { margin: 0 0 15px 0; font-size: 22px; color: var(--primary); }
+        .two-col-card.nutrition h2 { color: var(--success); }
+        .ai-content { font-size: 15px; line-height: 1.7; color: #334155; }
+        .ai-content .line { margin-bottom: 8px; }
+        .ai-content strong { color: #1e293b; }
+        .ai-placeholder { color: #64748b; font-style: italic; }
 
         .sos-btn {
             background: linear-gradient(to right, #ff416c, #ff4b2b);
@@ -210,7 +246,7 @@
                         </div>
                     </div>
                     <div class="dropdown-box" style="width: 200px;">
-                        <a href="profile_elderly.jsp" class="noti-item"><i class="fa-solid fa-id-card"></i> Hồ sơ của bác</a>
+                        <a href="profile.jsp" class="noti-item"><i class="fa-solid fa-id-card"></i> Hồ sơ của bác</a>
                         <a href="logout" class="noti-item" style="color: var(--danger);"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</a>
                     </div>
                 </div>
@@ -224,7 +260,7 @@
                 <a href="home_elderly.jsp" class="menu-link active"><i class="fa-solid fa-house"></i> Trang chủ</a>
                 <a href="blog.jsp" class="menu-link"><i class="fa-solid fa-newspaper"></i> Blog sức khỏe</a>
                 <a href="products.jsp" class="menu-link"><i class="fa-solid fa-cart-shopping"></i> Cửa hàng y tế</a>
-                <a href="medical_history.jsp" class="menu-link"><i class="fa-solid fa-file-medical"></i> Lịch sử bệnh án</a>
+                <a href="MedicalHistoryServlet?profileId=<%= acc.getUserID() %>" class="menu-link"><i class="fa-solid fa-file-medical"></i> Lịch sử bệnh án</a>
             </nav>
 
             <div class="sidebar-box">
@@ -248,25 +284,63 @@
             <section class="checkin-hero-card animate-up">
                 <p style="font-size: 32px; font-weight: 800; margin: 0;">CHÚC BÁC MỘT NGÀY TỐT LÀNH !</p>
                 <p style="font-size: 18px; opacity: 0.9; margin-top: 10px;">Báo cho gia đình biết hôm nay bác vẫn khỏe mạnh nhé ạ</p>
-                <button class="btn-checkin-huge" onclick="alert('Đã gửi thông báo Bác khỏe đến gia đình!')">
+                <%
+                    String checkinMessage = (String) request.getAttribute("checkinMessage");
+                %>
+                <button class="btn-checkin-huge" onclick="location.href='daily-checkin'">
                     😊 ĐIỂM DANH NGAY
                 </button>
+                <% if (checkinMessage != null) { %>
+                    <p style="margin-top:15px; font-size:16px; font-weight:600;"><%= checkinMessage %></p>
+                <% } %>
             </section>
 
             <div class="animate-up" style="animation-delay: 0.2s;">
-                <section class="display-bar">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h2 style="margin:0; font-size: 22px; color: var(--primary);">📰 Mẹo Sống Khỏe</h2>
-                        <a href="blog.jsp" style="color: var(--success); font-weight: 700; text-decoration: none;">Xem thêm ></a>
-                    </div>
-                    <div style="display: flex; gap: 20px; align-items: center;">
-                        <img src="https://via.placeholder.com/80" style="border-radius: 15px;" alt="health">
-                        <div>
-                            <b style="font-size: 18px;">Cách giữ ấm trong mùa lạnh</b>
-                            <p style="margin: 5px 0 0; color: #666; font-size: 14px;">Bác nhớ quàng khăn và giữ ấm đôi chân mỗi sáng sớm nhé ạ...</p>
+                <div class="two-col-section">
+                    <section class="two-col-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h2 style="margin:0;">📰 Mẹo Sống Khỏe</h2>
+                            <a href="blog.jsp" style="color: var(--success); font-weight: 700; text-decoration: none;">Xem thêm ></a>
                         </div>
-                    </div>
-                </section>
+                        <div style="display: flex; gap: 20px; align-items: center;">
+                            <img src="https://via.placeholder.com/80" style="border-radius: 15px;" alt="health">
+                            <div>
+                                <b style="font-size: 18px;">Cách giữ ấm trong mùa lạnh</b>
+                                <p style="margin: 5px 0 0; color: #666; font-size: 14px;">Bác nhớ quàng khăn và giữ ấm đôi chân mỗi sáng sớm nhé ạ...</p>
+                            </div>
+                        </div>
+                    </section>
+                    <section class="two-col-card nutrition">
+                        <h2 style="margin:0 0 15px 0;">🥗 Gợi ý dinh dưỡng cho hôm nay</h2>
+                        <% if (latestAI != null && latestAI[0] != null && !latestAI[0].isEmpty()) {
+                            String[] lines = latestAI[0].split("\n");
+                        %>
+                        <div class="ai-content">
+                            <% for (String line : lines) {
+                                if (line.startsWith("Bệnh:")) { %>
+                                <div class="line"><strong>Bệnh phát hiện:</strong> <%= line.substring(line.indexOf(":") + 1).trim() %></div>
+                                <% } else if (line.startsWith("Nên tăng:")) { %>
+                                <div class="line"><strong>Nên tăng:</strong> <%= line.substring(line.indexOf(":") + 1).trim() %></div>
+                                <% } else if (line.startsWith("Nên giảm:")) { %>
+                                <div class="line"><strong>Nên giảm:</strong> <%= line.substring(line.indexOf(":") + 1).trim() %></div>
+                                <% } else if (line.startsWith("Thực phẩm:")) { %>
+                                <div class="line"><strong>Thực phẩm gợi ý:</strong> <%= line.substring(line.indexOf(":") + 1).trim() %></div>
+                                <% } else { %>
+                                <div class="line"><%= line %></div>
+                                <% }
+                            } %>
+                            <% if (latestAI[1] != null && !latestAI[1].isEmpty()) { %>
+                            <p style="margin-top:12px; font-size:12px; color:#94a3b8;">Cập nhật: <%= latestAI[1] %></p>
+                            <% } %>
+                        </div>
+                        <% } else if (profileIdForAI <= 0) { %>
+                        <p class="ai-placeholder">Hoàn thiện hồ sơ sức khỏe (ElderlyProfile) để nhận gợi ý dinh dưỡng.</p>
+                        <% } else { %>
+                        <p class="ai-placeholder">Chưa có gợi ý. Cập nhật lịch sử bệnh án để hệ thống tạo gợi ý dinh dưỡng theo bệnh của bác.</p>
+                        <p style="margin-top:10px;"><a href="GenerateNutritionServlet?profileId=<%= profileIdForAI %>" style="color:var(--success); font-weight:600;">Tạo gợi ý ngay</a></p>
+                        <% } %>
+                    </section>
+                </div>
 
                 <a href="tel:115" class="sos-btn">
                     <i class="fa-solid fa-phone-volume" style="margin-right: 15px;"></i> GỌI KHẨN CẤP CHO CON CHÁU

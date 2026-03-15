@@ -1,7 +1,16 @@
 <%@page contentType="text/html" pageEncoding="UTF-8" %>
 <%@page import="model.User" %>
+<%@page import="java.util.List" %>
+<%@page import="dal.CaregiverDashboardDAO" %>
 <%
     User acc = (User) session.getAttribute("account");
+    if (acc == null || !"Caregiver".equalsIgnoreCase(acc.getRole())) {
+        response.sendRedirect("login.jsp");
+        return;
+    }
+    CaregiverDashboardDAO dashDao = new CaregiverDashboardDAO();
+    List<CaregiverDashboardDAO.ElderlyCheckinStatus> checkins =
+            dashDao.getElderlyCheckinStatuses(acc.getUserID());
 %>
 <!DOCTYPE html>
 <html lang="vi">
@@ -141,12 +150,45 @@
             </div>
 
             <div class="table-section animate-up">
-                <h3 style="margin-top: 0; color: var(--primary); margin-bottom: 30px;"><i class="fa-solid fa-notes-medical"></i> Cập nhật sức khỏe gần đây</h3>
+                <h3 style="margin-top: 0; color: var(--primary); margin-bottom: 30px;">
+                    <i class="fa-solid fa-check-circle"></i> Trạng thái điểm danh hôm nay
+                </h3>
                 <table>
-                    <thead><tr style="text-align: left; color: var(--text-muted);"><th>Người thân</th><th>Chỉ số</th><th>Trạng thái</th><th>Thời gian</th><th>Hành động</th></tr></thead>
+                    <thead>
+                        <tr style="text-align: left; color: var(--text-muted);">
+                            <th>Người thân</th>
+                            <th>Mã kết nối</th>
+                            <th>Điểm danh hôm nay</th>
+                            <th>Ghi chú</th>
+                        </tr>
+                    </thead>
                     <tbody>
-                        <tr><td style="font-weight: 700;">Ông Nguyễn Văn A</td><td>125/80 mmHg</td><td><span class="status-pill" style="background: #e6f7ef; color: #16a34a;">Ổn định</span></td><td>10:15 Sáng nay</td><td><a href="#" style="color: var(--primary); font-weight: 700; text-decoration: none;">Chi tiết</a></td></tr>
-                        <tr><td style="font-weight: 700;">Bà Trần Thị B</td><td>88 bpm</td><td><span class="status-pill" style="background: #fff9e6; color: #d9a016;">Cần chú ý</span></td><td>08:30 Sáng nay</td><td><a href="#" style="color: var(--primary); font-weight: 700; text-decoration: none;">Chi tiết</a></td></tr>
+                        <%
+                            if (checkins != null && !checkins.isEmpty()) {
+                                for (CaregiverDashboardDAO.ElderlyCheckinStatus es : checkins) {
+                                    User e = es.getElderly();
+                                    boolean done = es.isCheckedInToday();
+                        %>
+                        <tr>
+                            <td style="font-weight: 700;"><%= e.getFullName() %></td>
+                            <td><%= e.getLinkKey() != null ? e.getLinkKey() : ("#" + e.getUserID()) %></td>
+                            <td>
+                                <span class="status-pill" style="<%= done ? "background:#e6f7ef; color:#16a34a;" : "background:#fff9e6; color:#d97706;" %>">
+                                    <%= done ? "ĐÃ ĐIỂM DANH" : "CHƯA ĐIỂM DANH" %>
+                                </span>
+                            </td>
+                            <td><%= done ? "Hôm nay người thân đã điểm danh là khỏe." : "Chưa thấy điểm danh, bạn nên chủ động hỏi thăm." %></td>
+                        </tr>
+                        <%
+                                }
+                            } else {
+                        %>
+                        <tr>
+                            <td colspan="4" style="text-align:center; color:var(--text-muted); padding:30px;">
+                                Chưa có người thân nào được liên kết. Hãy dùng mã kết nối để thêm Ông/Bà.
+                            </td>
+                        </tr>
+                        <% } %>
                     </tbody>
                 </table>
             </div>

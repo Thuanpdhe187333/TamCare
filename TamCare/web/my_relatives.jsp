@@ -1,6 +1,7 @@
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
 <%@page import="model.User, java.util.List"%>
 <%@page import="dal.UserDAO"%>
+<%@page import="dal.DailyCheckinDAO"%>
 
 <%
     User acc = (User) session.getAttribute("account");
@@ -10,6 +11,7 @@
     }
 
     UserDAO dao = new UserDAO();
+    DailyCheckinDAO checkinDao = new DailyCheckinDAO();
     String msg = null;
     String msgType = "";
 
@@ -216,6 +218,12 @@
                     </div>
                 </div>
                 <div style="border-top: 1px solid #f1f5f9; padding-top: 15px;">
+                    <%
+                        boolean doneToday = checkinDao.hasCheckedInToday(u.getUserID());
+                    %>
+                    <p style="font-size:13px; color:<%= doneToday ? "#16a34a" : "#d97706" %>;">
+                        Hôm nay: <b><%= doneToday ? "ĐÃ ĐIỂM DANH" : "CHƯA ĐIỂM DANH" %></b>
+                    </p>
                     <a href="elderly_detail.jsp?id=<%= u.getUserID() %>" class="btn-detail">Xem chi tiết sức khỏe</a>
                 </div>
             </div>

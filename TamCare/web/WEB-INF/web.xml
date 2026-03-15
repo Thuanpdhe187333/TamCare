@@ -22,6 +22,5 @@
     <servlet-mapping>
         <servlet-name>ViewElderlyDetailServlet</servlet-name>
         <url-pattern>/view-elderly-detail</url-pattern>
-    </servlet-mapping>
-
+    </servlet-mapping> 
 </web-app>

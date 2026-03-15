@@ -228,7 +228,7 @@ public class UserDAO extends DBContext {
     }
 
 public User getUserById(int id) {
-    String sql = "SELECT * FROM Users WHERE UserID = ?";
+        String sql = "SELECT * FROM Users WHERE UserID = ?";
     try (Connection conn = getConnection(); 
          PreparedStatement ps = conn.prepareStatement(sql)) {
         ps.setInt(1, id);
@@ -241,6 +241,8 @@ public User getUserById(int id) {
                 u.setPhoneNumber(rs.getString("PhoneNumber"));
                 u.setLinkKey(rs.getString("LinkKey"));
                 u.setRole(rs.getString("Role"));
+                try { u.setGender(rs.getString("Gender")); } catch (Exception ignore) {}
+                try { u.setBirthYear((Integer) rs.getObject("BirthYear")); } catch (Exception ignore) {}
                 return u;
             }
         }
@@ -261,6 +263,24 @@ public User getUserById(int id) {
             e.printStackTrace();
         }
         return false;
+    }
+
+    public void updateBasicProfile(int userId, String fullName, String phoneNumber, String gender, Integer birthYear) {
+        String sql = "UPDATE Users SET FullName = ?, PhoneNumber = ?, Gender = ?, BirthYear = ? WHERE UserID = ?";
+        try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, fullName);
+            ps.setString(2, phoneNumber);
+            ps.setString(3, gender);
+            if (birthYear != null) {
+                ps.setInt(4, birthYear);
+            } else {
+                ps.setNull(4, java.sql.Types.INTEGER);
+            }
+            ps.setInt(5, userId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
 }

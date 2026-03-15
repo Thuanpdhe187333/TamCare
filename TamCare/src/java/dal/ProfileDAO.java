@@ -89,4 +89,24 @@ public class ProfileDAO extends DBContext {
         }
         return null;
     }
+
+    /**
+     * Get latest AI recommendation (e.g. Nutrition) for profile.
+     * @return array: [0]=SolutionContent, [1]=CreationTime string; or null if none
+     */
+    public String[] getLatestAISolution(int profileID, String solutionType) {
+        String sql = "SELECT TOP 1 SolutionContent, CONVERT(varchar, CreationTime, 120) AS CreationTime "
+                + "FROM AISolutions WHERE ProfileID = ? AND SolutionType = ? ORDER BY CreationTime DESC";
+        try (Connection conn = getConnection(); PreparedStatement st = conn.prepareStatement(sql)) {
+            st.setInt(1, profileID);
+            st.setString(2, solutionType == null ? "Nutrition" : solutionType);
+            ResultSet rs = st.executeQuery();
+            if (rs.next()) {
+                return new String[]{rs.getString("SolutionContent"), rs.getString("CreationTime")};
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
 }
