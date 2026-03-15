@@ -10,38 +10,45 @@
     <meta charset="UTF-8">
     <title>TamCare Blog - Kiến thức sức khỏe người cao tuổi</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #008080;
-            --primary-dark: #006666;
-            --primary-light: #e6f2f2;
+            /* Đồng bộ tông màu #e0effa */
+            --primary: #2c5282; 
+            --primary-dark: #1a365d;
+            --primary-light: #e0effa;
             --white: #ffffff;
             --text-main: #1e293b;
             --text-muted: #64748b;
-            --bg-body: #f5f7f9;
+            --bg-body: #f8fafc;
         }
 
-        body { font-family: 'Lexend', sans-serif; background: var(--bg-body); margin: 0; padding-top: 120px; }
+        body { font-family: 'Lexend', sans-serif; background: var(--bg-body); margin: 0; padding-top: 120px; color: var(--text-main); }
 
-        /* 1. HEADER (Đồng bộ mẫu Shopee/TamCare) */
+        /* 1. HEADER (Đã đổi sang nền #e0effa) */
         .header-fixed {
-            background: linear-gradient(-180deg, var(--primary), var(--primary-dark));
+            background: var(--primary-light);
             position: fixed; top: 0; width: 100%; z-index: 1002; padding-bottom: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
-        .header-top-bar { max-width: 1200px; margin: 0 auto; display: flex; justify-content: flex-end; padding: 5px 20px; gap: 20px; font-size: 13px; color: white; }
+        .header-top-bar { 
+            max-width: 1200px; margin: 0 auto; display: flex; 
+            justify-content: flex-end; padding: 5px 20px; gap: 20px; 
+            font-size: 13px; color: var(--primary); 
+        }
         .header-main { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; padding: 10px 20px; gap: 40px; }
-        .logo { font-size: 30px; font-weight: 800; color: white; text-decoration: none; }
+        .logo { font-size: 30px; font-weight: 800; color: var(--primary); text-decoration: none; }
         .nav-links { display: flex; gap: 25px; }
-        .nav-links a { color: white; text-decoration: none; font-weight: 500; font-size: 15px; }
-        .nav-links a:hover { opacity: 0.8; }
+        .nav-links a { color: var(--primary); text-decoration: none; font-weight: 600; font-size: 15px; }
+        .nav-links a:hover { color: var(--primary-dark); }
 
         /* 2. BANNER / PAGE TITLE */
         .blog-banner {
-            background: var(--white); border-bottom: 1px solid #e2e8f0;
+            background: var(--white); border-bottom: 1px solid var(--primary-light);
             padding: 40px 0; margin-bottom: 30px; text-align: center;
         }
         .breadcrumb { font-size: 14px; color: var(--text-muted); margin-bottom: 10px; }
-        .breadcrumb a { color: var(--primary); text-decoration: none; }
+        .breadcrumb a { color: var(--primary); text-decoration: none; font-weight: 600; }
 
         /* LAYOUT CHÍNH */
         .main-container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 350px; gap: 30px; padding: 0 20px 60px; }
@@ -49,58 +56,59 @@
         /* 3. MAIN CONTENT (Blog Posts) */
         .blog-card {
             background: var(--white); border-radius: 20px; overflow: hidden;
-            margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: 0.3s;
+            margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); transition: 0.3s;
+            border: 1px solid var(--primary-light);
         }
-        .blog-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.07); }
-        .blog-img { width: 100%; height: 300px; background: #eee; display: flex; align-items: center; justify-content: center; font-size: 60px; color: #cbd5e1; }
+        .blog-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        .blog-img { width: 100%; height: 300px; background: var(--primary-light); display: flex; align-items: center; justify-content: center; font-size: 60px; color: var(--primary); }
         .blog-card-body { padding: 30px; }
         .blog-tag { background: var(--primary-light); color: var(--primary); padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: 700; }
-        .blog-title { font-size: 26px; margin: 15px 0; line-height: 1.4; color: var(--text-main); }
+        .blog-title { font-size: 26px; margin: 15px 0; line-height: 1.4; color: var(--primary); }
         .blog-meta { font-size: 14px; color: var(--text-muted); display: flex; gap: 20px; margin-bottom: 15px; }
-        .blog-excerpt { color: #475569; line-height: 1.8; margin-bottom: 20px; }
+        .blog-excerpt { color: #4a5568; line-height: 1.8; margin-bottom: 20px; }
         .btn-readmore { 
             display: inline-block; padding: 12px 25px; background: var(--primary); color: white; 
             text-decoration: none; border-radius: 12px; font-weight: 600; transition: 0.3s;
         }
-        .btn-readmore:hover { background: var(--primary-dark); padding-right: 35px; }
+        .btn-readmore:hover { background: var(--primary-dark); transform: translateX(5px); }
 
         /* 4. SIDEBAR */
-        .sidebar-widget { background: var(--white); border-radius: 20px; padding: 25px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
-        .widget-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; border-left: 4px solid var(--primary); padding-left: 15px; }
+        .sidebar-widget { background: var(--white); border-radius: 20px; padding: 25px; margin-bottom: 25px; border: 1px solid var(--primary-light); }
+        .widget-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; border-left: 5px solid var(--primary); padding-left: 15px; color: var(--primary); }
         .search-box { display: flex; gap: 5px; }
-        .search-box input { flex: 1; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; outline: none; }
+        .search-box input { flex: 1; padding: 12px; border: 1px solid var(--primary-light); border-radius: 10px; outline: none; }
         .category-list { list-style: none; padding: 0; }
-        .category-list li { padding: 10px 0; border-bottom: 1px dotted #e2e8f0; }
+        .category-list li { padding: 12px 0; border-bottom: 1px dashed var(--primary-light); }
         .category-list a { text-decoration: none; color: var(--text-main); font-size: 15px; display: flex; justify-content: space-between; }
-        .category-list a:hover { color: var(--primary); }
+        .category-list a:hover { color: var(--primary); font-weight: 600; }
 
         /* 5. PAGINATION */
         .pagination { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
-        .page-item { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: white; color: var(--text-main); text-decoration: none; font-weight: 600; transition: 0.3s; }
+        .page-item { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: white; color: var(--primary); border: 1px solid var(--primary-light); text-decoration: none; font-weight: 600; }
         .page-item.active { background: var(--primary); color: white; }
-        .page-item:hover:not(.active) { background: var(--primary-light); color: var(--primary); }
+        .page-item:hover:not(.active) { background: var(--primary-light); }
 
         /* 6. FOOTER */
-        .footer { background: #1e293b; color: #94a3b8; padding: 60px 40px 20px; margin-top: auto; }
+        .footer { background: var(--primary-dark); color: #cbd5e0; padding: 60px 40px 20px; margin-top: auto; }
         .footer-grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 2fr 1fr 1fr 1.5fr; gap: 40px; }
-        .footer-col h4 { color: white; margin-bottom: 25px; }
-        .footer-col a { color: #94a3b8; text-decoration: none; display: block; margin-bottom: 12px; font-size: 14px; }
-        .footer-col a:hover { color: white; }
+        .footer-col h4 { color: white; margin-bottom: 25px; text-transform: uppercase; font-size: 16px; }
+        .footer-col a { color: #cbd5e0; text-decoration: none; display: block; margin-bottom: 12px; font-size: 14px; }
+        .footer-col a:hover { color: var(--primary-light); }
     </style>
 </head>
 <body>
 
     <div class="header-fixed">
         <div class="header-top-bar">
-            <span>Hỗ trợ 24/7</span>
-            <span>Chào, <%= userName %></span>
+            <span><i class="fa-solid fa-headset"></i> Hỗ trợ 24/7</span>
+            <span>Chào, <strong><%= userName %></strong></span>
         </div>
         <header class="header-main">
-            <a href="home_caregiver.jsp" class="logo">TamCare</a>
+            <a href="home_caregiver.jsp" class="logo"><i class="fa-solid fa-hand-holding-heart"></i> TamCare</a>
             <nav class="nav-links">
                 <a href="home_caregiver.jsp">Tổng quan</a>
                 <a href="products.jsp">Cửa hàng</a>
-                <a href="blog.jsp" style="border-bottom: 2px solid white;">Tin tức</a>
+                <a href="blog.jsp" style="color: var(--primary-dark); border-bottom: 3px solid var(--primary);">Tin tức</a>
                 <a href="about.jsp">Giới thiệu</a>
             </nav>
         </header>
@@ -108,7 +116,7 @@
 
     <div class="blog-banner">
         <div class="breadcrumb"><a href="home_caregiver.jsp">Trang chủ</a> > Blog</div>
-        <h1 style="font-size: 36px; margin: 0;">Tin tức & Kiến thức sức khỏe</h1>
+        <h1 style="font-size: 36px; margin: 0; color: var(--primary);">Tin tức & Kiến thức sức khỏe</h1>
         <p style="color: var(--text-muted);">Cập nhật những thông tin mới nhất về chăm sóc người cao tuổi</p>
     </div>
 
@@ -156,7 +164,7 @@
                 <div class="widget-title">Tìm kiếm</div>
                 <div class="search-box">
                     <input type="text" placeholder="Nhập từ khóa...">
-                    <button style="border:none; background:var(--primary); color:white; border-radius:10px; padding:0 15px;"><i class="fa-solid fa-search"></i></button>
+                    <button style="border:none; background:var(--primary); color:white; border-radius:10px; padding:0 15px; cursor:pointer;"><i class="fa-solid fa-search"></i></button>
                 </div>
             </div>
 
@@ -173,12 +181,12 @@
             <div class="sidebar-widget">
                 <div class="widget-title">Bài viết phổ biến</div>
                 <div style="display:flex; gap:10px; margin-bottom:15px;">
-                    <div style="width:60px; height:60px; background:#eee; border-radius:8px;"></div>
-                    <div style="font-size:13px; font-weight:600;">Cách sử dụng máy đo huyết áp Omron tại nhà</div>
+                    <div style="width:60px; height:60px; background:var(--primary-light); border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--primary);"><i class="fa-solid fa-heart-pulse"></i></div>
+                    <div style="font-size:13px; font-weight:600; color:var(--text-main);">Cách sử dụng máy đo huyết áp Omron tại nhà</div>
                 </div>
                 <div style="display:flex; gap:10px;">
-                    <div style="width:60px; height:60px; background:#eee; border-radius:8px;"></div>
-                    <div style="font-size:13px; font-weight:600;">Lưu ý khi lựa chọn thực phẩm chức năng</div>
+                    <div style="width:60px; height:60px; background:var(--primary-light); border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--primary);"><i class="fa-solid fa-capsules"></i></div>
+                    <div style="font-size:13px; font-weight:600; color:var(--text-main);">Lưu ý khi lựa chọn thực phẩm chức năng</div>
                 </div>
             </div>
         </aside>
@@ -187,7 +195,7 @@
     <footer class="footer">
         <div class="footer-grid">
             <div class="footer-col">
-                <h2 style="color:white; margin-top:0;">TamCare</h2>
+                <h2 style="color:white; margin-top:0;"><i class="fa-solid fa-hand-holding-heart"></i> TamCare</h2>
                 <p style="font-size:14px; line-height:1.6;">Ứng dụng tiên phong trong việc kết nối và chăm sóc sức khỏe người cao tuổi tại Việt Nam.</p>
             </div>
             <div class="footer-col">
@@ -211,7 +219,7 @@
                 </div>
             </div>
         </div>
-        <div style="text-align:center; margin-top:40px; font-size:13px; color:#64748b;">
+        <div style="text-align:center; margin-top:40px; font-size:12px; color:#cbd5e0; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
             &copy; 2026 TamCare Project. All rights reserved.
         </div>
     </footer>
