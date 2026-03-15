@@ -11,7 +11,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import model.User;
 
-
 @WebServlet(name = "MyRelativesServlet", urlPatterns = {"/my-relatives"})
 public class MyRelativesServlet extends HttpServlet {
 
@@ -22,11 +21,19 @@ public class MyRelativesServlet extends HttpServlet {
         HttpSession session = request.getSession(false);
         User acc = (session != null) ? (User) session.getAttribute("account") : null;
 
+        // 1. Kiểm tra đăng nhập và vai trò
         if (acc == null || !"Caregiver".equalsIgnoreCase(acc.getRole())) {
             response.sendRedirect("login.jsp");
             return;
         }
 
+        // 2. KIỂM TRA MỞ KHÓA (PREMIUM)
+        if (!acc.isIsPremium()) {
+            response.sendRedirect("membership.jsp?msg=lock");
+            return;
+        }
+
+        // 3. Nếu đã là Premium thì mới lấy dữ liệu
         UserDAO dao = new UserDAO();
         List<User> elderlyList = dao.getLinkedElderlyList_ByRelationship(acc.getUserID());
 

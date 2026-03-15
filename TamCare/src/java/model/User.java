@@ -1,5 +1,5 @@
 package model;
-
+import java.sql.Timestamp;
 import java.sql.Date; // Hoặc java.util.Date
 
 public class User {
@@ -13,6 +13,10 @@ public class User {
     private String linkKey;
     private String gender;
     private Integer birthYear;
+    private boolean isPremium;
+    private long totalPoints;
+    private Timestamp premiumExpiry;
+    private int memberLevel;
 
     public User() {
     }
@@ -50,4 +54,17 @@ public class User {
     public void setGender(String gender) { this.gender = gender; }
     public Integer getBirthYear() { return birthYear; }
     public void setBirthYear(Integer birthYear) { this.birthYear = birthYear; }
+    public boolean isIsPremium() { return isPremium; }
+    public void setIsPremium(boolean isPremium) { this.isPremium = isPremium; }
+    public long getTotalPoints() { return totalPoints; }
+    public void setTotalPoints(long totalPoints) { this.totalPoints = totalPoints; }
+    public Timestamp getPremiumExpiry() {
+        return premiumExpiry;
+    }
+
+    public void setPremiumExpiry(Timestamp premiumExpiry) {
+        this.premiumExpiry = premiumExpiry;
+    }
+    public int getMemberLevel() { return memberLevel; }
+public void setMemberLevel(int memberLevel) { this.memberLevel = memberLevel; }
 }

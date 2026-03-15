@@ -1,5 +1,6 @@
 package controller;
 
+import dal.PointDAO;
 import dal.UserDAO;
 import java.io.IOException;
 import jakarta.servlet.ServletException;
@@ -10,76 +11,54 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import model.User;
 
-/**
- * Servlet xử lý đăng nhập và phân quyền người dùng.
- * Tương thích với Tomcat 10 (Jakarta Servlet).
- */
 @WebServlet(name = "LoginServlet", urlPatterns = {"/login"})
 public class LoginServlet extends HttpServlet {
 
-    /**
-     * Xử lý yêu cầu GET: Chuyển hướng người dùng đến trang đăng nhập (login.jsp).
-     */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         request.getRequestDispatcher("login.jsp").forward(request, response);
     }
 
-    /**
-     * Xử lý yêu cầu POST: Kiểm tra thông tin đăng nhập và điều hướng theo vai trò (Role).
-     */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        // Thiết lập mã hóa để tránh lỗi tiếng Việt
+        // 1. Thiết lập tiếng Việt
         request.setCharacterEncoding("UTF-8");
 
-        // 1. Lấy dữ liệu từ form đăng nhập
         String email = request.getParameter("email");
         String pass = request.getParameter("password");
 
-        // 2. Kiểm tra tài khoản trong cơ sở dữ liệu qua UserDAO
+        // 2. Gọi DAO (Lúc này udb.login đã lấy được IsPremium từ DB)
         UserDAO udb = new UserDAO();
         User user = udb.login(email, pass);
 
         if (user != null) {
-            // 3. Đăng nhập thành công: Tạo Session để lưu thông tin người dùng
             HttpSession session = request.getSession();
+            
+            // 3. Đưa đối tượng User (đã có trạng thái Premium) vào Session
             session.setAttribute("account", user);
 
-            // 4. Lấy vai trò (Role) của người dùng để điều hướng
-            String role = user.getRole();
+            // 4. Đồng bộ Point kiểu long để Header hiển thị đúng số dư hàng tỷ
+            PointDAO pdao = new PointDAO();
+            long currentPoints = pdao.getTotalPoints(user.getUserID());
+            session.setAttribute("totalPoints", currentPoints);
 
-            // Phân luồng điều hướng dựa trên Role trong database
+            // 5. Điều hướng theo vai trò
+            String role = user.getRole();
             if ("Admin".equalsIgnoreCase(role)) {
-                // Nếu là Quản trị viên -> Chuyển sang trang quản lý hệ thống
                 response.sendRedirect("admin");
-            } 
-            else if ("Elderly".equalsIgnoreCase(role)) {
-                // Nếu là Người cao tuổi -> Chuyển sang giao diện đơn giản (home_elderly.jsp)
+            } else if ("Elderly".equalsIgnoreCase(role)) {
                 response.sendRedirect("home_elderly.jsp");
-            } 
-            else if ("Caregiver".equalsIgnoreCase(role)) {
-                // Nếu là Người chăm sóc -> Chuyển sang giao diện quản lý hồ sơ (home_caregiver.jsp)
+            } else if ("Caregiver".equalsIgnoreCase(role)) {
                 response.sendRedirect("home_caregiver.jsp");
-            } 
-            else {
-                // Vai trò không xác định -> Quay về trang chủ chung
+            } else {
                 response.sendRedirect("index.jsp");
             }
         } else {
-            // 5. Đăng nhập thất bại: Gửi thông báo lỗi và quay lại trang đăng nhập
+            // 6. Đăng nhập thất bại
             request.setAttribute("error", "Email hoặc Mật khẩu không chính xác!");
             request.getRequestDispatcher("login.jsp").forward(request, response);
         }
-    }
-
-    /**
-     * Trả về thông tin ngắn gọn về Servlet.
-     */
-    @Override
-    public String getServletInfo() {
-        return "LoginServlet handle authentication and role-based redirection";
     }
 }

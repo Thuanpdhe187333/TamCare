@@ -1,112 +1,53 @@
-<%@page contentType="text/html" pageEncoding="UTF-8"%>
-<%@page import="model.User"%>
-<%@page import="java.util.List"%>
-<%@page import="dal.CheckinNotificationDAO"%>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lịch sử thông báo - TamCare</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <%
-        User acc = (User) session.getAttribute("account");
-        if (acc == null || !"Caregiver".equalsIgnoreCase(acc.getRole())) {
-            response.sendRedirect("login.jsp");
-            return;
-        }
-
-        CheckinNotificationDAO nDao = new CheckinNotificationDAO();
-        List<CheckinNotificationDAO.CheckinNotificationView> notis =
-                nDao.getByCaregiver(acc.getUserID());
-    %>
-
+    <title>Thông báo - TamCare</title>
     <style>
-        :root {
-            --primary: #008080;
-            --bg: #f8fafc;
-            --white: #ffffff;
-            --text-muted: #64748b;
-        }
-        body { font-family: 'Lexend', sans-serif; background: var(--bg); margin: 0; padding-top: 90px; }
-        
-        /* Navbar đồng bộ với Header xanh */
-        .navbar { 
-            height: 70px; background: var(--primary); display: flex; 
-            align-items: center; padding: 0 40px; position: fixed; 
-            top: 0; width: 100%; z-index: 1001; box-sizing: border-box; 
-        }
-        .logo { font-size: 24px; font-weight: 800; color: white; text-decoration: none; }
-
-        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
-        .page-title { color: #1e293b; margin-bottom: 30px; display: flex; align-items: center; gap: 15px; }
-
-        .noti-card {
-            background: var(--white);
-            border-radius: 20px;
-            padding: 25px;
-            margin-bottom: 15px;
-            display: flex;
-            gap: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
-            border-left: 5px solid #cbd5e1;
-            transition: 0.3s;
-        }
-        .noti-card.unread { border-left-color: var(--primary); background: #f0fdfa; }
-        .noti-card:hover { transform: translateX(5px); box-shadow: 0 6px 20px rgba(0,0,0,0.05); }
-
-        .noti-icon {
-            width: 50px; height: 50px; border-radius: 50%;
-            background: #e2e8f0; display: flex; align-items: center;
-            justify-content: center; font-size: 20px; color: var(--primary);
-        }
-        .noti-card.emergency .noti-icon { background: #fee2e2; color: #ef4444; }
-        .noti-card.emergency { border-left-color: #ef4444; }
-
-        .noti-info h4 { margin: 0 0 5px 0; color: #334155; font-size: 16px; }
-        .noti-info p { margin: 0; color: #64748b; font-size: 14px; line-height: 1.5; }
-        .noti-time { font-size: 12px; color: #94a3b8; margin-top: 10px; display: block; }
-        
-        .empty-state { text-align: center; padding: 100px 0; color: var(--text-muted); }
+        .noti-container { max-width: 800px; margin: 100px auto; min-height: 500px; padding: 0 20px; }
+        .noti-item { background: white; padding: 20px; border-radius: 15px; margin-bottom: 15px; border-left: 5px solid #2c5282; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .pagination { display: flex; justify-content: center; gap: 10px; margin-top: 30px; }
+        .page-link { padding: 8px 16px; border: 1px solid #ddd; border-radius: 8px; text-decoration: none; color: #2c5282; }
+        .page-link.active { background: #2c5282; color: white; border-color: #2c5282; }
     </style>
 </head>
 <body>
-    <header class="navbar">
-        <a href="home_caregiver.jsp" class="logo"><i class="fa-solid fa-arrow-left"></i> Quay lại</a>
-    </header>
+    <%@ include file="header.jsp" %>
 
-    <div class="container">
-        <div class="page-title">
-            <i class="fa-solid fa-bell-concierge fa-2x" style="color: var(--primary);"></i>
-            <h1>Lịch sử thông báo điểm danh</h1>
-        </div>
+    <div class="noti-container">
+        <h2 style="color: #2c5282; margin-bottom: 30px;"><i class="fa-solid fa-bell"></i> Lịch sử thông báo</h2>
 
-        <div class="noti-list">
-            <%
-                if (notis != null && !notis.isEmpty()) {
-                    for (dal.CheckinNotificationDAO.CheckinNotificationView v : notis) {
-                        boolean unread = !v.isRead();
-            %>
-            <div class="noti-card <%= unread ? "unread" : "" %>">
-                <div class="noti-icon"><i class="fa-solid fa-check-circle"></i></div>
-                <div class="noti-info">
-                    <h4>Điểm danh sức khỏe</h4>
-                    <p><b><%= v.getElderlyName() %></b> đã điểm danh hôm nay và báo là vẫn ổn.</p>
-                    <span class="noti-time">
-                        <i class="fa-regular fa-clock"></i>
-                        <%= new java.text.SimpleDateFormat("HH:mm dd/MM/yyyy").format(v.getCreatedAt()) %>
-                    </span>
+        <c:choose>
+            <c:when test="${empty notiList}">
+                <div style="text-align: center; padding: 50px;">
+                    <img src="https://cdn-icons-png.flaticon.com/512/4076/4076549.png" width="100" style="opacity: 0.3;">
+                    <p style="color: #64748b; margin-top: 20px;">Bác chưa có thông báo nào.</p>
                 </div>
-            </div>
-            <%
-                    }
-                } else {
-            %>
-            <div class="empty-state">
-                Hiện chưa có thông báo điểm danh nào từ người thân.
-            </div>
-            <% } %>
+            </c:when>
+            <c:otherwise>
+                <c:forEach items="${notiList}" var="n">
+                    <div class="noti-item">
+                        <h4 style="margin: 0 0 10px 0; color: #1e293b;">${n.title}</h4>
+                        <p style="margin: 0; color: #475569; font-size: 14px;">${n.message}</p>
+                        <small style="color: #94a3b8; display: block; margin-top: 10px;">
+                            <i class="fa-regular fa-clock"></i> 
+                            <fmt:formatDate value="${n.createdAt}" pattern="dd/MM/yyyy HH:mm"/>
+                        </small>
+                    </div>
+                </c:forEach>
+            </c:otherwise>
+        </c:choose>
+
+        <div class="pagination">
+            <c:forEach begin="1" end="${totalPages}" var="i">
+                <a href="notifications?page=${i}" class="page-link ${i == currentPage ? 'active' : ''}">${i}</a>
+            </c:forEach>
         </div>
     </div>
+
+    <%@ include file="footer.jsp" %>
 </body>
 </html>

@@ -26,8 +26,9 @@ public class RewardsServlet extends HttpServlet {
         }
 
         PointDAO pdao = new PointDAO();
-        // 1. Lấy dữ liệu thật từ DB
-        int total = pdao.getTotalPoints(acc.getUserID());
+        
+        // 1. Sửa kiểu dữ liệu từ int sang long tại đây
+        long total = pdao.getTotalPoints(acc.getUserID()); 
         List<PointHistory> history = pdao.getHistoryByUserID(acc.getUserID());
 
         // 2. Đẩy vào REQUEST cho trang rewards.jsp hiện tại
