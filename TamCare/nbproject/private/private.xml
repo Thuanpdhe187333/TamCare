@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project-private xmlns="http://www.netbeans.org/ns/project-private/1">
+    <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+    <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+        <group>
+            <file>file:/D:/EBOOK/EXE101_BE/TamCare/TamCare/src/java/model/User.java</file>
+            <file>file:/D:/EBOOK/EXE101_BE/TamCare/TamCare/src/java/dal/UserDAO.java</file>
+            <file>file:/D:/EBOOK/EXE101_BE/TamCare/TamCare/src/java/controller/LoginServlet.java</file>
+            <file>file:/D:/EBOOK/EXE101_BE/TamCare/TamCare/web/header.jsp</file>
+            <file>file:/D:/EBOOK/EXE101_BE/TamCare/TamCare/web/notifications.jsp</file>
+            <file>file:/D:/EBOOK/EXE101_BE/TamCare/TamCare/web/rewards.jsp</file>
+            <file>file:/D:/EBOOK/EXE101_BE/TamCare/TamCare/web/home_elderly.jsp</file>
+            <file>file:/D:/EBOOK/EXE101_BE/TamCare/TamCare/src/java/controller/UpgradeServlet.java</file>
+            <file>file:/D:/EBOOK/EXE101_BE/TamCare/TamCare/web/profile.jsp</file>
+            <file>file:/D:/EBOOK/EXE101_BE/TamCare/TamCare/src/java/dal/NotificationDAO.java</file>
+            <file>file:/D:/EBOOK/EXE101_BE/TamCare/TamCare/src/java/controller/NotificationServlet.java</file>
+        </group>
+    </open-files>
+</project-private>
